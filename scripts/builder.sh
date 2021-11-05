@@ -3,9 +3,9 @@
 arch=$(uname -m)
 compiler=g++
 compiler_version=$(g++ --version)
-env_prefix=/home/erock/Documents/Code
-project_name=cajete-serial
-build_name=cajete-serial_build_basic
+env_prefix=/home/erock/Documents/Code/CajeteRevamped
+project_name=CajeteProto
+build_name=build_basic
 source_prefix=${env_prefix}/${project_name}
 build_base_dir=${env_prefix}/${build_name}
 build_prefix=${build_base_dir}/build/${arch}-${compiler}

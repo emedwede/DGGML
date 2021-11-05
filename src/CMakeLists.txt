@@ -6,5 +6,5 @@ configure_file(CajeteConfig.hpp.in CajeteConfig.hpp)
 file(GLOB HEADER_FILES "*.hpp")
 file(GLOB SOURCE_FILES "*.cpp")
 
-#set(LIB_NAME simplecajete)
-#add_library(simplecajete ${SOURCE_FILES} ${HEADER_FILES})
+#set(LIB_NAME cajeteproto)
+#add_library(cajeteproto ${SOURCE_FILES} ${HEADER_FILES})

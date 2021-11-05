@@ -2,7 +2,7 @@
 cmake_minimum_required(VERSION 3.16)
 
 #set the project name
-project(Cajete VERSION 0.0 LANGUAGES CXX)
+project(CajeteProto VERSION 0.0 LANGUAGES CXX)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
