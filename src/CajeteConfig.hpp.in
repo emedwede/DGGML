@@ -1,0 +1,4 @@
+//the configured options and settings for Cajete 
+#define Cajete_VERSION_MAJOR @Cajete_VERSION_MAJOR@
+#define Cajete_VERSION_MINOR @Cajete_VERSION_MINOR@
+
