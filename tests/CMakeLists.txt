@@ -1,2 +1,2 @@
 #TODO: Upgrade testing workflow
-add_executable(simple_test tests_main.cpp simple_test.cpp)
+add_executable(memory-manager-test tests_main.cpp memory-manager-test.cpp)

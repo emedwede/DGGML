@@ -10,5 +10,18 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_STANDARD 17) 
 
+# Add the serial host mode by default
+# Currently turning it of would break the code
+option(ENABLE_SERIAL_HOST "Enable Serial Host Mode" ON)
+if(ENABLE_SERIAL_HOST)
+	add_definitions(-DCAJETE_ENABLE_HOST_SERIAL)
+endif()
+
+# Add debugging option
+option(USE_DEBUG "Enter debug mode" ON)
+if (USE_DEBUG)
+	add_definitions(-DCAJETE_DEBUG)
+endif()
+
 add_subdirectory(src)
 add_subdirectory(tests)
