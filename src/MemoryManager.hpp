@@ -24,7 +24,7 @@ namespace MemoryManager
 	#if defined CAJETE_ENABLE_HOST_SERIAL
 			ptr = new T[size];
 			#if defined(CAJETE_DEBUG)
-				std::cout << "Successfully allocated " << sizeof(ptr)*size 
+				std::cout << "Successfully allocated " << sizeof(T)*size 
 					<< " bytes at " << ptr << "\n";
 			#endif
 	//TODO: add new allocators here
