@@ -38,10 +38,30 @@ TEST_CASE("Base Graph Host Test", "[graph host test]")
     for(auto i = 1; i < 3; i++) {
         test_graph.insert_edge(4, i);
     }
+    
+    for(auto i = 2; i < 5; i++) {
+        test_graph.insert_edge(0, i);
+    }
+    
+    //auto inserted_edges = 8;
+    //REQUIRE(test_graph.num_edges == inserted_edges);
 
     for(auto i = 0; i < test_graph.edge_capacity; i++) {
-        std::cout << test_graph.edge_set[i] << " ";
+        auto src = test_graph.edge_set[i].out_edge;
+        auto loc = test_graph.edge_set[i].location;
+        auto dst = test_graph.node_set[loc];
+        if( !(i % 5) )
+            std::cout << "\n";
+        std::cout << "[Key:" << src << ", Loc: " << loc << "] ";
+
     } std::cout << std::endl;
-
-
+    
+    REQUIRE(test_graph.out_degree(4) == 2);
+    REQUIRE(test_graph.isolated(4) == false);
+    REQUIRE(test_graph.isolated(1) == true);
+    
+    for(auto i = 0; i <5; i++) {
+        std::cout << test_graph.node_set[i] << " " << test_graph.out_degree(i) << " " << test_graph.isolated(i) << "\n";
+    }
+    std::cout << test_graph.out_neighbors_begin(0) << " " << test_graph.out_neighbors_end(0) << "\n";
 }
