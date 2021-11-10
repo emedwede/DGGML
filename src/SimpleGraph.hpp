@@ -11,12 +11,17 @@ struct SimpleGraph {
     using index_type = CountingType;
     using node_type = NodeType;
     
+    // Note: The sizeof for a struct is not always equal to the sum of 
+    // sizeof of each individual member. This is because of the padding 
+    // added by the compiler to avoid alignment issues. Padding is only 
+    // added when a structure member is followed by a member with a 
+    // larger size or at the end of the structure
     using mapping_type = struct Mapping {
         bool has_edges;
         std::size_t block_id;
         std::size_t block_size;
         std::size_t spots_used;
-    };
+    }; // turns out this is 32bytes on my system :D
 
     SimpleGraph() 
         : num_nodes(0)
