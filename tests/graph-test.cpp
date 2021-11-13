@@ -43,8 +43,8 @@ TEST_CASE("Base Graph Host Test", "[graph host test]")
         test_graph.insert_edge(0, i);
     }
     
-    //auto inserted_edges = 8;
-    //REQUIRE(test_graph.num_edges == inserted_edges);
+    auto inserted_edges = 8;
+    REQUIRE(test_graph.num_edges == inserted_edges);
 
     for(auto i = 0; i < test_graph.edge_capacity; i++) {
         auto src = test_graph.edge_set[i].out_edge;
@@ -56,6 +56,8 @@ TEST_CASE("Base Graph Host Test", "[graph host test]")
 
     } std::cout << std::endl;
     
+    std::cout << test_graph;
+
     REQUIRE(test_graph.out_degree(4) == 2);
     REQUIRE(test_graph.isolated(4) == false);
     REQUIRE(test_graph.isolated(1) == true);

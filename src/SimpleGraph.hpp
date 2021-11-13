@@ -30,6 +30,7 @@ struct SimpleGraph {
 
     SimpleGraph() 
         : num_nodes(0)
+        , num_edges(0)
         , node_capacity(0)
         , edge_capacity(0)
         , edge_block_size(0)
@@ -44,6 +45,7 @@ struct SimpleGraph {
     
     SimpleGraph(index_type c, index_type d) {
         num_nodes = 0;
+        num_edges = 0;
         node_capacity = c;
         edge_block_size = d; //avg degree
         edge_capacity = c*d;
@@ -232,6 +234,12 @@ struct SimpleGraph {
        }
        return true;
    }
+
+   //Determines the number of connected components
+   void connectedComponents() 
+   {
+       //TODO: implement connectedComponents 
+   }
     
     //TODO: implement a use for this
     bool undirected; //is the graph undirected
@@ -249,6 +257,16 @@ struct SimpleGraph {
     edge_type* edge_set;
     mapping_type* mapping_set;
 };
+
+template <typename T, typename U>
+std::ostream &operator<<(std::ostream &os, const SimpleGraph<T, U> &graph)
+{
+    std::cout << "\n++++++++++++++++++++++++++++++++++++++++++++++++++++\n";
+    os << "The graph has " << graph.num_nodes << " nodes and " << graph.num_edges << " edges";
+    std::cout << "\n++++++++++++++++++++++++++++++++++++++++++++++++++++\n";
+    
+    return os;
+}
 
 template<typename T>
 void print_node(T &data, typename T::index_type idx) {
