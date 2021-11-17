@@ -17,11 +17,16 @@ TEST_CASE(" Standard MemoryManager Host Test", "[standard memory host test]")
     std::size_t size;
     
     size = 1;
-    auto ptr_a = Cajete::MemoryManager::allocate_std<int>(size);
+    auto ptr_a_1 = Cajete::MemoryManager::allocate_std<int>(size);
 
-    Cajete::MemoryManager::deallocate_std(ptr_a);
+    Cajete::MemoryManager::deallocate_std(ptr_a_1);
 
-    REQUIRE(ptr_a == nullptr);
+    auto ptr_a_2 = Cajete::MemoryManager::allocate_std<int>(size);
+
+    Cajete::MemoryManager::deallocate_std(ptr_a_2);
+
+    REQUIRE(ptr_a_1 == nullptr);
+    REQUIRE(ptr_a_2 == nullptr);
 
     size = 10;
     
