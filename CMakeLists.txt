@@ -23,6 +23,7 @@ if (USE_DEBUG)
 	add_definitions(-DCAJETE_DEBUG)
 endif()
 
+add_subdirectory(thirdparty/vtu11)
 add_subdirectory(src)
 add_subdirectory(tests)
 add_subdirectory(tools)
