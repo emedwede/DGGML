@@ -23,6 +23,9 @@ if (USE_DEBUG)
 	add_definitions(-DCAJETE_DEBUG)
 endif()
 
+include_directories(dependencies/YAGL/include)
+
+add_subdirectory(dependencies/YAGL)
 add_subdirectory(thirdparty/vtu11)
 add_subdirectory(src)
 add_subdirectory(tests)

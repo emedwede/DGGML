@@ -1,0 +1,3 @@
+[submodule "dependencies/YAGL"]
+	path = dependencies/YAGL
+	url = https://github.com/ejm930/YAGL.git
