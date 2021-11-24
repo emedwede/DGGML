@@ -2,7 +2,7 @@
 #include <type_traits>
 
 #include "catch.hpp"
-#include "../src/SimpleGraph.hpp"
+#include ".SimpleGraph.hpp"
 
 TEST_CASE("Base Graph Host Test", "[graph host test]")
 {    

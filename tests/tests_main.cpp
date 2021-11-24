@@ -6,7 +6,7 @@
 #include "catch.hpp"
 
 
-#include "../src/CajeteConfig.hpp"
+#include "CajeteConfig.hpp"
 
 int main(int argc, char *argv[]) {
     //report the version

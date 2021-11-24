@@ -2,8 +2,8 @@
 
 #include "catch.hpp"
 
-#include "../src/DggFactory.hpp"
-#include "../src/PlantModel.hpp"
+#include "DggFactory.hpp"
+#include "PlantModel.hpp"
 
 struct MyInterface {};
 

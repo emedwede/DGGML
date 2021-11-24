@@ -24,6 +24,7 @@ if (USE_DEBUG)
 endif()
 
 include_directories(dependencies/YAGL/include)
+include_directories(src)
 
 add_subdirectory(dependencies/YAGL)
 add_subdirectory(thirdparty/vtu11)

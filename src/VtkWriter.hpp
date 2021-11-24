@@ -43,6 +43,7 @@ class VtkFileWriter : public FileWriter<DataType> {
 
         void format_data(data_type data) const override {
             std::cout << "Formating the data to be vtk compatibile\n";
+            std::cout << data;
         }
 
         void write_file(std::string name) const override {
