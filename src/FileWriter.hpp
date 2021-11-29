@@ -31,11 +31,11 @@ class FileWriter {
 
         virtual void open_file() const = 0;
 
-        virtual void format_data(DataType data) const = 0;
+        virtual void format_data(DataType data) = 0;
 
-        virtual void write_file(std::string name) const = 0;
+        virtual void write_file(std::string name) = 0;
 
-        virtual void close_file() const = 0;
+        virtual void close_file() = 0;
 };
 
 } //end namespace cajete
