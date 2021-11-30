@@ -57,21 +57,33 @@ class VtkFileWriter : public FileWriter<DataType> {
             }
             for(auto i = data.node_list_begin(); i != data.node_list_end(); i++) 
             {
-                points.push_back(i->second.getData());
-                points.push_back(0.0);
-                points.push_back(0.0);
+                points.push_back(i->second.getData().position[0]);
+                points.push_back(i->second.getData().position[1]);
+                points.push_back(i->second.getData().position[2]);
+
+                comp_type.push_back(i->second.getData().type);
+
                 keyData.push_back(i->first);
-                types.push_back(4); // vtk object type
-                if(offsets.size() == 0)
-                    offsets.push_back(data.out_neighbors(i->second).size());
-                else
-                {
-                    auto last = offsets.back();
-                    auto size = data.out_neighbors(i->second).size();
-                    offsets.push_back(last+size);
-                }
+                //types.push_back(4); // vtk object type
+                //if(offsets.size() == 0)
+                //    offsets.push_back(0); //offsets.push_back(data.out_neighbors(i->second).size());
+                //else
+                //{
+                    //auto last = offsets.back();
+                    //auto size = data.out_neighbors(i->second).size();
+                    //offsets.push_back(last+size);
+                //}
                 for(auto j = data.out_neighbors_begin(i->second); j != data.out_neighbors_end(i->second); j++) 
                 {
+                    std::size_t last;
+                    if( offsets.size() == 0 )
+                        last = 0;
+                    else 
+                        last = offsets.back();
+
+                    types.push_back(4);
+                    offsets.push_back(last+2);
+                    connectivity.push_back(rekey[i->first]);
                     connectivity.push_back(rekey[*j]);
                 }
             }
@@ -83,10 +95,11 @@ class VtkFileWriter : public FileWriter<DataType> {
             
             std::vector<vtu11::DataSetInfo> dataSetInfo
             {
-                {"Unique ID", vtu11::DataSetType::PointData, 1}
+                {"Unique ID", vtu11::DataSetType::PointData, 1},
+                {"Node Type", vtu11::DataSetType::PointData, 1}   
             };
             vtu11::Vtu11UnstructuredMesh mesh {points, connectivity, offsets, types};
-            vtu11::writeVtu(name, mesh, dataSetInfo, {keyData}, "Ascii");
+            vtu11::writeVtu(name, mesh, dataSetInfo, {keyData, comp_type}, "Ascii");
         }
 
         void close_file() override {
@@ -98,6 +111,7 @@ class VtkFileWriter : public FileWriter<DataType> {
             offsets.clear();
             connectivity.clear();
             cellData.clear();
+            comp_type.clear();
         }
 
     private:
@@ -109,6 +123,7 @@ class VtkFileWriter : public FileWriter<DataType> {
         std::vector<double> points;
         std::vector<double> keyData;
         std::vector<vtu11::VtkCellType> types;
+        std::vector<double> comp_type;
         std::vector<vtu11::VtkIndexType> offsets;
         std::vector<vtu11::VtkIndexType> connectivity;
         std::vector<double> cellData;
