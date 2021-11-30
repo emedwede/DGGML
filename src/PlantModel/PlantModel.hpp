@@ -3,7 +3,7 @@
 
 #include <iostream>
 
-#include "Types.hpp"
+#include "PlantTypes.hpp"
 
 #include "DggModel.hpp"
 #include "YAGL_Graph.hpp"
@@ -38,15 +38,15 @@ namespace Cajete
             {
                 auto x_c = distribution_global(random_engine);
                 auto y_c = distribution_global(random_engine);
-                auto z_c = distribution_global(random_engine);
+                auto z_c = 0.0; //distribution_global(random_engine);
 
                 auto x_r = x_c + distribution_local(random_engine);
                 auto y_r = y_c + distribution_local(random_engine); 
-                auto z_r = z_c + distribution_local(random_engine);
+                auto z_r = 0.0; //z_c + distribution_local(random_engine);
                 
                 auto x_l = x_c - distribution_local(random_engine);
                 auto y_l = y_c - distribution_local(random_engine); 
-                auto z_l = z_c - distribution_local(random_engine);
+                auto z_l = 0.0; //z_c - distribution_local(random_engine);
                 
                 node_type node_l(i*segments, {{x_l, y_l, z_l}, {0.0, 0.0, 0.0}, Plant::negative});
                 node_type node_c(i*segments+1, {{x_c, y_c, z_c}, {0.0, 0.0, 0.0}, Plant::intermediate});
@@ -63,10 +63,18 @@ namespace Cajete
 
         void run() override {
             std::cout << "Running the plant model simulation\n";
+            
+            std::size_t num_steps = 100;
 
-            Cajete::VtkFileWriter<graph_type> vtk_writer;
-            vtk_writer.save(system_graph, "factory_test");
+            //is this where we run the simulation?
+            for(auto i = 0; i < num_steps; i++)
+            {
+                std::cout << "Running step " << i << std::endl;
+                Cajete::VtkFileWriter<graph_type> vtk_writer;
+                vtk_writer.save(system_graph, "factory_test");
+            }
         }
+
 
     private:
         YAGL::Graph<Plant::mt_key_type, Plant::MT_NodeData> system_graph; 

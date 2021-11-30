@@ -1,5 +1,5 @@
-#ifndef CAJETE_TYPES_HPP
-#define CAJETE_TYPES_HPP
+#ifndef CAJETE_PLANT_TYPES_HPP
+#define CAJETE_PLANT_TYPES_HPP
 
 #include "YAGL_Node.hpp"
 

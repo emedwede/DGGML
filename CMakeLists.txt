@@ -25,7 +25,7 @@ endif()
 
 include_directories(dependencies/YAGL/include)
 include_directories(src)
-
+include_directories(src/PlantModel)
 add_subdirectory(dependencies/YAGL)
 add_subdirectory(thirdparty/vtu11)
 add_subdirectory(src)
