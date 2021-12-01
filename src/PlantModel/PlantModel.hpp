@@ -4,6 +4,7 @@
 #include <iostream>
 
 #include "PlantTypes.hpp"
+#include "PlantUtils.hpp"
 
 #include "DggModel.hpp"
 #include "YAGL_Graph.hpp"
@@ -26,53 +27,74 @@ namespace Cajete
         using node_type = typename graph_type::node_type;
 
         void init(InterfaceType interface) override {
+
+            std::cout << "\n\n-----------------------------------------------------------------------\n";
+            //TODO: implement timers to monitor start up phase
             std::cout << "Initializing the plant model simulation\n";
-            std::random_device random_device;
-            std::mt19937 random_engine(random_device());
-            std::uniform_real_distribution<double> distribution_global(1.0, 9.0);
-            std::uniform_real_distribution<double> distribution_local(0.5, 1.0);
-   
-            std::size_t num_mt = 8;
-            std::size_t segments = 3;
-            for(auto i = 0; i < num_mt; i++) 
-            {
-                auto x_c = distribution_global(random_engine);
-                auto y_c = distribution_global(random_engine);
-                auto z_c = 0.0; //distribution_global(random_engine);
+            
+            std::cout << "Parsing the input interface and setting configuration settings\n";
+            //TODO: handle the interface input
 
-                auto x_r = x_c + distribution_local(random_engine);
-                auto y_r = y_c + distribution_local(random_engine); 
-                auto z_r = 0.0; //z_c + distribution_local(random_engine);
-                
-                auto x_l = x_c - distribution_local(random_engine);
-                auto y_l = y_c - distribution_local(random_engine); 
-                auto z_l = 0.0; //z_c - distribution_local(random_engine);
-                
-                node_type node_l(i*segments, {{x_l, y_l, z_l}, {0.0, 0.0, 0.0}, Plant::negative});
-                node_type node_c(i*segments+1, {{x_c, y_c, z_c}, {0.0, 0.0, 0.0}, Plant::intermediate});
-                node_type node_r(i*segments+2, {{x_r, y_r, z_r}, {0.0, 0.0, 0.0}, Plant::positive});
+            std::cout << "Generating the cell complex\n";
+            //TODO: generate the cell complex
 
-                system_graph.addNode(node_l);
-                system_graph.addNode(node_c);
-                system_graph.addNode(node_r);
+            std::cout << "Initializing the system graph\n";
+            Plant::microtubule_unit_scatter(system_graph); 
 
-                system_graph.addEdge(node_l, node_c);
-                system_graph.addEdge(node_r, node_c);
-            }
+            std::cout << "Generating the grammar\n";
+            //TODO: implement a grammar setup phase
+    
         }
 
         void run() override {
             std::cout << "Running the plant model simulation\n";
             
-            std::size_t num_steps = 100;
+            std::size_t num_steps = 1;
+            Cajete::VtkFileWriter<graph_type> vtk_writer;
+                
 
+            std::cout << "Saving the initial state of the system graph\n";
+            vtk_writer.save(system_graph, "factory_test_step_0");
+
+            //TODO: move the simulation algorithm to its own class
             //is this where we run the simulation?
-            for(auto i = 0; i < num_steps; i++)
+            for(auto i = 1; i <= num_steps; i++)
             {
                 std::cout << "Running step " << i << std::endl;
-                Cajete::VtkFileWriter<graph_type> vtk_writer;
-                vtk_writer.save(system_graph, "factory_test");
+
+                std::cout << "Binning the graph into 2D partitions\n";
+                //TODO: implement a 2D partioning scheme using the cell complex
+                
+                std::cout << "Running the Hybrid ODES/SSA inner loop 2D phase\n";
+                //TODO: implement the inner loop of the SSA for 2D
+                
+                std::cout << "Synchronizing work\n";
+                //TODO: this is where a barrier would be for a parallel code
+                
+                std::cout << "Binning the graph into 1D partitions\n";
+                //TODO: implement a 1D partioning scheme using the cell complex
+                
+                std::cout << "Running the Hybrid ODES/SSA inner loop 1D phase\n";
+                //TODO: implement the inner loop of the SSA for 1D
+                
+                std::cout << "Synchronizing work\n";
+                //TODO: this is where a barrier would be for a parallel code
+
+                std::cout << "Binning the graph into 0D partitions\n";
+                //TODO: implement a 2D partioning scheme using the cell complex
+                
+                std::cout << "Running the Hybrid ODES/SSA inner loop 0D phase\n";
+                //TODO: implement the inner loop of the SSA for 0D
+                
+                std::cout << "Synchronizing work\n";
+                //TODO: this is where a barrier would be for a parallel code
+                
+                std::cout << "Running the checkpointer\n";
+                //TODO: The checkpointer to save time steps
+                //vtk_writer.save(system_graph, "factory_test");
             }
+            std::cout << "-----------------------------------------------------------------------\n\n";
+
         }
 
 
