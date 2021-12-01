@@ -2,6 +2,7 @@
 #define __CAJETE_BRICKGRID2D_HPP
 
 #include <cmath>
+#include <iostream>
 
 namespace Cajete 
 {
@@ -40,7 +41,7 @@ class BrickGrid2D
             //desired grid size
             _num_ee = cartesianCellsBetween(max_x, min_x, 1.0/delta_x);
             _num_eo = _num_ee+1;
-            _num_r  = cartesianCellsBetween(max_x, min_x, 1.0/delta_y);
+            _num_r  = cartesianCellsBetween(max_y, min_y, 1.0/delta_y);
             _dx = (max_x - min_x)/_num_ee;
             _dy = (max_y - min_y)/_num_r;
             _rdx = 1.0/_dx;
@@ -58,7 +59,27 @@ class BrickGrid2D
                 return (_num_r/2)*_num_ee+(_num_r/2)*_num_eo; 
             }
         }
-      
+       
+        //Computes the number of interior 2D cells
+        std::size_t compute_num_2D_zones() {
+            return totalNumCells();
+        }
+
+        //Computes the number of interior edges between cells
+        std::size_t compute_num_1D_zones() {
+            if(_num_r%2) {
+                return ((_num_r-1)/2)*(_num_ee-1)+((_num_r-1)/2)*_num_ee+(_num_ee-1)+(_num_r-1)*(2*_num_ee); 
+            } else {
+                return (_num_r/2)*(_num_ee-1)+(_num_r/2)*_num_ee+(_num_r-1)*(2*_num_ee);
+            }
+        }
+        
+        //Compute the number of interior vertices, i.e. where cell edges meet
+        std::size_t compute_num_0D_zones() {
+            return (2*_num_ee-1)*(_num_r-1);
+        }
+
+
         int cardinalCellIndex(const int i, const int j) const {
             if(j%2) { 
                 return ((j-1)/2)*_num_ee+((j-1)/2)*_num_eo+_num_ee+i;
@@ -119,11 +140,19 @@ class BrickGrid2D
         int cartesianCellsBetween(const double max, const double min, const double rdelta) const {
             return floor((max-min)*rdelta);
         }
-        //size_t compute_num_2D_zones(); <==> same as totalNumCells() in 2D
-        //size_t compute_num_1D_zones();
-        //size_t compute_num_0D_zones();
-
 };
+    
+std::ostream& operator<<(std::ostream& os, const BrickGrid2D& grid)
+{
+    os << "Staggered 2D Grid: {\n"
+       << "\t {xmin: " << grid._min_x << ", ymin: " << grid._min_y
+       << ", xmax: " << grid._max_x << ", ymax: " << grid._max_y << "}\n"
+       << "\t {Number of even row cells: " << grid._num_ee << "}\n"
+       << "\t {Number of  odd row cells: " << grid._num_eo << "}\n"
+       << "\t {Number of rows: " << grid._num_r << "}\n"
+       << "}\n";
+    return os;
+}
 
 } // end namespace Cajete
 
