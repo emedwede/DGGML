@@ -18,7 +18,7 @@ namespace Cajete
     struct cell_complex_2D_node_t
     {
         std::size_t type; // Type of the cell complex node
-        double center[2]; // Spatially embedded center location
+        double position[3]; // Spatially embedded center location
         double corners[4][2]; //The fattened up area of this node
     };
     

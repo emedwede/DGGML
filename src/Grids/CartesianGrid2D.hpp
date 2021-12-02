@@ -23,14 +23,14 @@ class CartesianGrid2D {
        
         void init(const double min_x, const double min_y,
                   const double max_x, const double max_y,
-                  const double delta_x, const double delta_y) {
+                  const std::size_t nx, const std::size_t ny) {
             _min_x = min_x;
             _min_y = min_y;
             _max_x = max_x;
             _max_y = max_y;
             
-            _nx = cellsBetween(max_x, min_x, 1.0 / delta_x);
-            _ny = cellsBetween(max_y, min_y, 1.0 / delta_y);
+            _nx = nx; 
+            _ny = ny;
 
             _dx = (max_x - min_x) / _nx;
             _dy = (max_y - min_y) / _ny;
@@ -54,10 +54,26 @@ class CartesianGrid2D {
             jc = cellsBetween( yp, _min_y, _rdy );
             jc = ( jc == _ny ) ? jc - 1 : jc;
         }
+        
+        
+        void ijCellIndex(const int cardinal, int& ic, int& jc) const 
+        {
+           ic = cardinal % _nx;
+           jc = ( cardinal - (cardinal % _nx) ) / _nx;
+        }
 
         int cardinalCellIndex(const int i, const int j) const
         {
             return (j*_nx) + i;
+        }
+
+        void cardinalToPoint(double& xp, double& yp, const int cardinal) const 
+        {
+            int i, j;
+            ijCellIndex(cardinal, i, j);
+
+            xp = i*_dx;
+            yp = j*_dy;
         }
 };
 

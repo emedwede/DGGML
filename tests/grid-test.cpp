@@ -13,11 +13,29 @@ TEST_CASE("Running Cartesian 2D Grid Test", "[grid test]")
 
     Cajete::CartesianGrid2D grid;
     
-    double min_x = 0.0, min_y = 0.0, max_x = 4.0, max_y = 2.0,
-           delta_x = 2.0, delta_y = 2.0;
-    grid.init(min_x, min_y, max_x, max_y, delta_x, delta_y);
+    double min_x = 0.0, min_y = 0.0, max_x = 4.0, max_y = 2.0;
+    std::size_t nx = 2, ny = 2;
 
-    REQUIRE( grid.totalNumCells() == 2 );
+    grid.init(min_x, min_y, max_x, max_y, nx, ny);
+
+    REQUIRE( grid.totalNumCells() ==  nx*ny );
+
+    int ic, jc, cell_id; double px, py;
+
+    cell_id = 2;
+
+    grid.ijCellIndex(cell_id, ic, jc);
+
+    REQUIRE( ic == 0 );
+    REQUIRE( jc == 1 );
+    
+    REQUIRE( grid.cardinalCellIndex(ic, jc) == cell_id );
+
+    px = 1.4; py = 1.2;
+
+    grid.locatePoint(px, py, ic, jc);
+    
+    REQUIRE( grid.cardinalCellIndex(ic, jc) == cell_id );
 }
 
 TEST_CASE("Running the Brick Grid 2D Test", "[grid test]")

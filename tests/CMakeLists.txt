@@ -7,4 +7,5 @@ add_executable(grid-test tests_main.cpp grid-test.cpp)
 add_executable(cplex-test tests_main.cpp cplex-test.cpp)
 
 target_link_libraries(file-writer-test PRIVATE vtu11::vtu11)
+target_link_libraries(cplex-test PRIVATE vtu11::vtu11)
 target_link_libraries(factory-test PRIVATE vtu11::vtu11)
