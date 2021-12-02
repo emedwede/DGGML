@@ -15,7 +15,14 @@ namespace Cajete
             using edge_type = typename graph_type::edge_type;
             using data_type = typename graph_type::data_type;
             
+            CartesianComplex2D() = default;
+
             CartesianComplex2D(std::size_t n, std::size_t m, double d_x, double d_y)
+            {
+                init(n, m, d_x, d_y);
+            }
+
+            void init(std::size_t n, std::size_t m, double d_x, double d_y)
             {
                 ppc = 2; //Fixed for 2D lattice
 
@@ -32,10 +39,17 @@ namespace Cajete
                 build();
             }
 
-                        const CplexGraph2D_t& getGraph() 
+            const CplexGraph2D_t& getGraph() 
             {
                 return graph;
             }
+            
+            const CartesianGrid2D& getGrid()
+            {
+                return grid;
+            }
+            
+            //TODO: implement interior and exterior cell count for 2D and 0D
             
             std::size_t get1dInteriorCellCount()
             {
@@ -49,7 +63,7 @@ namespace Cajete
 
             friend std::ostream& operator<<(std::ostream& os, CartesianComplex2D& cplex)
             {
-                //os << cplex.grid;
+                os << cplex.grid;
                 os << cplex.graph;
                 
                 return os;

@@ -19,7 +19,7 @@ namespace Plant
         
         using node_type = typename GraphType::node_type;
 
-        std::size_t num_mt = 8;
+        std::size_t num_mt = 32;
         std::size_t segments = 3;
         for(auto i = 0; i < num_mt; i++) 
         {

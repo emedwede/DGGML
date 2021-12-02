@@ -11,6 +11,8 @@
 #include "YAGL_Node.hpp"
 #include "VtkWriter.hpp"
 
+#include "CartesianComplex2D.hpp"
+
 #include <random>
 
 namespace Cajete
@@ -36,7 +38,13 @@ namespace Cajete
             //TODO: handle the interface input
 
             std::cout << "Generating the cell complex\n";
-            //TODO: generate the cell complex
+            //TODO: generate fattened up cell complex with epsilon constraints
+            cplex2D.init(5, 5, 2.0, 2.0);
+            std::cout << cplex2D;
+            
+            //Save the cell complex graph
+            Cajete::VtkFileWriter<typename Cajete::CartesianComplex2D<>::graph_type> writer;
+            writer.save(cplex2D.getGraph(), "factory_cplex");
 
             std::cout << "Initializing the system graph\n";
             Plant::microtubule_unit_scatter(system_graph); 
@@ -99,6 +107,7 @@ namespace Cajete
 
 
     private:
+        CartesianComplex2D<> cplex2D;
         YAGL::Graph<Plant::mt_key_type, Plant::MT_NodeData> system_graph; 
 };
 

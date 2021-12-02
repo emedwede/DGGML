@@ -2,6 +2,7 @@
 #define __CAJETE_CARTESIANGRID2D_HPP
 
 #include <cmath>
+#include <iostream>
 
 namespace Cajete 
 {
@@ -74,6 +75,20 @@ class CartesianGrid2D {
 
             xp = i*_dx;
             yp = j*_dy;
+        }
+
+        friend std::ostream& operator<<(std::ostream& os, CartesianGrid2D& grid)
+        {
+            os << "Grid: {\n"
+                << "\t{ minx: " << grid._min_x << " , " 
+                << "min_y: " << grid._min_y << " , "
+                << "max_x: " << grid._max_x << " , "
+                << "max_y: " << grid._max_y << " }\n"
+                << "\t{ dx: " << grid._dx  << ", dy: " << grid._dy << " }\n"
+                << "\t{ nx: " << grid._nx  << ", ny: " << grid._ny << " }\n"
+                << "\t{ total number of cells: " << grid.totalNumCells() << " }\n"
+                << "}\n";
+                return os;
         }
 };
 
