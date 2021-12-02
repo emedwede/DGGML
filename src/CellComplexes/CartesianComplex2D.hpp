@@ -25,6 +25,9 @@ namespace Cajete
                 dy = d_y;
                 
                 grid.init(0.0, 0.0, n*dx, m*dy, nx, ny);
+                
+                num_interior_1D_cells = 0;
+                num_exterior_1D_cells = 0;
 
                 build();
             }
@@ -32,6 +35,16 @@ namespace Cajete
                         const CplexGraph2D_t& getGraph() 
             {
                 return graph;
+            }
+            
+            std::size_t get1dInteriorCellCount()
+            {
+                return num_interior_1D_cells;
+            }
+            
+            std::size_t get1dExteriorCellCount()
+            {
+                return num_exterior_1D_cells;
             }
 
             friend std::ostream& operator<<(std::ostream& os, CartesianComplex2D& cplex)
@@ -41,7 +54,7 @@ namespace Cajete
                 
                 return os;
             }
-            
+             
         private:
             
             void build()
@@ -73,6 +86,40 @@ namespace Cajete
                         create_edge(i, j+1, 1, i-1, j+1, 2);
                     }
                 }
+
+                //next compute the number of interior edges
+                for(auto iter = graph.node_list_begin(); iter != graph.node_list_end(); iter++)
+                {
+                    auto key = iter->first;
+                    auto data = iter->second.getData();
+                    
+                    auto num_2D_nbrs = 0;
+                    
+                    if(data.type == 1) //found an 1D cell type 
+                    {
+                        //we now need to iterate over its connections and
+                        //count how many 2D cells it is connected to,
+                        //alternatievely, we could just check if it's nbr list
+                        //size is 3. If it is then it's an exterior. If it's 4
+                        //then it is interior. The first way is more generic
+                        for(auto j = graph.out_neighbors_begin(iter->second);
+                            j != graph.out_neighbors_end(iter->second); j++)
+                        {
+                            if(graph.findNode(*j)->second.getData().type == 0)
+                            {
+                                num_2D_nbrs++;
+                            }
+                        } 
+
+                        if(num_2D_nbrs > 1)
+                        {
+                            num_interior_1D_cells++;
+                        } else //we found an exterior 1D cell
+                        {
+                            num_exterior_1D_cells++;
+                        }
+                    }
+                }
             }
             
 
@@ -101,6 +148,9 @@ namespace Cajete
             
             std::size_t num_2D_cells;
             std::size_t num_1D_cells;
+            std::size_t num_interior_1D_cells;
+            std::size_t num_exterior_1D_cells;
+
             std::size_t num_0D_cells;
             std::size_t total_cells;
             std::size_t nx; //number of cells in x direction
