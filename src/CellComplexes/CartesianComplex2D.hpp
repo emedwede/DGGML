@@ -140,7 +140,7 @@ namespace Cajete
                         //Add the 1D cell if it does not exist, otherwise assign 
                         graph.addNode({b, {b_t, {px_b, py_b, pz_b}, {{0, 0}, {0, 0}, {0, 0}, {0, 0}}}});
                         
-                        graph.addEdge(graph.findNode(a)->second, graph.findNode(b)->second);
+                        graph.addEdge(a, b);
             }
 
             double f_r; //border fattening radius

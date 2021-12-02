@@ -19,6 +19,8 @@ TEST_CASE("Cell Complex from Cartesian 2D Grid Test", "[cplex test]")
 
     std::cout << cplex2D;
     
+    REQUIRE( cplex2D.get1dInteriorCellCount() == 17 );
+    REQUIRE( cplex2D.get1dExteriorCellCount() == 14 );
     //Save the cell complex graph
     Cajete::VtkFileWriter<typename Cajete::CartesianComplex2D<>::graph_type> writer;
     
