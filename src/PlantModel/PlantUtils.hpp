@@ -14,12 +14,12 @@ namespace Plant
     {
         std::random_device random_device;
         std::mt19937 random_engine(random_device());
-        std::uniform_real_distribution<double> distribution_global(1.0, 9.0);
+        std::uniform_real_distribution<double> distribution_global(1.0, 12.5);
         std::uniform_real_distribution<double> distribution_local(0.5, 1.0);
         
         using node_type = typename GraphType::node_type;
 
-        std::size_t num_mt = 32;
+        std::size_t num_mt = 128;
         std::size_t segments = 3;
         for(auto i = 0; i < num_mt; i++) 
         {

@@ -21,7 +21,8 @@ namespace Cajete
             {
                 init(n, m, d_x, d_y);
             }
-
+            
+            //TODO: fix incompatibility between grid parameters and cell complex cell size
             void init(std::size_t n, std::size_t m, double d_x, double d_y)
             {
                 ppc = 2; //Fixed for 2D lattice

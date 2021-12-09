@@ -39,7 +39,7 @@ namespace Cajete
 
             std::cout << "Generating the cell complex\n";
             //TODO: generate fattened up cell complex with epsilon constraints
-            cplex2D.init(5, 5, 2.0, 2.0);
+            cplex2D.init(5, 5, 3.0, 3.0); //TODO: fix the alignment issue
             std::cout << cplex2D;
             
             //Save the cell complex graph
