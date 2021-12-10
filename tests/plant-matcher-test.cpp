@@ -181,7 +181,7 @@ TEST_CASE("Heuristic Extended Junction Matcher Test", "[heuristic-matcher-test]"
     
     initialize_plant_test_graph(graph);
     
-    std::string filename = "plant_matcher_graph_full";    
+    std::string filename = "plant_matcher_graph_0";    
     
     vtk_writer->save(graph, filename);
  
@@ -198,7 +198,7 @@ TEST_CASE("Heuristic Extended Junction Matcher Test", "[heuristic-matcher-test]"
     graph.removeNode(node);
     node = graph.findNode(8)->second;
     graph.removeNode(node);
-    filename = "plant_matcher_graph_remove_2";     
+    filename = "plant_matcher_graph_1";     
     vtk_writer->save(graph, filename);
 
     matches = heuristic_search_junctions_extended(graph);
@@ -211,7 +211,7 @@ TEST_CASE("Heuristic Extended Junction Matcher Test", "[heuristic-matcher-test]"
     //finally remove node 17 to ensure no matches
     node = graph.findNode(17)->second;
     graph.removeNode(node);
-    filename = "plant_matcher_graph_remove_3";     
+    filename = "plant_matcher_graph_2";     
     vtk_writer->save(graph, filename);
 
     matches = heuristic_search_junctions_extended(graph);
