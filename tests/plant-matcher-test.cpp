@@ -3,7 +3,7 @@
 #include "catch.hpp"
 
 #include "YAGL_Graph.hpp"
-
+#include "YAGL_Algorithms.hpp"
 #include "VtkWriter.hpp"
 #include "MemoryManager.hpp"
 #include "PlantTypes.hpp"
@@ -181,15 +181,46 @@ TEST_CASE("Heuristic Extended Junction Matcher Test", "[heuristic-matcher-test]"
     
     initialize_plant_test_graph(graph);
     
-    std::string filename = "plant_matcher_graph";    
+    std::string filename = "plant_matcher_graph_full";    
     
     vtk_writer->save(graph, filename);
-
-    Cajete::MemoryManager::deallocate_std(vtk_writer);
-
+ 
     auto matches = heuristic_search_junctions_extended(graph);
     print_matches(matches);
 
     REQUIRE(matches.size() == 12);
+    
+    //For fun check the number of connected components
+    REQUIRE(YAGL::connected_components(graph) == 1); 
+
+    //remove a node to ensure we match properly
+    auto node = graph.findNode(7)->second;
+    graph.removeNode(node);
+    node = graph.findNode(8)->second;
+    graph.removeNode(node);
+    filename = "plant_matcher_graph_remove_2";     
+    vtk_writer->save(graph, filename);
+
+    matches = heuristic_search_junctions_extended(graph);
+    print_matches(matches);
+    REQUIRE(matches.size() == 6);
+    
+    //For fun check the number of connected components
+    REQUIRE(YAGL::connected_components(graph) == 1); 
+
+    //finally remove node 17 to ensure no matches
+    node = graph.findNode(17)->second;
+    graph.removeNode(node);
+    filename = "plant_matcher_graph_remove_3";     
+    vtk_writer->save(graph, filename);
+
+    matches = heuristic_search_junctions_extended(graph);
+    print_matches(matches);
+    REQUIRE(matches.size() == 0);
+    
+    // removing node 17 should disconnect the graph
+    REQUIRE(YAGL::connected_components(graph) == 2); 
+    
+    Cajete::MemoryManager::deallocate_std(vtk_writer);
 
 }
