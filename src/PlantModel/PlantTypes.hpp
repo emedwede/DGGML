@@ -15,7 +15,8 @@ namespace Cajete
         {
             negative,
             intermediate,
-            positive
+            positive,
+            junction
         };
 
         struct MT_NodeData
