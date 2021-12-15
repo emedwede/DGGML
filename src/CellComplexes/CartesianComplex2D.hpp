@@ -36,6 +36,8 @@ namespace Cajete
                 
                 num_interior_1D_cells = 0;
                 num_exterior_1D_cells = 0;
+                num_interior_2D_cells = 0;
+                num_exterior_2D_cells = 0;
 
                 build();
             }
@@ -51,7 +53,7 @@ namespace Cajete
             }
             
             //TODO: implement interior and exterior cell count for 2D and 0D
-            
+                
             std::size_t get1dInteriorCellCount()
             {
                 return num_interior_1D_cells;
@@ -60,6 +62,16 @@ namespace Cajete
             std::size_t get1dExteriorCellCount()
             {
                 return num_exterior_1D_cells;
+            }
+            
+            std::size_t get2dInteriorCellCount()
+            {
+                return num_interior_2D_cells;
+            }
+
+            std::size_t get2dExteriorCellCount()
+            {
+                return num_exterior_2D_cells;
             }
 
             friend std::ostream& operator<<(std::ostream& os, CartesianComplex2D& cplex)
@@ -110,6 +122,11 @@ namespace Cajete
                     
                     auto num_2D_nbrs = 0;
                     
+                    if(data.type == 0) // found a 0D cell 
+                    {
+                        num_interior_2D_cells++;
+                    }
+
                     if(data.type == 1) //found an 1D cell type 
                     {
                         //we now need to iterate over its connections and
@@ -165,6 +182,8 @@ namespace Cajete
             std::size_t num_1D_cells;
             std::size_t num_interior_1D_cells;
             std::size_t num_exterior_1D_cells;
+            std::size_t num_interior_2D_cells;
+            std::size_t num_exterior_2D_cells;
 
             std::size_t num_0D_cells;
             std::size_t total_cells;
