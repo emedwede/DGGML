@@ -172,6 +172,21 @@ TEST_CASE("Heuristic Growing End Matcher Test", "[heuristic-matcher-test]")
     auto matches = Cajete::Plant::microtubule_growing_end_matcher(graph);
     print_matches(matches);
     REQUIRE(matches.size() == 2);
+    
+    auto old_node_size = graph.numNodes();
+    auto old_edge_size = graph.numEdges();
+
+    for(auto match : matches)
+    {
+        Cajete::Plant::microtubule_growing_end_polymerize_rewrite(graph, match);
+    }
+
+    REQUIRE(graph.numNodes() == old_node_size + 2); //since we add a split node
+    REQUIRE(graph.numEdges() == old_edge_size + 2); //since we split an edge
+
+    writer_type vtk_writer;
+
+    vtk_writer.save(graph, "polymerize_rewrite");
 
 }
 
@@ -184,6 +199,7 @@ TEST_CASE("Heuristic Retraction End Matcher Test", "[heuristic-matcher-test]")
     print_matches(matches);
     REQUIRE(matches.size() == 3);
 
+    
 }
 
 
