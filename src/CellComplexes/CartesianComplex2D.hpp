@@ -120,7 +120,7 @@ namespace Cajete
                 return os;
             }
              
-        private:
+        public:
             
             void build()
             {
