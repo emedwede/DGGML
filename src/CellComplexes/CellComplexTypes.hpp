@@ -11,7 +11,8 @@ namespace Cajete
         {
             Type, //Type of cell complex node
             Center, //Spatially embedded cneter location
-            Corners //The fattened up area of this node 
+            Corners, //The fattened up area of this node 
+            Ghosted  //If the cell is ghosted out
         };
     };
 
@@ -20,6 +21,7 @@ namespace Cajete
         std::size_t type; // Type of the cell complex node
         double position[3]; // Spatially embedded center location
         double corners[4][2]; //The fattened up area of this node
+        bool ghosted;
     };
     
     using cell_complex_2D_key_t = std::size_t;
