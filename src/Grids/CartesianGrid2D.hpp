@@ -17,8 +17,10 @@ class CartesianGrid2D {
         double _dy;
         double _rdx;
         double _rdy;
-        int _nx;
-        int _ny;
+        int _nx; //number of cells in the x direction
+        int _ny; //number of cells in the y direction
+        int _px; //number of grid points in the x direction 
+        int _py; //number of grid points in the y direction
 
         CartesianGrid2D () {}
        
@@ -32,6 +34,8 @@ class CartesianGrid2D {
             
             _nx = nx; 
             _ny = ny;
+            _px = nx+1;
+            _py = ny+1;
 
             _dx = (max_x - min_x) / _nx;
             _dy = (max_y - min_y) / _ny;
@@ -40,12 +44,17 @@ class CartesianGrid2D {
             _rdy = 1.0 / _dy;
         }
         
+        //total number of cells formed from the lattice
         int totalNumCells() const {return _nx * _ny;}
+       
+        //total number of lattice grid points
+        int totalNumPoints() const {return _px * _py;}
 
         int cellsBetween(const double max, const double min, const double rdelta) const {
             return floor((max-min)*rdelta);
         }
-
+        
+        //locate which cell the poin belongs to
         void locatePoint( const double xp, const double yp, int& ic, int& jc ) const
         {
             // Since we use a floor function a point on the outer boundary
@@ -56,23 +65,47 @@ class CartesianGrid2D {
             jc = ( jc == _ny ) ? jc - 1 : jc;
         }
         
-        
+        //returns the ij index of a cell from a cardinal index 
         void ijCellIndex(const int cardinal, int& ic, int& jc) const 
         {
            ic = cardinal % _nx;
            jc = ( cardinal - (cardinal % _nx) ) / _nx;
         }
+        
+        //returns the ij index of lattice point from a caridinal index
+        void ijLatticeIndex(const int cardinal, int& ic, int& jc) const 
+        {
+            ic = cardinal % _px;
+            jc = (cardinal - (cardinal % _px)) / _px;
+        }
 
+        //returns the cardinal cell index from ij 
         int cardinalCellIndex(const int i, const int j) const
         {
             return (j*_nx) + i;
         }
+        
+        //returns the cardianl lattice point index from ij 
+        int cardinalLatticeIndex(const int i, const int j) const 
+        {
+            return (j*_px) + i;
+        }
 
-        void cardinalToPoint(double& xp, double& yp, const int cardinal) const 
+        //converts the cardinal index of a cell to it's central point
+        void cardinalCellToPoint(double& xp, double& yp, const int cardinal) const 
         {
             int i, j;
             ijCellIndex(cardinal, i, j);
 
+            xp = i*_dx + _dx/2.0;
+            yp = j*_dy + _dy/2.0;
+        }
+        
+        //converts the cardinal index of a lattice point to it's exact point 
+        void cardinalLatticeToPoint(double& xp, double& yp, const int cardinal) const 
+        {
+            int i, j;
+            ijLatticeIndex(cardinal, i, j);
             xp = i*_dx;
             yp = j*_dy;
         }
@@ -87,6 +120,7 @@ class CartesianGrid2D {
                 << "\t{ dx: " << grid._dx  << ", dy: " << grid._dy << " }\n"
                 << "\t{ nx: " << grid._nx  << ", ny: " << grid._ny << " }\n"
                 << "\t{ total number of cells: " << grid.totalNumCells() << " }\n"
+                << "\t{ total number of lattice points: " << grid.totalNumPoints() << " }\n"
                 << "}\n";
                 return os;
         }

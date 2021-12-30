@@ -47,7 +47,7 @@ namespace Cajete
             writer.save(cplex2D.getGraph(), "factory_cplex");
 
             std::cout << "Initializing the system graph\n";
-            Plant::microtubule_unit_scatter(system_graph); 
+            Plant::microtubule_unit_scatter(system_graph, cplex2D); 
 
             std::cout << "Generating the grammar\n";
             //TODO: implement a grammar setup phase

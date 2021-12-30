@@ -27,7 +27,15 @@ namespace Cajete
                     if(data.type == 2) //found a 2D cell 
                     {
                         //regardless of ghost cells, we full expand 2D based on the grid
-
+                        data.corners[0][0] = 1;
+                        data.corners[0][1] = 1;
+                        data.corners[1][0] = 1;
+                        data.corners[1][1] = 1;
+                        data.corners[2][0] = 1;
+                        data.corners[2][1] = 1;
+                        data.corners[3][0] = 1;
+                        data.corners[0][1] = 1;
+                        
                     } else if (data.type == 1) //found a 1D cell 
                     {
                         //we need to determine if the cell is a horizontal or vertical edge

@@ -9,13 +9,17 @@ namespace Cajete
 {
 namespace Plant 
 {
-    template <typename GraphType>
-    void microtubule_unit_scatter(GraphType& graph)
+    template <typename GraphType, typename CplexType>
+    void microtubule_unit_scatter(GraphType& graph, CplexType& cplex)
     {
+        double epsilon = 1.0;
         std::random_device random_device;
         std::mt19937 random_engine(random_device());
-        std::uniform_real_distribution<double> distribution_global(1.0, 12.5);
-        std::uniform_real_distribution<double> distribution_local(0.5, 1.0);
+        auto grid = cplex.getCoarseGrid();
+        std::uniform_real_distribution<double> 
+            distribution_global(grid._min_x+epsilon, grid._max_x-epsilon);
+        std::uniform_real_distribution<double> 
+            distribution_local(epsilon/2.0, epsilon);
         
         using node_type = typename GraphType::node_type;
 

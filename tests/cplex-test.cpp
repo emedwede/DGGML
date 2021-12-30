@@ -3,6 +3,7 @@
 #include "catch.hpp"
 
 #include "CartesianComplex2D.hpp"
+#include "ExpandedComplex2D.hpp"
 
 #include "VtkWriter.hpp"
 
@@ -108,4 +109,13 @@ TEST_CASE("Any Cell Complex can have ghost cells", "[cplex-test]")
 
     REQUIRE(cplex2D.getTotalCellCount() == 143);
 
-} 
+}
+
+TEST_CASE("Testing the expanded cell complex", "[cplex-test]") 
+{
+    Cajete::ExpandedComplex2D<> cplex2D(1, 1, 6.0, 4.0);
+    
+    std::cout << cplex2D << std::endl;
+    
+    REQUIRE(cplex2D.getTotalCellCount() == 9);
+}

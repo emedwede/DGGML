@@ -17,8 +17,11 @@ TEST_CASE("Running Cartesian 2D Grid Test", "[grid test]")
     std::size_t nx = 2, ny = 2;
 
     grid.init(min_x, min_y, max_x, max_y, nx, ny);
+    
+    std::cout << grid << std::endl;
 
     REQUIRE( grid.totalNumCells() ==  nx*ny );
+    REQUIRE (grid.totalNumPoints() == (nx+1)*(ny+1));
 
     int ic, jc, cell_id; double px, py;
 
@@ -30,12 +33,31 @@ TEST_CASE("Running Cartesian 2D Grid Test", "[grid test]")
     REQUIRE( jc == 1 );
     
     REQUIRE( grid.cardinalCellIndex(ic, jc) == cell_id );
+    
+    grid.cardinalCellToPoint(px, py, 2);
+
+    REQUIRE( px == 1.0 );
+    REQUIRE( py == 1.5 );
 
     px = 1.4; py = 1.2;
 
     grid.locatePoint(px, py, ic, jc);
     
     REQUIRE( grid.cardinalCellIndex(ic, jc) == cell_id );
+    
+    int lattice_id = 4;
+    int ilp, jlp; //i and j lattice points indices 
+    grid.ijLatticeIndex(lattice_id, ilp, jlp);
+    
+    REQUIRE( ilp == 1 );
+    REQUIRE( jlp == 1 );
+    
+    REQUIRE( grid.cardinalLatticeIndex(ilp, jlp) == lattice_id);
+
+    grid.cardinalLatticeToPoint(px, py, 4);
+
+    REQUIRE( px == 2.0 );
+    REQUIRE( py == 1.0 );
 }
 
 TEST_CASE("Running the Brick Grid 2D Test", "[grid test]")

@@ -33,13 +33,15 @@ namespace Cajete
                     n = n+2; //pad around boundary in dim  
                     m = m+2; //pad around boundary in dim
                 } 
-                nx = n*ppc+1; 
-                ny = m*ppc+1; 
+                nx = n*ppc;//+1; 
+                ny = m*ppc;//+1; 
                 dx = d_x; 
                 dy = d_y;
-                
-                grid.init(0.0, 0.0, n*dx, m*dy, nx, ny);
-                
+                fine_grid.init(0.0, 0.0, n*dx, m*dy, nx, ny);
+                coarse_grid.init(0.0, 0.0, n*dx, m*dy, n, m);
+                nx = fine_grid._px;
+                ny = fine_grid._py;
+
                 num_interior_0D_cells = 0;
                 num_exterior_0D_cells = 0;
                 num_interior_1D_cells = 0;
@@ -55,11 +57,16 @@ namespace Cajete
                 return graph;
             }
             
-            const CartesianGrid2D& getGrid()
+            const CartesianGrid2D& getFineGrid()
             {
-                return grid;
+                return fine_grid;
             }
             
+            const CartesianGrid2D& getCoarseGrid()
+            {
+                return coarse_grid;
+            }
+
             std::size_t get0dInteriorCellCount()
             {
                 return num_interior_0D_cells;
@@ -114,7 +121,8 @@ namespace Cajete
             
             friend std::ostream& operator<<(std::ostream& os, CartesianComplex2D& cplex)
             {
-                os << cplex.grid;
+                os << "\nCoarse Grid: \n" << cplex.coarse_grid;
+                os << "\nFine Grid: \n" << cplex.fine_grid;
                 os << cplex.graph;
                 
                 return os;
@@ -127,9 +135,9 @@ namespace Cajete
                 std::cout << "Building the cell complex for a 2D cartesian grid\n";
                 
                 //We do extra work because redundant edges may be attempted to be added
-                for(int j = 1; j < ny; j += 2)
+                for(int j = 1; j < fine_grid._py; j += 2)
                 {
-                    for(int i = 1; i < nx; i += 2)
+                    for(int i = 1; i < fine_grid._px; i += 2)
                     {
                         // Generate all the edges from center of 2D cell to center of 1D cell
                         create_edge(i, j, 0, i, j+1, 1);
@@ -161,7 +169,12 @@ namespace Cajete
                     auto data = iter->second.getData();
                     
                     auto num_2D_nbrs = 0;
-                    
+                    //std::cout << "Corners: for point {" << data.position[0] << ", " << data.position[1] << "}:\n";
+                    //for(auto i = 0; i < 4; i++) 
+                    //{
+                    //    std::cout << "{" << data.corners[i][0] << ", " << data.corners[i][1] << "}\n";
+                    //}
+
                     if(data.type == 0) // found a 0D cell
                     {
                         if(!ghost_cells) // if not ghost cells method 1, count all 2D 
@@ -247,15 +260,15 @@ namespace Cajete
 
             void create_edge(int i_a, int j_a, std::size_t a_t, int i_b, int j_b, std::size_t b_t)
             {
-                        std::size_t a = grid.cardinalCellIndex(i_a, j_a);
-                        std::size_t b = grid.cardinalCellIndex(i_b, j_b);
+                        std::size_t a = fine_grid.cardinalLatticeIndex(i_a, j_a);
+                        std::size_t b = fine_grid.cardinalLatticeIndex(i_b, j_b);
 
                         double px_a, py_a, pz_a, px_b, py_b, pz_b;
                         pz_a = pz_b = 0.0; //set the z components to be zero in 2D
                         
-                        //convert the cardinal indices to grid coordinates
-                        grid.cardinalToPoint(px_a, py_a, a);
-                        grid.cardinalToPoint(px_b, py_b, b);
+                        //convert the cardinal indices to fine_grid coordinates
+                        fine_grid.cardinalLatticeToPoint(px_a, py_a, a);
+                        fine_grid.cardinalLatticeToPoint(px_b, py_b, b);
                         
                         //ghosted
                         bool ghosted_a = false;
@@ -274,20 +287,55 @@ namespace Cajete
                             }
 
                         }
+                        
+                        if(a_t == 0)
+                        {
+                            double c0x, c0y, c1x, c1y, c2x, c2y, c3x, c3y;
+                            fine_grid.cardinalLatticeToPoint(c0x, c0y, fine_grid.cardinalLatticeIndex(i_a-1, j_a-1));
+                            fine_grid.cardinalLatticeToPoint(c1x, c1y, fine_grid.cardinalLatticeIndex(i_a+1, j_a-1));
+                            fine_grid.cardinalLatticeToPoint(c2x, c2y, fine_grid.cardinalLatticeIndex(i_a+1, j_a+1));
+                            fine_grid.cardinalLatticeToPoint(c3x, c3y, fine_grid.cardinalLatticeIndex(i_a-1, j_a+1));
 
-                        //Add the 2D cell if it does not exist, otherwise assign
-                        graph.addNode({a, {a_t, {px_a, py_a, pz_a}, 
-                                {{0, 0}, {0, 0}, {0, 0}, {0, 0}}, ghosted_a}});
-                        //Add the 1D cell if it does not exist, otherwise assign 
-                        graph.addNode({b, {b_t, {px_b, py_b, pz_b}, 
-                                {{0, 0}, {0, 0}, {0, 0}, {0, 0}}, ghosted_b}});
+                            //Add the cell if it does not exist, otherwise assign
+                            graph.addNode({a, {a_t, {px_a, py_a, pz_a}, 
+                                {{c0x, c0y}, {c1x, c1y}, {c2x, c2y}, {c3x, c3y}}, ghosted_a}});
+                        } 
+                        else //corners are not expanded
+                        {
+                            //Add the cell if it does not exist, otherwise assign
+                            graph.addNode({a, {a_t, {px_a, py_a, pz_a}, 
+                                {{px_a, py_a}, {px_a, py_a}, {px_a, py_a}, {px_a, py_a}}, ghosted_a}});
+                        }
+
+                        if(b_t == 0) 
+                        {
+                            double c0x, c0y, c1x, c1y, c2x, c2y, c3x, c3y;
+                            fine_grid.cardinalLatticeToPoint(c0x, c0y, fine_grid.cardinalLatticeIndex(i_b-1, j_b-1));
+                            fine_grid.cardinalLatticeToPoint(c1x, c1y, fine_grid.cardinalLatticeIndex(i_b+1, j_b-1));
+                            fine_grid.cardinalLatticeToPoint(c2x, c2y, fine_grid.cardinalLatticeIndex(i_b+1, j_b+1));
+                            fine_grid.cardinalLatticeToPoint(c3x, c3y, fine_grid.cardinalLatticeIndex(i_b-1, j_b+1));
+
+                            //Add the cell if it does not exist, otherwise assign
+                            graph.addNode({b, {b_t, {px_b, py_b, pz_b}, 
+                                {{c0x, c0y}, {c1x, c1y}, {c2x, c2y}, {c3x, c3y}}, ghosted_b}});
+                        } 
+                        else //corners are not expanded
+                        {
+                            //Add the cell if it does not exist, otherwise assign 
+                            graph.addNode({b, {b_t, {px_b, py_b, pz_b}, 
+                                {{px_b, py_b}, {px_b, py_b}, {px_b, py_b}, {px_b, py_b}}, ghosted_b}});
+                        
+                        }
+                        //Add the cell if it does not exist, otherwise assign
+                        //graph.addNode({a, {a_t, {px_a, py_a, pz_a}, 
+                        //        {{0, 0}, {0, 0}, {0, 0}, {0, 0}}, ghosted_a}});
+                        //Add the cell if it does not exist, otherwise assign 
+                        //graph.addNode({b, {b_t, {px_b, py_b, pz_b}, 
+                        //        {{0, 0}, {0, 0}, {0, 0}, {0, 0}}, ghosted_b}});
                         
                         graph.addEdge(a, b);
             }
 
-            double f_r; //border fattening radius
-            double eps; //criteria for well separatedness
-            
             bool ghost_cells;
             std::size_t num_interior_0D_cells;
             std::size_t num_exterior_0D_cells;
@@ -306,7 +354,8 @@ namespace Cajete
             double dy; //width of cell in the y direction 
             
             CplexGraph2D_t graph;
-            CartesianGrid2D grid;
+            CartesianGrid2D fine_grid;
+            CartesianGrid2D coarse_grid;
     };
 
     } // end namespace Cajete
