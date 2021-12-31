@@ -9,6 +9,50 @@
 
 #include <iostream>
 
+template<typename CplexType>
+std::size_t check_corner_connectivity(CplexType& cplex2D)
+{
+    //Test the corners 
+    Cajete::CplexGraph2D_t g = cplex2D.getGraph();
+
+    int completed_corners = 0;
+    for(auto iter = g.node_list_begin(); iter != g.node_list_end(); iter++) 
+    {
+        auto id = iter->first;
+        auto node = iter->second;
+        auto corners = node.getData().corners;
+        int found_corners = 0;
+        if(node.getData().type == 0) //check the 0D nbrs
+        {
+            for(auto jter = g.out_neighbors_begin(id); jter != g.out_neighbors_end(id); jter++)
+            {
+                auto jnode = g.findNode(*jter);
+                if(jnode->second.getData().type == 1)
+                {
+                    auto jd = jnode->first;
+                    for(auto kter = g.out_neighbors_begin(jd); kter != g.out_neighbors_end(jd); kter++)
+                    {
+                        auto knode = g.findNode(*kter);
+                        if(knode->second.getData().type == 2)
+                        {
+                            for(auto i = 0; i < 4; i++)
+                            {
+                                if(knode->second.getData().position[0] == corners[i][0] && knode->second.getData().position[1] == corners[i][1])
+                                {
+                                    found_corners++;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        //should be eight since each 0D vertex gets visited twice!
+        if(found_corners == 8) completed_corners++;
+    }
+
+    return completed_corners;
+}
 TEST_CASE("Cell Complex from Cartesian 2D Grid Test", "[cplex-test]")
 {    
     std::cout << "Running the Cell Complex from Cartesian 2D Grid Test\n";
@@ -34,6 +78,9 @@ TEST_CASE("Cell Complex from Cartesian 2D Grid Test", "[cplex-test]")
     REQUIRE(cplex2D.get2dTotalCellCount() == 12);
 
     REQUIRE(cplex2D.getTotalCellCount() == 63);
+    
+    
+    REQUIRE(check_corner_connectivity(cplex2D) == cplex2D.get2dTotalCellCount());
 
     //Save the cell complex graph
     //Cajete::VtkFileWriter<typename Cajete::CartesianComplex2D<>::graph_type> writer;
@@ -61,6 +108,7 @@ TEST_CASE("Cell Complex can just be a single domain", "[cplex-test]")
     REQUIRE(cplex2D.get2dInteriorCellCount() == 1);
     
     REQUIRE(cplex2D.getTotalCellCount() == 9);
+    REQUIRE(check_corner_connectivity(cplex2D) == cplex2D.get2dTotalCellCount());
 }
 
 TEST_CASE("Cell Complex can just be a single domain and have ghost cells", "[cplex-test]")
@@ -84,7 +132,7 @@ TEST_CASE("Cell Complex can just be a single domain and have ghost cells", "[cpl
     REQUIRE(cplex2D.get0dTotalCellCount() == 16);
 
     REQUIRE(cplex2D.getTotalCellCount() == 49);
-
+    REQUIRE(check_corner_connectivity(cplex2D) == cplex2D.get2dTotalCellCount());
 } 
 
 TEST_CASE("Any Cell Complex can have ghost cells", "[cplex-test]")
@@ -108,7 +156,7 @@ TEST_CASE("Any Cell Complex can have ghost cells", "[cplex-test]")
     REQUIRE(cplex2D.get0dTotalCellCount() == 42);
 
     REQUIRE(cplex2D.getTotalCellCount() == 143);
-
+    REQUIRE(check_corner_connectivity(cplex2D) == cplex2D.get2dTotalCellCount());
 }
 
 TEST_CASE("Testing the expanded cell complex", "[cplex-test]") 
