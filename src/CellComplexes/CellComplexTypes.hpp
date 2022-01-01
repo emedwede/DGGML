@@ -15,6 +15,14 @@ namespace Cajete
             Ghosted  //If the cell is ghosted out
         };
     };
+    
+    enum corner_types
+    {
+        lower_left,
+        lower_right,
+        upper_left,
+        upper_right
+    };
 
     struct cell_complex_2D_node_t
     {
@@ -22,6 +30,7 @@ namespace Cajete
         double position[3]; // Spatially embedded center location
         double corners[4][2]; //The fattened up area of this node
         bool ghosted;
+        bool interior;
     };
     
     using cell_complex_2D_key_t = std::size_t;

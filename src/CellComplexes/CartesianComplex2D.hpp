@@ -111,6 +111,16 @@ namespace Cajete
             {
                 return num_interior_2D_cells + num_exterior_2D_cells;
             }
+            
+            std::size_t getTotalInteriorCellCount()
+            {
+                return get0dInteriorCellCount() + get1dInteriorCellCount() + get2dInteriorCellCount();
+            }
+
+            std::size_t getTotalExteriorCellCount()
+            {
+                return get0dExteriorCellCount() + get1dExteriorCellCount() + get2dExteriorCellCount();
+            }
 
             std::size_t getTotalCellCount() 
             {
@@ -166,8 +176,8 @@ namespace Cajete
                 for(auto iter = graph.node_list_begin(); iter != graph.node_list_end(); iter++)
                 {
                     auto key = iter->first;
-                    auto data = iter->second.getData();
-                    
+                    auto& data = iter->second.getData(); //needs to be auto& since auto doesn't deduce a reference type
+                
                     auto num_2D_nbrs = 0;
                     //std::cout << "Corners: for point {" << data.position[0] << ", " << data.position[1] << "}:\n";
                     //for(auto i = 0; i < 4; i++) 
@@ -175,17 +185,20 @@ namespace Cajete
                     //    std::cout << "{" << data.corners[i][0] << ", " << data.corners[i][1] << "}\n";
                     //}
 
-                    if(data.type == 0) // found a 0D cell
+                    if(data.type == 0) // found a 2D cell
                     {
                         if(!ghost_cells) // if not ghost cells method 1, count all 2D 
                         {
                             num_interior_2D_cells++;
+                            data.interior = true;
                         } else { //else method 2
                             if(data.ghosted == true) //if this node is ghosted then it in the exterior 
                             {
                                 num_exterior_2D_cells++;
+                                data.interior = false;
                             } else {
                                 num_interior_2D_cells++;
+                                data.interior = true;
                             }        
                         }
                     }
@@ -212,16 +225,20 @@ namespace Cajete
                             if(num_2D_nbrs > 1)
                             {
                                 num_interior_1D_cells++;
+                                data.interior = true;
                             } else //we found an exterior 1D cell
                             {
                                 num_exterior_1D_cells++;
+                                data.interior = false;
                             }
                         } else {
                             if(data.ghosted == true)
                             {
                                 num_exterior_1D_cells++;
+                                data.interior = false;
                             } else {
                                 num_interior_1D_cells++;
+                                data.interior = true;
                             }    
                         }
                     }
@@ -242,15 +259,19 @@ namespace Cajete
                             }
                             if(num_1D_nbrs == 4) {
                                 num_interior_0D_cells++;
+                                data.interior = true;
                             } else {
                                 num_exterior_0D_cells++;
+                                data.interior = false;
                             }
                         } else {
                             if(data.ghosted == true)
                             {
                                 num_exterior_0D_cells++;
+                                data.interior = false;
                             } else {
                                 num_interior_0D_cells++;
+                                data.interior = true;
                             }
                         }
                     }
@@ -273,6 +294,8 @@ namespace Cajete
                         //ghosted
                         bool ghosted_a = false;
                         bool ghosted_b = false;
+                        bool interior_a = true;
+                        bool interior_b = true;
                         if(ghost_cells)
                         {
                             auto w = ppc + 1;
@@ -280,10 +303,12 @@ namespace Cajete
                             if((i_a < w || i_a >= nx - w) || (j_a < w || j_a >= ny - w))
                             {
                                 ghosted_a = true;
+                                interior_a = false;
                             }
                             if((i_b < w || i_b >= nx - w) || (j_b < w || j_b >= ny - w))
                             {
                                 ghosted_b = true;
+                                interior_b = false;
                             }
 
                         }
@@ -291,20 +316,25 @@ namespace Cajete
                         if(a_t == 0)
                         {
                             double c0x, c0y, c1x, c1y, c2x, c2y, c3x, c3y;
+
+                            //lower left
                             fine_grid.cardinalLatticeToPoint(c0x, c0y, fine_grid.cardinalLatticeIndex(i_a-1, j_a-1));
+                            //lower right
                             fine_grid.cardinalLatticeToPoint(c1x, c1y, fine_grid.cardinalLatticeIndex(i_a+1, j_a-1));
-                            fine_grid.cardinalLatticeToPoint(c2x, c2y, fine_grid.cardinalLatticeIndex(i_a+1, j_a+1));
-                            fine_grid.cardinalLatticeToPoint(c3x, c3y, fine_grid.cardinalLatticeIndex(i_a-1, j_a+1));
+                            //upper left
+                            fine_grid.cardinalLatticeToPoint(c2x, c2y, fine_grid.cardinalLatticeIndex(i_a-1, j_a+1));
+                            //upper right
+                            fine_grid.cardinalLatticeToPoint(c3x, c3y, fine_grid.cardinalLatticeIndex(i_a+1, j_a+1));
 
                             //Add the cell if it does not exist, otherwise assign
                             graph.addNode({a, {a_t, {px_a, py_a, pz_a}, 
-                                {{c0x, c0y}, {c1x, c1y}, {c2x, c2y}, {c3x, c3y}}, ghosted_a}});
+                                {{c0x, c0y}, {c1x, c1y}, {c2x, c2y}, {c3x, c3y}}, ghosted_a, interior_a}});
                         } 
                         else //corners are not expanded
                         {
                             //Add the cell if it does not exist, otherwise assign
                             graph.addNode({a, {a_t, {px_a, py_a, pz_a}, 
-                                {{px_a, py_a}, {px_a, py_a}, {px_a, py_a}, {px_a, py_a}}, ghosted_a}});
+                                {{px_a, py_a}, {px_a, py_a}, {px_a, py_a}, {px_a, py_a}}, ghosted_a, interior_a}});
                         }
 
                         if(b_t == 0) 
@@ -312,18 +342,18 @@ namespace Cajete
                             double c0x, c0y, c1x, c1y, c2x, c2y, c3x, c3y;
                             fine_grid.cardinalLatticeToPoint(c0x, c0y, fine_grid.cardinalLatticeIndex(i_b-1, j_b-1));
                             fine_grid.cardinalLatticeToPoint(c1x, c1y, fine_grid.cardinalLatticeIndex(i_b+1, j_b-1));
-                            fine_grid.cardinalLatticeToPoint(c2x, c2y, fine_grid.cardinalLatticeIndex(i_b+1, j_b+1));
-                            fine_grid.cardinalLatticeToPoint(c3x, c3y, fine_grid.cardinalLatticeIndex(i_b-1, j_b+1));
+                            fine_grid.cardinalLatticeToPoint(c2x, c2y, fine_grid.cardinalLatticeIndex(i_b-1, j_b+1));
+                            fine_grid.cardinalLatticeToPoint(c3x, c3y, fine_grid.cardinalLatticeIndex(i_b+1, j_b+1));
 
                             //Add the cell if it does not exist, otherwise assign
                             graph.addNode({b, {b_t, {px_b, py_b, pz_b}, 
-                                {{c0x, c0y}, {c1x, c1y}, {c2x, c2y}, {c3x, c3y}}, ghosted_b}});
+                                {{c0x, c0y}, {c1x, c1y}, {c2x, c2y}, {c3x, c3y}}, ghosted_b, interior_b}});
                         } 
                         else //corners are not expanded
                         {
                             //Add the cell if it does not exist, otherwise assign 
                             graph.addNode({b, {b_t, {px_b, py_b, pz_b}, 
-                                {{px_b, py_b}, {px_b, py_b}, {px_b, py_b}, {px_b, py_b}}, ghosted_b}});
+                                {{px_b, py_b}, {px_b, py_b}, {px_b, py_b}, {px_b, py_b}}, ghosted_b, interior_b}});
                         
                         }
                         //Add the cell if it does not exist, otherwise assign

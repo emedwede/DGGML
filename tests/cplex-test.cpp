@@ -9,11 +9,42 @@
 
 #include <iostream>
 
+template <typename CplexType>
+std::size_t interior_integrity_check(CplexType& cplex2D)
+{
+   auto g = cplex2D.getGraph();
+
+   std::size_t interior_nodes = 0;
+   for(auto iter = g.node_list_begin(); iter != g.node_list_end(); iter++)
+   {
+       auto node_data = iter->second.getData();
+       
+       if(node_data.interior == true) interior_nodes++;
+   }
+   return interior_nodes;
+}
+
+template <typename CplexType>
+std::size_t exterior_integrity_check(CplexType& cplex2D)
+{
+   auto g = cplex2D.getGraph();
+
+   std::size_t exterior_nodes = 0;
+   for(auto iter = g.node_list_begin(); iter != g.node_list_end(); iter++)
+   {
+       auto node_data = iter->second.getData();
+
+       if(node_data.interior == false) exterior_nodes++;
+   }
+   return exterior_nodes;
+}
+
+
 template<typename CplexType>
 std::size_t check_corner_connectivity(CplexType& cplex2D)
 {
     //Test the corners 
-    Cajete::CplexGraph2D_t g = cplex2D.getGraph();
+    auto g = cplex2D.getGraph();
 
     int completed_corners = 0;
     for(auto iter = g.node_list_begin(); iter != g.node_list_end(); iter++) 
@@ -64,6 +95,13 @@ TEST_CASE("Cell Complex from Cartesian 2D Grid Test", "[cplex-test]")
 
     std::cout << cplex2D << std::endl;
     
+    YAGL::Node<int, double> my_node({2, 2.6});
+    
+    std::cout << "Data: " << my_node.getData() << "\n";
+    auto my_data = my_node.getData();
+    my_data = 3.6;
+    std::cout << "Data: " << my_node.getData() << "\n";
+
     REQUIRE(cplex2D.get0dInteriorCellCount() == 6);
     REQUIRE(cplex2D.get0dExteriorCellCount() == 14);
     REQUIRE(cplex2D.get0dTotalCellCount() == 20);
@@ -81,6 +119,9 @@ TEST_CASE("Cell Complex from Cartesian 2D Grid Test", "[cplex-test]")
     
     
     REQUIRE(check_corner_connectivity(cplex2D) == cplex2D.get2dTotalCellCount());
+    
+    REQUIRE(interior_integrity_check(cplex2D) == cplex2D.getTotalInteriorCellCount());
+    REQUIRE(exterior_integrity_check(cplex2D) == cplex2D.getTotalExteriorCellCount());
 
     //Save the cell complex graph
     //Cajete::VtkFileWriter<typename Cajete::CartesianComplex2D<>::graph_type> writer;
@@ -161,9 +202,25 @@ TEST_CASE("Any Cell Complex can have ghost cells", "[cplex-test]")
 
 TEST_CASE("Testing the expanded cell complex", "[cplex-test]") 
 {
-    Cajete::ExpandedComplex2D<> cplex2D(1, 1, 6.0, 4.0);
+    Cajete::ExpandedComplex2D<> cplex2D(1, 1, 2.0, 2.0, true);
     
     std::cout << cplex2D << std::endl;
     
-    REQUIRE(cplex2D.getTotalCellCount() == 9);
+    //REQUIRE(cplex2D.getTotalCellCount() == 9);
+    
+    auto& g = cplex2D.getGraph();
+    for(auto iter = g.node_list_begin(); iter != g.node_list_end(); iter++)
+    {
+        auto data = iter->second.getData();
+
+        std::cout << "\n{Type: " << data.type << ", Ghosted: " << data.ghosted << ", Interior: " << data.interior << "} \t";
+        std::cout << "Corners: { ";
+        
+        for(auto i = 0; i < 4; i++) 
+        {
+                std::cout << "{ " << data.corners[i][0]
+                << ", " << iter->second.getData().corners[i][1] << "} ";
+        } std::cout << "}\n";
+    }
+
 }
