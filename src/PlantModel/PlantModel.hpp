@@ -11,6 +11,8 @@
 #include "YAGL_Node.hpp"
 #include "VtkWriter.hpp"
 
+#include "ExpandedComplex2D.hpp"
+
 #include "CartesianComplex2D.hpp"
 
 #include <random>
@@ -36,18 +38,17 @@ namespace Cajete
             
             std::cout << "Parsing the input interface and setting configuration settings\n";
             //TODO: handle the interface input
-
-            std::cout << "Generating the cell complex\n";
-            //TODO: generate fattened up cell complex with epsilon constraints
-            cplex2D.init(5, 5, 3.0, 3.0); //TODO: fix the alignment issue
-            std::cout << cplex2D;
             
-            //Save the cell complex graph
-            Cajete::VtkFileWriter<typename Cajete::CartesianComplex2D<>::graph_type> writer;
-            writer.save(cplex2D.getGraph(), "factory_cplex");
+            std::cout << "Generating the expanded cell complex\n";
+            geoplex2D.init(1, 1, 15.0, 15.0, true); //ghosted
+            std::cout << geoplex2D;
+            
+            //Save expanded cell complex graph
+            Cajete::VtkFileWriter<typename Cajete::ExpandedComplex2D<>::types::graph_type> writer;
+            writer.save(geoplex2D.getGraph(), "factory_geoplex");
 
             std::cout << "Initializing the system graph\n";
-            Plant::microtubule_unit_scatter(system_graph, cplex2D); 
+            Plant::microtubule_unit_scatter(system_graph, geoplex2D, 512); 
 
             std::cout << "Generating the grammar\n";
             //TODO: implement a grammar setup phase
@@ -108,6 +109,7 @@ namespace Cajete
 
     private:
         CartesianComplex2D<> cplex2D;
+        ExpandedComplex2D<> geoplex2D;
         YAGL::Graph<Plant::mt_key_type, Plant::MT_NodeData> system_graph; 
 };
 

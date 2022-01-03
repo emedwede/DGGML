@@ -33,14 +33,32 @@ namespace Cajete
                     n = n+2; //pad around boundary in dim  
                     m = m+2; //pad around boundary in dim
                 } 
+
                 nx = n*ppc;//+1; 
                 ny = m*ppc;//+1; 
+
                 dx = d_x; 
                 dy = d_y;
+
                 fine_grid.init(0.0, 0.0, n*dx, m*dy, nx, ny);
                 coarse_grid.init(0.0, 0.0, n*dx, m*dy, n, m);
+
                 nx = fine_grid._px;
                 ny = fine_grid._py;
+
+                if(ghost_cells) 
+                {
+                    min_x = coarse_grid._min_x + coarse_grid._dx;
+                    min_y = coarse_grid._min_y + coarse_grid._dy;
+                    max_x = coarse_grid._max_x - coarse_grid._dx;
+                    max_y = coarse_grid._max_y - coarse_grid._dy;
+                } else
+                {
+                    min_x = coarse_grid._min_x;
+                    min_y = coarse_grid._min_y;
+                    max_x = coarse_grid._max_x;
+                    max_y = coarse_grid._max_y;
+                }
 
                 num_interior_0D_cells = 0;
                 num_exterior_0D_cells = 0;
@@ -111,7 +129,7 @@ namespace Cajete
             {
                 return num_interior_2D_cells + num_exterior_2D_cells;
             }
-            
+             
             std::size_t getTotalInteriorCellCount()
             {
                 return get0dInteriorCellCount() + get1dInteriorCellCount() + get2dInteriorCellCount();
@@ -367,6 +385,7 @@ namespace Cajete
             }
 
             bool ghost_cells;
+            double min_x, min_y, max_x, max_y;
             std::size_t num_interior_0D_cells;
             std::size_t num_exterior_0D_cells;
             std::size_t num_interior_1D_cells;

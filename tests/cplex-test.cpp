@@ -206,6 +206,7 @@ TEST_CASE("Testing the expanded cell complex", "[cplex-test]")
     
     std::cout << cplex2D << std::endl;
     
+    std::cout << "Total number of cells: " << cplex2D.getTotalCellCount() << "\n";
     //REQUIRE(cplex2D.getTotalCellCount() == 9);
     
     auto& g = cplex2D.getGraph();

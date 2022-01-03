@@ -9,11 +9,21 @@ namespace Cajete
     class ExpandedComplex2D : public CartesianComplex2D<CplexGraph2D_t>
     {
         public:
+            
+            using types = CartesianComplex2D<GraphType>;
+            
+           ExpandedComplex2D() = default; 
+
            ExpandedComplex2D(std::size_t n, std::size_t m, double d_x, double d_y, bool g_c = false) : CartesianComplex2D(n, m, d_x, d_y, g_c)
            {
+                init(n, m, d_x, d_y, g_c);                 
+           }     
+           void init(std::size_t n, std::size_t m, double d_x, double d_y, bool g_c = false)
+           {
+                CartesianComplex2D<GraphType>::init(n, m, d_x, d_y, g_c);
                 epsilon = 0.1*dx; //currently default epsilon, make it a parameter related to reaction distance later
                 build();
-           }     
+           }
 
            //TODO: is this overload the right fix?
            CplexGraph2D_t& getGraph()
@@ -60,7 +70,6 @@ namespace Cajete
                             
                             if(x1 == x2 && x2 == x3) //x is the axis of collinearity 
                             {
-                                std::cout << "Collinear in x\n";
                                 data.corners[lower_left][0] = x3 - epsilon;
                                 data.corners[lower_left][1] = y3;
                                 data.corners[lower_right][0] = x3 + epsilon;
@@ -73,7 +82,6 @@ namespace Cajete
                             }
                             if(y1 == y2 && y2 == y3) //y is the axis of collinearity
                             {
-                                std::cout << "Collinear in y\n";
                                 data.corners[lower_left][0] = x3;
                                 data.corners[lower_left][1] = y3 - epsilon;
                                 data.corners[lower_right][0] = x3;
@@ -104,6 +112,17 @@ namespace Cajete
                     } 
                }
            }
+
+            friend std::ostream& operator<<(std::ostream& os, ExpandedComplex2D& geoplex)
+            {
+                os << "\n---Geoplex---\n";
+                os << "\nCoarse Grid: \n" << geoplex.coarse_grid;
+                os << "\nFine Grid: \n" << geoplex.fine_grid;
+                os << geoplex.graph;
+                
+                return os;
+            }
+             
         private:
            double epsilon;
         };
