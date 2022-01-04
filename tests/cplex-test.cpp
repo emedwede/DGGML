@@ -202,7 +202,7 @@ TEST_CASE("Any Cell Complex can have ghost cells", "[cplex-test]")
 
 TEST_CASE("Testing the expanded cell complex", "[cplex-test]") 
 {
-    Cajete::ExpandedComplex2D<> cplex2D(1, 1, 2.0, 2.0, true);
+    Cajete::ExpandedComplex2D<> cplex2D(2, 2, 2.0, 2.0, true);
     
     std::cout << cplex2D << std::endl;
     
