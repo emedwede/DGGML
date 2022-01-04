@@ -24,13 +24,33 @@ class Binner
             counts = Cajete::MemoryManager::allocate_std<count_type>(n);
             offsets = Cajete::MemoryManager::allocate_std<count_type>(n);
             capacities = Cajete::MemoryManager::allocate_std<count_type>(n);
-
-            for(auto i = 0; i < n; i++)
+            
+            zero_init();
+        }
+        
+        void zero_init()
+        {
+            for(auto i = 0; i < num_bins; i++)
             {
                 counts[i] = 0;
                 offsets[i] = 0;
                 capacities[i] = 0;
             }
+        }
+
+        void reset_and_realloc(std::size_t n)
+        {
+            Cajete::MemoryManager::deallocate_std(counts);
+            Cajete::MemoryManager::deallocate_std(offsets);
+            Cajete::MemoryManager::deallocate_std(capacities);
+            
+            num_bins = n;
+            counts = Cajete::MemoryManager::allocate_std<count_type>(n);
+            offsets = Cajete::MemoryManager::allocate_std<count_type>(n);
+            capacities = Cajete::MemoryManager::allocate_std<count_type>(n);
+             
+            zero_init();
+
         }
 
         ~Binner() 
@@ -48,6 +68,11 @@ class Binner
         count_type binSize(const count_type bin_id) const 
         {
             return counts[bin_id];
+        }
+        
+        void add_count(const count_type bin_id) const 
+        {
+            counts[bin_id]++;
         }
 
         count_type binOffset(const count_type bin_id) const 

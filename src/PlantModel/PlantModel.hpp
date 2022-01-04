@@ -48,8 +48,8 @@ namespace Cajete
             writer.save(geoplex2D.getGraph(), "factory_geoplex");
 
             std::cout << "Initializing the system graph\n";
-            Plant::microtubule_unit_scatter(system_graph, geoplex2D, 512); 
-
+            Plant::microtubule_unit_scatter(system_graph, geoplex2D, 5); 
+            
             std::cout << "Generating the grammar\n";
             //TODO: implement a grammar setup phase
     
@@ -73,7 +73,7 @@ namespace Cajete
 
                 std::cout << "Binning the graph into 2D partitions\n";
                 //TODO: implement a 2D partioning scheme using the cell complex
-                
+                                
                 std::cout << "Running the Hybrid ODES/SSA inner loop 2D phase\n";
                 //TODO: implement the inner loop of the SSA for 2D
                 

@@ -41,12 +41,13 @@ namespace Cajete
                     auto key = iter->first;
                     auto& data = iter->second.getData();
                     
+                    //TODO: expand interior edges near the exterior correctly
                     //we don't need to expand the highest dimensional cell 
                     if(data.type == 1) //found a 1D cell 
                     {
                         //we need to determine if the cell is a horizontal or vertical edge
                         //or if it is near the exterior. we can ignore the ghosted region 
-                        if(!ghost_cells && data.interior == true) 
+                        if(data.interior == true) 
                         {
                             //We already know this expanded complex can only have two 0D nbrs connected to 1D
                             double x1, x2, x3, y1, y2, y3; std::size_t c_count = 0;

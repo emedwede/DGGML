@@ -84,6 +84,13 @@ namespace Cajete
             {
                 return coarse_grid;
             }
+            
+            //converts the coarse cell ids to the the fine lattice point ids
+            void coarse_cell_to_fine_lattice(int& ic, int& jc)
+            {
+                ic = 2*ic+1;
+                jc = 2*jc+1;
+            }
 
             std::size_t get0dInteriorCellCount()
             {
