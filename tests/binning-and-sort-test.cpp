@@ -3,12 +3,14 @@
 #include "catch.hpp"
 
 #include "ExpandedComplex2D.hpp"
+#include "CartesianHashFunctions.hpp"
 #include "MemoryManager.hpp"
 #include "Histobucket.hpp"
 #include "PlantTypes.hpp"
 #include "PlantUtils.hpp"
 #include "YAGL_Graph.hpp"
-
+#include <map>
+#include <unordered_map>
 template <typename T>
 void print_corners(T& corners)
 {
@@ -28,224 +30,63 @@ void print_keys(T* keys, std::size_t n, std::size_t dim)
         std::cout << keys[i] << " ";
     } std::cout << "\n\n";
 }
-
-/*TEST_CASE("Histobucket Init Test", "[binning-test]")
-{    
-    Cajete::Histobucket<int> geosysmap2D;
-    std::cout << geosysmap2D << std::endl;
-
-    REQUIRE( geosysmap2D.numBin() == 0 );
-
-    Cajete::ExpandedComplex2D<> geoplex2D;
-    
-    std::cout << "Generating the expanded cell complex\n";
-    geoplex2D.init(1, 1, 15.0, 15.0, false); //ghosted
-    std::cout << geoplex2D;
-    
-    geosysmap2D.reset_and_realloc(geoplex2D.get2dTotalCellCount());
-
-    REQUIRE(geosysmap2D.numBin() == geoplex2D.get2dTotalCellCount());
-    
-    std::size_t bin_sum = 0;
-    for(auto i = 0; i < geosysmap2D.numBin(); i++)
-    {
-        bin_sum += geosysmap2D.binSize(i);
-    }
-
-    REQUIRE(bin_sum == 0);
-
-    YAGL::Graph<Cajete::Plant::mt_key_type, Cajete::Plant::MT_NodeData> system_graph; 
-    std::cout << "Initializing the system graph\n";
-    Cajete::Plant::microtubule_unit_scatter(system_graph, geoplex2D, 5); 
-        
-    auto& fine_grid = geoplex2D.getFineGrid();
-    auto& coarse_grid = geoplex2D.getCoarseGrid();
-    auto& geoplex_graph = geoplex2D.getGraph();
-    
-    std::size_t counts2D[geoplex2D.get2dTotalCellCount()];
-    std::size_t counts1D[geoplex2D.get1dTotalCellCount()];
-    std::size_t counts0D[geoplex2D.get0dTotalCellCount()];
-    
-    std::size_t offsets2D[geoplex2D.get2dTotalCellCount()];
-    std::size_t offsets1D[geoplex2D.get1dTotalCellCount()];
-    std::size_t offsets0D[geoplex2D.get0dTotalCellCount()];
-
-    std::size_t capacities2D[geoplex2D.get2dTotalCellCount()];
-    std::size_t capacities1D[geoplex2D.get1dTotalCellCount()];
-    std::size_t capacities0D[geoplex2D.get0dTotalCellCount()];
-
-    using key_type = typename Cajete::ExpandedComplex2D<>::graph_type::key_type;
-     
-    key_type keys2D[geoplex2D.get2dTotalCellCount()];
-    key_type keys1D[geoplex2D.get1dTotalCellCount()];
-    key_type keys0D[geoplex2D.get0dTotalCellCount()];
-    
-    key_type sort_map[geoplex2D.getTotalCellCount()]; 
-    
-    std::size_t c2, c1, c0; c2 = c1 = c0 = 0;
-    //creates a list of 2D, 1D, 0D cells
-    for(auto iter = geoplex_graph.node_list_begin(); iter != geoplex_graph.node_list_end(); iter++)
-    {
-        auto id = iter->first;
-        auto itype = iter->second.getData().type;
-        if(itype == 0)
-        {
-            keys2D[c2] = id;
-            c2++;
-        }
-        if(itype == 1)
-        {
-            keys1D[c1] = id;
-            c1++;
-        }
-        if(itype == 2)
-        {
-            keys0D[c0] = id;
-            c0++;
-        }
-    }
-    
-    for(auto i = 0; i < geoplex2D.get2dTotalCellCount(); i++)
-    {
-        sort_map[keys2D[i]] = i;
-        counts2D[i] = 0;
-    }
-    
-    for(auto i = 0; i < geoplex2D.get1dTotalCellCount(); i++)
-    {
-        sort_map[keys1D[i]] = i;
-        counts1D[i] = 0;
-    }
-    
-    for(auto i = 0; i < geoplex2D.get0dTotalCellCount(); i++)
-    {
-        sort_map[keys0D[i]] = i;
-        counts0D[i] = 0;
-    }
-
-    REQUIRE( c2 == geoplex2D.get2dTotalCellCount() );
-    REQUIRE( c1 == geoplex2D.get1dTotalCellCount() );
-    REQUIRE( c0 == geoplex2D.get0dTotalCellCount() );
-    
-    print_keys(keys2D, c2, 2);
-    print_keys(keys1D, c1, 1);
-    print_keys(keys0D, c0, 0);
-
-    //Test code for sorting, TODO: move into classes
-    for(auto iter = system_graph.node_list_begin(); iter != system_graph.node_list_end(); iter++)
-    {
-        auto id = iter->first;
-        auto inode_data = iter->second.getData();
-        
-        double xp = inode_data.position[0];
-        double yp = inode_data.position[1];
-        int ic, jc;
-
-        coarse_grid.locatePoint(xp, yp, ic, jc);
-        std::cout << "\nCoarse grid location: " << ic << " " << jc << "\n";
-        geoplex2D.coarse_cell_to_fine_lattice(ic, jc);
-        auto cardinal = fine_grid.cardinalLatticeIndex(ic, jc);
-        geosysmap2D.add_count(sort_map[cardinal]);
-        counts2D[sort_map[cardinal]]++;
-        for(auto jter = geoplex_graph.out_neighbors_begin(cardinal); jter != geoplex_graph.out_neighbors_end(cardinal); jter++)
-        {
-            auto jd = *jter;
-            auto jnode = geoplex_graph.findNode(jd)->second;
-            auto jnode_data = jnode.getData();
-            if(jnode_data.type == 1 && jnode_data.interior) //check to see which 1D zone, if any the point belongs
-            {
-                std::cout << jd << " is an edge of 2D cell " << cardinal << "and it's interior flag " << jnode_data.interior << "\n";
-                auto& corners = jnode_data.corners;
-                print_corners(corners); std::cout << std::endl;
-                auto xmin = corners[0][0]; auto xmax = corners[0][0]; auto ymin = corners[0][1]; auto ymax = corners[0][1];
-                for(auto i = 1; i < 4; i++)
-                {
-                    if(corners[i][0] < xmin) xmin = corners[i][0];
-                    if(corners[i][0] > xmax) xmax = corners[i][0];
-                    if(corners[i][1] < ymin) ymin = corners[i][1];
-                    if(corners[i][1] > ymax) ymax = corners[i][1];
-                }
-                if(xmin <= xp && xp <= xmax) 
-                {
-                    if(ymin <= yp && yp <= ymax)
-                    {
-                        std::cout << "\n------------------------------------------------------\n";
-                        std::cout << "A point has been found in expanded lattice point: " << jd;
-                        std::cout << "\n------------------------------------------------------\n";
-                    }
-                }
-            }
-        }
-        std::cout << "Node " << id << " with " << "Points: { " << xp << ", " << yp << " } ";
-        std::cout << "belong to 2D expanded lattice point " << cardinal;
-        std::cout << " with corners: \n";
-        auto corners = geoplex_graph.findNode(cardinal)->second.getData().corners;
-        print_corners(corners);
-    }
-
-    bin_sum = 0;
-    for(auto i = 0; i < geosysmap2D.numBin(); i++)
-    {
-        bin_sum += geosysmap2D.binSize(i);
-    }
-    std::size_t count_sum = 0;
-    for(auto i = 0; i < geoplex2D.get2dTotalCellCount(); i++) 
-    {
-        count_sum += counts2D[i];
-    }
-    REQUIRE(count_sum == 15);
-    REQUIRE(bin_sum == 15);
-}*/
-
-template <typename T>
-std::size_t bin_summation(const T& hist)
-{
-    std::size_t bin_sum = 0;
-    for(auto i = 0; i < hist.numBin(); i++)
-    {
-        bin_sum += hist.binSize(i);
-    }
-    return bin_sum;
-}
-
+/*
 TEST_CASE("Histobucket 2D Test", "[binning-test]")
 {    
     using key_type = typename Cajete::ExpandedComplex2D<>::graph_type::key_type;
-     
+    using node_type = typename YAGL::Graph<Cajete::Plant::mt_key_type, Cajete::Plant::MT_NodeData>::node_type;
+    using cplex_type = Cajete::ExpandedComplex2D<>;
+    
+    Cajete::ExpandedComplex2D<> geoplex2D;
+    geoplex2D.init(2, 2, 15.0, 15.0, false); //ghosted
+    
     Cajete::Histobucket<key_type> geosysmap2D;
     std::cout << geosysmap2D << std::endl;
 
     REQUIRE( geosysmap2D.numBin() == 0 );
 
-    Cajete::ExpandedComplex2D<> geoplex2D;
-    geoplex2D.init(2, 2, 15.0, 15.0, true); //ghosted
-    
     geosysmap2D.reset_and_realloc(geoplex2D.get2dTotalCellCount());
     REQUIRE(geosysmap2D.numBin() == geoplex2D.get2dTotalCellCount()); 
-    REQUIRE(bin_summation(geosysmap2D) == 0);
-
+    REQUIRE(geosysmap2D.totalSize() == 0);
+    
+    std::size_t ppmt = 3; std::size_t num_mt = 50;
     YAGL::Graph<Cajete::Plant::mt_key_type, Cajete::Plant::MT_NodeData> system_graph; 
-    Cajete::Plant::microtubule_unit_scatter(system_graph, geoplex2D, 30); 
+    Cajete::Plant::microtubule_unit_scatter(system_graph, geoplex2D, num_mt); 
         
-    auto& fine_grid = geoplex2D.getFineGrid();
-    auto& coarse_grid = geoplex2D.getCoarseGrid();
     auto& geoplex_graph = geoplex2D.getGraph();
     
     std::size_t counts2D[geoplex2D.get2dTotalCellCount()];
     std::size_t offsets2D[geoplex2D.get2dTotalCellCount()];
     std::size_t capacities2D[geoplex2D.get2dTotalCellCount()];
+    
+    std::map<key_type, std::size_t> sort_map2D;
+    std::map<key_type, std::vector<key_type>> buckets;
 
     key_type keys2D[geoplex2D.get2dTotalCellCount()];
     key_type sort_map[geoplex2D.getTotalCellCount()]; 
     
-    std::size_t c2 = 0;
+    std::size_t c2 = 0; std::size_t c3 = 0;
     for(auto iter = geoplex_graph.node_list_begin(); iter != geoplex_graph.node_list_end(); iter++)
     {
         auto id = iter->first;
         auto itype = iter->second.getData().type;
-        if(itype == 0) { keys2D[c2] = id; c2++; }
+        if(itype == 0) { 
+            keys2D[c2] = id; c2++;
+            sort_map2D.insert({id, c3++});
+            buckets.insert({id, {}});
+        }
     }
     
+    auto search = sort_map2D.find(16);
+    if(search != sort_map2D.end())
+    {
+        std::cout << "Key found, has value: " << search->second << "\n";
+    } else { std::cout << "Key not found\n"; }
+    for(auto item : sort_map2D)
+    {
+        std::cout << "{ " << item.first << ", " << item.second << " } ";
+    } std::cout << "\n";
+
     for(auto i = 0; i < geoplex2D.get2dTotalCellCount(); i++)
     {
         sort_map[keys2D[i]] = i; counts2D[i] = 0;
@@ -254,27 +95,27 @@ TEST_CASE("Histobucket 2D Test", "[binning-test]")
     REQUIRE( c2 == geoplex2D.get2dTotalCellCount() );
     
     print_keys(keys2D, c2, 2);
-
+    
     for(auto iter = system_graph.node_list_begin(); iter != system_graph.node_list_end(); iter++)
     {
         auto id = iter->first;
-        auto inode_data = iter->second.getData();
+        auto node = iter->second;
         
-        double xp = inode_data.position[0];
-        double yp = inode_data.position[1];
-        int ic, jc;
-
-        coarse_grid.locatePoint(xp, yp, ic, jc);
-        
-        geoplex2D.coarse_cell_to_fine_lattice(ic, jc);
-        
-        auto cardinal = fine_grid.cardinalLatticeIndex(ic, jc);
-        
-        geosysmap2D.add_count(sort_map[cardinal]);
-        
+        auto cardinal = Cajete::cartesian_complex_expanded_hash2D(node, geoplex2D);
+        auto search = sort_map2D.find(cardinal);
+        if(search != sort_map2D.end())
+            geosysmap2D.incrementBin(search->second);
+        if(buckets.find(cardinal) != buckets.end())
+            buckets.find(cardinal)->second.push_back(id);
         counts2D[sort_map[cardinal]]++;
     }
     
+    auto bucket_tots = 0;
+    for(auto item : buckets)
+    {
+        bucket_tots += item.second.size();
+    }
+    std::cout << "Bucket tots: " << bucket_tots << "\n";
     //find the max size
     std::size_t max_size = geosysmap2D.maxSize();
 
@@ -289,31 +130,35 @@ TEST_CASE("Histobucket 2D Test", "[binning-test]")
         offsets2D[i] = i*max_cap;
     }
     key_type bucket_data[geosysmap2D.numBin()*max_cap];
-   
+    
+    //geosysmap2D.build_buckets();
+
+
     //reset counts2D 
     for(auto i = 0; i < geosysmap2D.numBin(); i++) {counts2D[i] = 0;}
-
+    
+    std::size_t count0D = 0;
+    std::size_t alt2D = 0;
     for(auto iter = system_graph.node_list_begin(); iter != system_graph.node_list_end(); iter++)
     {
         auto id = iter->first;
-        auto inode_data = iter->second.getData();
-        
-        double xp = inode_data.position[0];
-        double yp = inode_data.position[1];
-        int ic, jc;
+        auto node = iter->second; 
 
-        coarse_grid.locatePoint(xp, yp, ic, jc);
-        
-        geoplex2D.coarse_cell_to_fine_lattice(ic, jc);
-        
-        auto cardinal = fine_grid.cardinalLatticeIndex(ic, jc);
-        
+        auto cardinal = Cajete::cartesian_complex_expanded_hash2D(node, geoplex2D);
+        Cajete::cartesian_complex_expanded_hash1D(node, geoplex2D);
+        auto id0D = Cajete::cartesian_complex_expanded_hash0D(node, geoplex2D);
+        if(geoplex_graph.findNode(id0D)->second.getData().type == 2)
+        {
+            count0D++;
+        } else { alt2D++; }
         auto pid = sort_map[cardinal];
+        
         auto loc = offsets2D[pid]+counts2D[pid];
         counts2D[pid]++;
         bucket_data[loc] = id;
     }
-    
+    REQUIRE(count0D+alt2D == num_mt*ppmt);
+    std::cout << "OD objects: " << count0D << "\n";
     for(auto i = 0; i < geosysmap2D.numBin(); i++) {
         std::cout << "Nodes in bin " << keys2D[i] << ": { ";
         if(counts2D[i] > 0)
@@ -327,33 +172,51 @@ TEST_CASE("Histobucket 2D Test", "[binning-test]")
         } std::cout << "}\n";
     }
     
-    for(auto i = 0; i < c2; i++)
-    {
-        auto key = keys2D[i];
-        auto ghosted = geoplex2D.getGraph().findNode(key)->second.getData().ghosted;
-        if(ghosted) 
-        {
-            std::cout << "We do not simulate cell " << key << ", since it is ghosted\n";
-        }
-        else 
-        {
-            std::cout << "Cell " << key << " is not ghosted, so we simulated it!\n";
-
-            auto pid = sort_map[key];
-            auto start = offsets2D[pid];
-            auto end = offsets2D[pid] + counts2D[pid];
-            
-            for(auto j = start; j < end; j++) {
-                std::cout << "Performing a pattern search on object " << bucket_data[j] << "\n";
-            }
-
-        }
-    }
+    std::cout << "Counts: ";
     std::size_t count_sum = 0;
     for(auto i = 0; i < geoplex2D.get2dTotalCellCount(); i++) 
     {
         count_sum += counts2D[i];
+        std::cout << counts2D[i] << " ";
+    } std::cout << std::endl;
+    REQUIRE(count_sum == num_mt*ppmt);
+    REQUIRE(geosysmap2D.totalSize() == num_mt*ppmt);
+}*/
+
+TEST_CASE("VectorMap ND Test", "[binning-test]")
+{    
+    using key_type = typename Cajete::ExpandedComplex2D<>::graph_type::key_type;
+    using cplex_type = Cajete::ExpandedComplex2D<>;
+    
+    cplex_type geoplex2D;
+    geoplex2D.init(2, 2, 15.0, 15.0, true); //ghosted
+    auto& geoplex_graph = geoplex2D.getGraph();
+    
+    std::size_t ppmt = 3; std::size_t num_mt = 5'000; std::size_t total_objects = ppmt*num_mt;
+    YAGL::Graph<Cajete::Plant::mt_key_type, Cajete::Plant::MT_NodeData> system_graph; 
+    std::cout << "Initializing system graph\n";
+    Cajete::Plant::microtubule_unit_scatter(system_graph, geoplex2D, num_mt); 
+    
+    std::cout << "Sorting the graph\n";
+    std::map<key_type, std::vector<key_type>> bucketsND[3];
+    std::size_t complementND[3] = {0, 0, 0};
+
+    Cajete::expanded_cartesian_complex_sort_stl(bucketsND, complementND, geoplex2D, system_graph);
+    
+    std::cout << "Computing bucket sums\n";
+
+    std::size_t sumsND[3] = {0, 0, 0};
+    
+    for(int i = 0; i < 3; i++)
+    {
+        for(auto item : bucketsND[i])
+        {
+            sumsND[i] += item.second.size();
+        }
     }
-    REQUIRE(count_sum == 15);
-    REQUIRE(bin_summation(geosysmap2D) == 15);
+    for(auto i = 0; i < 3; i++)
+    {   
+        std::cout << "Dimension " << 2 - i << " will search a space of: " << sumsND[i] << " system objects\n";
+        REQUIRE(sumsND[i] + complementND[i] == total_objects);
+    }
 }
