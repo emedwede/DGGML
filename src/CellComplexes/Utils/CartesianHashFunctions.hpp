@@ -12,7 +12,7 @@ int64_t cartesian_complex_expanded_hash2D(NodeType& node, CplexType& geoplex2D)
     auto& fine_grid = geoplex2D.getFineGrid();
     auto& coarse_grid = geoplex2D.getCoarseGrid();
     auto& geoplex_graph = geoplex2D.getGraph();
-    auto  node_data = node.getData();
+    auto&  node_data = node.getData();
         
     double xp = node_data.position[0];
     double yp = node_data.position[1];
@@ -23,6 +23,7 @@ int64_t cartesian_complex_expanded_hash2D(NodeType& node, CplexType& geoplex2D)
     {
         if(jc > coarse_grid._ny || jc < 0)
         {
+            for(auto i = 0; i < 3; i++) node_data.tagND[i] = -1;
             //out of bounds 
             return -1;
         }
@@ -32,6 +33,8 @@ int64_t cartesian_complex_expanded_hash2D(NodeType& node, CplexType& geoplex2D)
     
     auto cardinal = fine_grid.cardinalLatticeIndex(ic, jc);
     
+    for(auto i = 0; i < 3; i++) node_data.tagND[i] = cardinal;
+
     return cardinal;
 }
 
@@ -41,7 +44,7 @@ int64_t cartesian_complex_expanded_hash1D(NodeType& node, CplexType& geoplex2D)
     auto& fine_grid = geoplex2D.getFineGrid();
     auto& coarse_grid = geoplex2D.getCoarseGrid();
     auto& geoplex_graph = geoplex2D.getGraph();
-    auto  node_data = node.getData();
+    auto&  node_data = node.getData();
         
     double xp = node_data.position[0];
     double yp = node_data.position[1];
@@ -52,6 +55,7 @@ int64_t cartesian_complex_expanded_hash1D(NodeType& node, CplexType& geoplex2D)
     {
         if(jc > coarse_grid._ny || jc < 0)
         {
+            for(auto i = 0; i < 3; i++) node_data.tagND[i] = -1;
             //out of bounds 
             return -1;
         }
@@ -95,7 +99,7 @@ int64_t cartesian_complex_expanded_hash0D(NodeType& node, CplexType& geoplex2D)
     auto& fine_grid = geoplex2D.getFineGrid();
     auto& coarse_grid = geoplex2D.getCoarseGrid();
     auto& geoplex_graph = geoplex2D.getGraph();
-    auto  node_data = node.getData();
+    auto&  node_data = node.getData();
         
     double xp = node_data.position[0];
     double yp = node_data.position[1];
@@ -106,6 +110,7 @@ int64_t cartesian_complex_expanded_hash0D(NodeType& node, CplexType& geoplex2D)
     {
         if(jc >= coarse_grid._ny || jc < 0)
         {
+            for(auto i = 0; i < 3; i++) node_data.tagND[i] = -1;
             //out of bounds 
             return -1;
         }
@@ -156,7 +161,7 @@ int64_t cartesian_complex_expanded_hash0D(NodeType& node, CplexType& geoplex2D)
 }
 
 template <typename BucketType, typename ComplementType, typename GeoplexType, typename SysGraphType>
-void expanded_cartesian_complex_sort_stl(BucketType& bucketsND, ComplementType complementND, GeoplexType& geoplex2D, SysGraphType& system_graph)
+void expanded_cartesian_complex_sort_stl(BucketType& bucketsND, ComplementType& complementND, GeoplexType& geoplex2D, SysGraphType& system_graph)
 {
     auto& geoplex_graph = geoplex2D.getGraph();
     
@@ -180,7 +185,7 @@ void expanded_cartesian_complex_sort_stl(BucketType& bucketsND, ComplementType c
     for(auto iter = system_graph.node_list_begin(); iter != system_graph.node_list_end(); iter++)
     {
         auto id = iter->first;
-        auto node = iter->second;
+        auto& node = iter->second;
         
         for(auto i = 0; i < 3; i++) 
         {

@@ -5,16 +5,20 @@
 
 #include "PlantTypes.hpp"
 #include "PlantUtils.hpp"
-
+#include "PlantGrammar.hpp"
 #include "DggModel.hpp"
 #include "YAGL_Graph.hpp"
 #include "YAGL_Node.hpp"
+#include "YAGL_Algorithms.hpp"
 #include "VtkWriter.hpp"
 
 #include "ExpandedComplex2D.hpp"
 
 #include "CartesianComplex2D.hpp"
 
+#include "CartesianHashFunctions.hpp"
+
+#include <map>
 #include <random>
 
 namespace Cajete
@@ -26,6 +30,7 @@ namespace Cajete
     class PlantModel : public DggModel<InterfaceType> {
     public:
         using key_type = Plant::mt_key_type;
+        using gplex_key_type = typename Cajete::ExpandedComplex2D<>::graph_type::key_type;
         using data_type = Plant::MT_NodeData;
         using graph_type = YAGL::Graph<key_type, data_type>;
         using node_type = typename graph_type::node_type;
@@ -40,7 +45,7 @@ namespace Cajete
             //TODO: handle the interface input
             
             std::cout << "Generating the expanded cell complex\n";
-            geoplex2D.init(1, 1, 15.0, 15.0, true); //ghosted
+            geoplex2D.init(2, 2, 15.0, 15.0, true); //ghosted
             std::cout << geoplex2D;
             
             //Save expanded cell complex graph
@@ -48,9 +53,9 @@ namespace Cajete
             writer.save(geoplex2D.getGraph(), "factory_geoplex");
 
             std::cout << "Initializing the system graph\n";
-            Plant::microtubule_unit_scatter(system_graph, geoplex2D, 5); 
+            Plant::microtubule_unit_scatter(system_graph, geoplex2D, 50); 
             
-            std::cout << "Generating the grammar\n";
+            //std::cout << "Generating the grammar\n";
             //TODO: implement a grammar setup phase
     
         }
@@ -58,49 +63,92 @@ namespace Cajete
         void run() override {
             std::cout << "Running the plant model simulation\n";
             
-            std::size_t num_steps = 1;
+            std::size_t num_steps = 2;
             Cajete::VtkFileWriter<graph_type> vtk_writer;
                 
-
+            std::string title = "factory_test_step_";
             std::cout << "Saving the initial state of the system graph\n";
-            vtk_writer.save(system_graph, "factory_test_step_0");
+            vtk_writer.save(system_graph, title+std::to_string(0));
 
             //TODO: move the simulation algorithm to its own class
             //is this where we run the simulation?
             for(auto i = 1; i <= num_steps; i++)
             {
                 std::cout << "Running step " << i << std::endl;
+                
+                std::map<gplex_key_type, std::vector<key_type>> bucketsND[3];
+                std::size_t complementND[3] = {0, 0, 0};
 
+                
                 std::cout << "Binning the graph into 2D partitions\n";
-                //TODO: implement a 2D partioning scheme using the cell complex
-                                
+                //TODO: optimize this to work only for 2D
+                Cajete::expanded_cartesian_complex_sort_stl(bucketsND, complementND, geoplex2D, system_graph);
+
                 std::cout << "Running the Hybrid ODES/SSA inner loop 2D phase\n";
                 //TODO: implement the inner loop of the SSA for 2D
+                for(auto item : bucketsND[0])
+                {
+                   auto k = item.first;
+                   if(geoplex2D.getGraph().findNode(k)->second.getData().interior)
+                   {
+                       std::cout << "Running matcher on geocell " << k << "\n";
+                       auto matches = microtubule_growing_end_matcher(system_graph, item.second); 
+                       std::cout << "Found " << matches.size() << " candidates\n";
+                       for(auto match : matches)
+                       {
+                           bool bad_match = false;
+                           //check match integrity
+                           for(auto key : match)
+                           {
+                                auto dtag = system_graph.findNode(key)->second.getData().tagND[0];
+                                if(dtag != k)
+                                {
+                                    bad_match = true;
+                                    std::cout << "Bad match found, it'll be skipped!\n";
+                                    break;
+                                }
+                           }
+                           if(!bad_match)
+                           {
+                                microtubule_growing_end_polymerize_solve(system_graph, match);
+                                microtubule_growing_end_polymerize_rewrite(system_graph, match); 
+                           }
+                        }
+                    }
+                }
                 
+                std::cout << "----------------\n";
+                std::cout << "CC: " << YAGL::connected_components(system_graph); 
+                std::cout << "\n---------------\n";
                 std::cout << "Synchronizing work\n";
                 //TODO: this is where a barrier would be for a parallel code
-                
+                for(auto item : bucketsND) item.clear();
+
                 std::cout << "Binning the graph into 1D partitions\n";
-                //TODO: implement a 1D partioning scheme using the cell complex
-                
+                //TODO: optimize this to work only for 1D
+                Cajete::expanded_cartesian_complex_sort_stl(bucketsND, complementND, geoplex2D, system_graph);
+
                 std::cout << "Running the Hybrid ODES/SSA inner loop 1D phase\n";
                 //TODO: implement the inner loop of the SSA for 1D
                 
                 std::cout << "Synchronizing work\n";
                 //TODO: this is where a barrier would be for a parallel code
+                for(auto item : bucketsND) item.clear();
 
                 std::cout << "Binning the graph into 0D partitions\n";
-                //TODO: implement a 2D partioning scheme using the cell complex
-                
+                //TODO: optimize this so it only works for 0D
+                Cajete::expanded_cartesian_complex_sort_stl(bucketsND, complementND, geoplex2D, system_graph);
+
                 std::cout << "Running the Hybrid ODES/SSA inner loop 0D phase\n";
                 //TODO: implement the inner loop of the SSA for 0D
                 
                 std::cout << "Synchronizing work\n";
                 //TODO: this is where a barrier would be for a parallel code
-                
+                for(auto item : bucketsND) item.clear();
+               
                 std::cout << "Running the checkpointer\n";
                 //TODO: The checkpointer to save time steps
-                //vtk_writer.save(system_graph, "factory_test");
+                vtk_writer.save(system_graph, title+std::to_string(i));
             }
             std::cout << "-----------------------------------------------------------------------\n\n";
 

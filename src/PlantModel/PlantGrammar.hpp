@@ -43,6 +43,36 @@ std::vector<std::vector<mt_key_type>> microtubule_growing_end_matcher(GraphType&
     return matches;
 }
 
+// search for growing ends in a dimensional partition 
+template <typename GraphType, typename BucketType>
+std::vector<std::vector<mt_key_type>> microtubule_growing_end_matcher(GraphType& graph, BucketType& bucket)
+{
+    //YAGL::Graph<mt_key_type, MT_NodeData> graph;    
+    std::vector<std::vector<mt_key_type>> matches;
+    //iterate the whole graph 
+    for(auto i : bucket)
+    {
+        auto itype = graph.findNode(i)->second.getData().type;
+
+        if(itype != positive) continue;
+        
+        for(auto jter = graph.out_neighbors_begin(i); jter != graph.out_neighbors_end(i); jter++)
+        {
+            auto j = *jter;
+            auto jtype = graph.findNode(j)->second.getData().type;
+            
+            if(jtype != intermediate) continue;
+            std::vector<mt_key_type> temp;
+            temp.push_back(i);
+            temp.push_back(j);
+            matches.push_back(temp);
+        }
+    }
+
+    return matches;
+}
+
+
 // search for retracting ends 
 template <typename GraphType>
 std::vector<std::vector<mt_key_type>> microtubule_retraction_end_matcher(GraphType& graph)
@@ -100,6 +130,23 @@ void microtubule_growing_end_polymerize_rewrite(GraphType& graph, std::vector<mt
     graph.addEdge(j, key);
 
 }
+
+template <typename GraphType>
+void microtubule_growing_end_polymerize_solve(GraphType& graph, std::vector<mt_key_type>& match)
+{
+    if(match.size() != 2) return;
+    auto i = match[0]; auto j = match[1];
+
+    auto& x1 = graph.findNode(i)->second.getData().position;
+    auto& x2 = graph.findNode(j)->second.getData().position;
+    
+    auto dx = 0.2;
+    for(auto iter = 0; iter < 3; iter++)
+    {
+        x1[iter] += (x1[iter] - x2[iter])*dx;  
+    }
+}
+
 
 } // end namespace Plant 
 } //end namespace Cajete
