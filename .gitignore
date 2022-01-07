@@ -31,5 +31,8 @@
 *.out
 *.app
 
+# results folders 
+results/
+
 # Compile Commands
 compile_commands.json

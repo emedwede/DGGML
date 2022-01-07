@@ -6,6 +6,8 @@
 #include "PlantTypes.hpp"
 #include "PlantUtils.hpp"
 #include "PlantGrammar.hpp"
+#include "PlantSSA.hpp"
+
 #include "DggModel.hpp"
 #include "YAGL_Graph.hpp"
 #include "YAGL_Node.hpp"
@@ -66,7 +68,7 @@ namespace Cajete
             std::size_t num_steps = 2;
             Cajete::VtkFileWriter<graph_type> vtk_writer;
                 
-            std::string title = "factory_test_step_";
+            std::string title = "results/factory_test_step_";
             std::cout << "Saving the initial state of the system graph\n";
             vtk_writer.save(system_graph, title+std::to_string(0));
 
@@ -86,40 +88,21 @@ namespace Cajete
 
                 std::cout << "Running the Hybrid ODES/SSA inner loop 2D phase\n";
                 //TODO: implement the inner loop of the SSA for 2D
-                for(auto item : bucketsND[0])
+                for(auto& bucket : bucketsND[0])
                 {
-                   auto k = item.first;
+                   auto k = bucket.first; //check to see if this is a domain to simulate
                    if(geoplex2D.getGraph().findNode(k)->second.getData().interior)
                    {
-                       std::cout << "Running matcher on geocell " << k << "\n";
-                       auto matches = microtubule_growing_end_matcher(system_graph, item.second); 
-                       std::cout << "Found " << matches.size() << " candidates\n";
-                       for(auto match : matches)
-                       {
-                           bool bad_match = false;
-                           //check match integrity
-                           for(auto key : match)
-                           {
-                                auto dtag = system_graph.findNode(key)->second.getData().tagND[0];
-                                if(dtag != k)
-                                {
-                                    bad_match = true;
-                                    std::cout << "Bad match found, it'll be skipped!\n";
-                                    break;
-                                }
-                           }
-                           if(!bad_match)
-                           {
-                                microtubule_growing_end_polymerize_solve(system_graph, match);
-                                microtubule_growing_end_polymerize_rewrite(system_graph, match); 
-                           }
-                        }
-                    }
+                        plant_model_ssa(bucket, geoplex2D, system_graph);
+                   }
                 }
                 
+                //TODO: remove, right now connected_components should remain constant with only 
+                //growth rules
                 std::cout << "----------------\n";
                 std::cout << "CC: " << YAGL::connected_components(system_graph); 
                 std::cout << "\n---------------\n";
+                
                 std::cout << "Synchronizing work\n";
                 //TODO: this is where a barrier would be for a parallel code
                 for(auto item : bucketsND) item.clear();
