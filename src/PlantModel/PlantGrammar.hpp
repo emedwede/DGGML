@@ -131,8 +131,8 @@ void microtubule_growing_end_polymerize_rewrite(GraphType& graph, std::vector<mt
 
 }
 
-template <typename GraphType>
-void microtubule_growing_end_polymerize_solve(GraphType& graph, std::vector<mt_key_type>& match)
+template <typename GraphType, typename MatchType>
+void microtubule_growing_end_polymerize_solve(GraphType& graph, MatchType& match)
 {
     if(match.size() != 2) return;
     auto i = match[0]; auto j = match[1];
@@ -140,7 +140,7 @@ void microtubule_growing_end_polymerize_solve(GraphType& graph, std::vector<mt_k
     auto& x1 = graph.findNode(i)->second.getData().position;
     auto& x2 = graph.findNode(j)->second.getData().position;
     
-    auto dx = 0.2;
+    auto dx = 0.0001;
     for(auto iter = 0; iter < 3; iter++)
     {
         x1[iter] += (x1[iter] - x2[iter])*dx;  

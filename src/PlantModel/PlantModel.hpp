@@ -55,7 +55,7 @@ namespace Cajete
             writer.save(geoplex2D.getGraph(), "factory_geoplex");
 
             std::cout << "Initializing the system graph\n";
-            Plant::microtubule_unit_scatter(system_graph, geoplex2D, 50); 
+            Plant::microtubule_unit_scatter(system_graph, geoplex2D, 500); 
             
             //std::cout << "Generating the grammar\n";
             //TODO: implement a grammar setup phase
@@ -65,7 +65,7 @@ namespace Cajete
         void run() override {
             std::cout << "Running the plant model simulation\n";
             
-            std::size_t num_steps = 2;
+            std::size_t num_steps = 25;
             Cajete::VtkFileWriter<graph_type> vtk_writer;
                 
             std::string title = "results/factory_test_step_";
@@ -105,7 +105,8 @@ namespace Cajete
                 
                 std::cout << "Synchronizing work\n";
                 //TODO: this is where a barrier would be for a parallel code
-                for(auto item : bucketsND) item.clear();
+                for(auto& item : bucketsND) item.clear();
+                
 
                 std::cout << "Binning the graph into 1D partitions\n";
                 //TODO: optimize this to work only for 1D
