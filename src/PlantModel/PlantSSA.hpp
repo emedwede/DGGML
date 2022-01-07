@@ -7,13 +7,43 @@
 #include "ExpandedComplex2D.hpp"
 #include "YAGL_Graph.hpp"
 
+#include <chrono>
 #include <random>
+#include <algorithm>
+#include <vector>
+#include <iostream>
+#include <math.h>
 #include <map>
 
 namespace Cajete 
 {
 namespace Plant 
 {
+
+//TODO: Move to it's own random class or header
+auto RandomRealsBetween = [](double low, double high)
+{
+    auto randomFunc = 
+        [distribution_ = std::uniform_real_distribution<double>(low, high),
+         random_engine_ = std::mt19937{std::random_device{}() }]() mutable
+       {
+           return distribution_(random_engine_);
+       };
+    return randomFunc;
+};
+
+auto RandomIntsBetween = [](int low, int high)
+{
+    auto randomFunc = 
+        [distribution_ = std::uniform_real_distribution<double>(low, high),
+         random_engine_ = std::mt19937{std::random_device{}() }]() mutable
+       {
+           return distribution_(random_engine_);
+       };
+    return randomFunc;
+};
+
+
 //template <typename BucketType>
 //void plant_model_ssa(
 //        BucketType& bucket,
@@ -22,7 +52,6 @@ namespace Plant
 template <typename BucketType, typename GeoplexType, typename GraphType>
 void plant_model_ssa(BucketType& bucket, GeoplexType& geoplex2D, GraphType& system_graph)
 {
-    
     double DELTA = 0.1;
     int NUM_INTERNAL_STEPS = 10;
     double DELTA_DELTA_T = DELTA / NUM_INTERNAL_STEPS;
@@ -37,30 +66,31 @@ void plant_model_ssa(BucketType& bucket, GeoplexType& geoplex2D, GraphType& syst
     {
         //reset tau
         tau = 0.0;
-
+        
+        double uniform_sample = RandomRealsBetween(0.0, 1.0)();
+        
         //sample the exponential variable
-        exp_sample = 0.1; //-log(1-uniform_sample)
+        exp_sample = -log(1-uniform_sample);
         
         
         while(delta_t < DELTA && tau < exp_sample)
         {
             // STEP(0) : find all the matches 
             auto k = bucket.first;
-            //auto all_matches = microtubule_growing_end_matcher(system_graph, bucket.second); 
-            
+            auto all_matches = microtubule_growing_end_matcher(system_graph, bucket.second); 
+                    
             // STEP(1) : solve the system of ODES
             microtubule_ode_solver(all_matches, system_graph, k); //be careful with solving, it could lead
             //to a segmentation fault in the sorting phase if a parameter is solved out to out of bounds
-
             // STEP(2) : sum all of the rule propensities
              //zero the geocell_propensity
-            geocell_propensity = 0.0;
+            geocell_propensity = 5.0;
 
             // STEP(3) : use forward euler to solve the TAU ODE
-            tau += geocell_propensity*DELTA_DELTA_T;
+            tau += geocell_propensity*DELTA_DELTA_T; //TODO: we need to be careful not to oversolve
             
             // STEP(4) : advance the loop timer
-            delta_t += DELTA_DELTA_T;
+            delta_t += DELTA_DELTA_T; //TODO: make delta_t adaptive
         }
     
 
@@ -69,7 +99,7 @@ void plant_model_ssa(BucketType& bucket, GeoplexType& geoplex2D, GraphType& syst
         {
             //determine which rule to file and fire it
             auto k = bucket.first;
-            auto all_matches = microtubule_growing_end_matcher(system_graph, bucket.second); 
+            auto all_matches = microtubule_growing_end_matcher(system_graph, bucket.second);
             microtubule_rule_firing(all_matches, system_graph, k);
         }
     }
@@ -103,7 +133,10 @@ void microtubule_ode_solver(MatchType& all_matches, GraphType& system_graph, Key
 template <typename MatchType, typename GraphType, typename KeyType>
 void microtubule_rule_firing(MatchType& all_matches, GraphType& system_graph, KeyType& k)
 {
-for(auto match : all_matches)
+    std::vector<std::vector<mt_key_type>> good_matches;
+    
+    //check match integrity and only fire the good one
+    for(auto match : all_matches)
     {
        bool bad_match = false;
        //check match integrity
@@ -113,18 +146,19 @@ for(auto match : all_matches)
             if(dtag != k)
             {
                 bad_match = true;
-                //std::cout << "Bad match found, it'll be skipped!\n";
                 break;
             }
        }
-
        if(!bad_match)
        {
-            microtubule_growing_end_polymerize_rewrite(system_graph, match); 
-            break;
+           good_matches.push_back(match);
        }
     }
-
+    
+    if(good_matches.size() == 0) return; //we cant proced without good matches
+    auto rule_fired = RandomIntsBetween(0, good_matches.size())();
+    for(auto x : good_matches[rule_fired]) std::cout << x << " ";
+    microtubule_growing_end_polymerize_rewrite(system_graph, good_matches[rule_fired]); 
 }
 
 

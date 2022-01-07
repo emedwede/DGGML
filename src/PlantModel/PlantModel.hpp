@@ -47,7 +47,7 @@ namespace Cajete
             //TODO: handle the interface input
             
             std::cout << "Generating the expanded cell complex\n";
-            geoplex2D.init(2, 2, 15.0, 15.0, true); //ghosted
+            geoplex2D.init(2, 2, 5.0, 5.0, true); //ghosted
             std::cout << geoplex2D;
             
             //Save expanded cell complex graph
@@ -55,7 +55,7 @@ namespace Cajete
             writer.save(geoplex2D.getGraph(), "factory_geoplex");
 
             std::cout << "Initializing the system graph\n";
-            Plant::microtubule_unit_scatter(system_graph, geoplex2D, 500); 
+            Plant::microtubule_unit_scatter(system_graph, geoplex2D, 5); 
             
             //std::cout << "Generating the grammar\n";
             //TODO: implement a grammar setup phase

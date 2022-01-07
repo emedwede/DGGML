@@ -2,6 +2,7 @@
 #define CARTESIAN_HASH_FUNCTIONS_HPP
 
 #include <cstdint>
+#include <iostream>
 
 namespace Cajete
 {
@@ -24,7 +25,7 @@ int64_t cartesian_complex_expanded_hash2D(NodeType& node, CplexType& geoplex2D)
         if(jc > coarse_grid._ny || jc < 0)
         {
             for(auto i = 0; i < 3; i++) node_data.tagND[i] = -1;
-            //out of bounds 
+            std::cout << "out of bounds error in 2D phase\n"; 
             return -1;
         }
     }
@@ -57,6 +58,7 @@ int64_t cartesian_complex_expanded_hash1D(NodeType& node, CplexType& geoplex2D)
         {
             for(auto i = 0; i < 3; i++) node_data.tagND[i] = -1;
             //out of bounds 
+            std::cout << "out of bound error in 1D phase\n";
             return -1;
         }
     }
@@ -112,6 +114,7 @@ int64_t cartesian_complex_expanded_hash0D(NodeType& node, CplexType& geoplex2D)
         {
             for(auto i = 0; i < 3; i++) node_data.tagND[i] = -1;
             //out of bounds 
+            std::cout << "out of bounds error in 0D phase\n";
             return -1;
         }
     }

@@ -136,11 +136,11 @@ void microtubule_growing_end_polymerize_solve(GraphType& graph, MatchType& match
 {
     if(match.size() != 2) return;
     auto i = match[0]; auto j = match[1];
-
+    
     auto& x1 = graph.findNode(i)->second.getData().position;
     auto& x2 = graph.findNode(j)->second.getData().position;
     
-    auto dx = 0.0001;
+    auto dx = 0.01;
     for(auto iter = 0; iter < 3; iter++)
     {
         x1[iter] += (x1[iter] - x2[iter])*dx;  
