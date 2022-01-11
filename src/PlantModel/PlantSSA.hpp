@@ -82,7 +82,7 @@ void plant_model_ssa(BucketType& bucket, GeoplexType& geoplex2D, GraphType& syst
             std::size_t num_patterns = 2;
             std::vector<std::vector<mt_key_type>> rule_matches[num_patterns];
             rule_matches[0] = microtubule_growing_end_matcher(system_graph, bucket.second); 
-                    
+            rule_matches[1] = microtubule_retraction_end_matcher(system_graph, bucket.second);        
             // STEP(1) : sum all of the rule propensities
             //zero the geocell_propensity
             geocell_propensity = 0.0;
@@ -117,25 +117,31 @@ void microtubule_ode_solver(MatchSetType* all_matches,
         GraphType& system_graph_old,
         KeyType& k)
 {
-    for(auto match : all_matches[0])
+    for(auto i = 0; i < 2; i++) 
     {
-       bool bad_match = false;
-       //check match integrity
-       for(auto key : match)
-       {
-            auto dtag = system_graph.findNode(key)->second.getData().tagND[0];
-            if(dtag != k)
-            {
-                bad_match = true;
-                //std::cout << "Bad match found, it'll be skipped!\n";
-                break;
-            }
-       }
+        for(auto match : all_matches[i])
+        {
+           bool bad_match = false;
+           //check match integrity
+           for(auto key : match)
+           {
+                auto dtag = system_graph.findNode(key)->second.getData().tagND[0];
+                if(dtag != k)
+                {
+                    bad_match = true;
+                    //std::cout << "Bad match found, it'll be skipped!\n";
+                    break;
+                }
+           }
 
-       if(!bad_match)
-       {
-            microtubule_growing_end_polymerize_solve(system_graph, system_graph_old, match);
-       }
+           if(!bad_match)
+           {
+               if(i == 0)
+                    microtubule_growing_end_polymerize_solve(system_graph, system_graph_old, match);
+               if(i == 1)
+                   microtubule_retraction_end_depolymerize_solve(system_graph, system_graph_old, match);
+           }
+        }
     }
 }
 
