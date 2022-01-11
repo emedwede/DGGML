@@ -4,6 +4,7 @@
 #include <random>
 
 #include "PlantTypes.hpp"
+#include "MathUtils.hpp"
 
 namespace Cajete
 {
@@ -41,9 +42,31 @@ namespace Plant
             auto y_l = y_c - distribution_local(random_engine); 
             auto z_l = 0.0; //z_c - distribution_local(random_engine);
             
-            node_type node_l(i*segments, {{x_l, y_l, z_l}, {0.0, 0.0, 0.0}, negative});
-            node_type node_c(i*segments+1, {{x_c, y_c, z_c}, {0.0, 0.0, 0.0}, intermediate});
-            node_type node_r(i*segments+2, {{x_r, y_r, z_r}, {0.0, 0.0, 0.0}, positive});
+            //compute dist and unit vector
+            double p1[3] = {x_r - x_c, y_r - y_c, 0.0};
+            double p2[3] = {0.0, 0.0, 0.0};
+            auto len = calculate_distance(p1, p2);
+            double u[3] = {p1[0]/len, p1[1]/len, 0.0};
+            std::cout << "U: " << u[0] << u[1] << "\n"; 
+            node_type node_l(i*segments, 
+                    {{x_l, y_l, z_l}, 
+                    {0.0, 0.0, 0.0}, 
+                    negative, 
+                    {-1, -1, -1}, 
+                    {u[0], u[1], u[3]}});
+
+            node_type node_c(i*segments+1, 
+                    {{x_c, y_c, z_c}, 
+                    {0.0, 0.0, 0.0}, 
+                    intermediate, 
+                    {-1, -1, -1}, 
+                    {u[0], u[1], u[3]}});
+            node_type node_r(i*segments+2, 
+                    {{x_r, y_r, z_r}, 
+                    {0.0, 0.0, 0.0}, 
+                    positive, 
+                    {-1, -1, -1}, 
+                    {u[0], u[1], u[3]}});
 
             graph.addNode(node_l);
             graph.addNode(node_c);

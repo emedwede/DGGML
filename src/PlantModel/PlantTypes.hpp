@@ -25,6 +25,7 @@ namespace Cajete
             double velocity[DIM3D];
             int type; 
             int64_t tagND[3]; 
+            double unit_vec[DIM3D];
         };
     } // end namespace Plant
 }// end namespace Cajete

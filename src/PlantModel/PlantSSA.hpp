@@ -75,17 +75,21 @@ void plant_model_ssa(BucketType& bucket, GeoplexType& geoplex2D, GraphType& syst
         
         while(delta_t < DELTA && tau < exp_sample)
         {
-            // STEP(0) : find all the matches 
+            // STEP(0) : store old state and find all the matches 
+            //do a deep copy? TODO: only need to copy old state parameters
+            auto system_graph_old = system_graph;
             auto k = bucket.first;
-            auto all_matches = microtubule_growing_end_matcher(system_graph, bucket.second); 
+            std::size_t num_patterns = 2;
+            std::vector<std::vector<mt_key_type>> rule_matches[num_patterns];
+            rule_matches[0] = microtubule_growing_end_matcher(system_graph, bucket.second); 
                     
-            // STEP(1) : solve the system of ODES
-            microtubule_ode_solver(all_matches, system_graph, k); //be careful with solving, it could lead
-            //to a segmentation fault in the sorting phase if a parameter is solved out to out of bounds
-            // STEP(2) : sum all of the rule propensities
-             //zero the geocell_propensity
-            geocell_propensity = 5.0;
-
+            // STEP(1) : sum all of the rule propensities
+            //zero the geocell_propensity
+            geocell_propensity = 0.0;
+            
+            // STEP(2) : solve the system of ODES 
+            microtubule_ode_solver(rule_matches, system_graph, system_graph_old, k); 
+                        
             // STEP(3) : use forward euler to solve the TAU ODE
             tau += geocell_propensity*DELTA_DELTA_T; //TODO: we need to be careful not to oversolve
             
@@ -105,10 +109,15 @@ void plant_model_ssa(BucketType& bucket, GeoplexType& geoplex2D, GraphType& syst
     }
 }
 
-template <typename MatchType, typename GraphType, typename KeyType>
-void microtubule_ode_solver(MatchType& all_matches, GraphType& system_graph, KeyType& k)
+//be careful with solving, could lead to a segmentation fault 
+//in the sorting phase if a parameter is solved out to out of bounds
+template <typename MatchSetType, typename GraphType, typename KeyType>
+void microtubule_ode_solver(MatchSetType* all_matches, 
+        GraphType& system_graph,
+        GraphType& system_graph_old,
+        KeyType& k)
 {
-    for(auto match : all_matches)
+    for(auto match : all_matches[0])
     {
        bool bad_match = false;
        //check match integrity
@@ -125,7 +134,7 @@ void microtubule_ode_solver(MatchType& all_matches, GraphType& system_graph, Key
 
        if(!bad_match)
        {
-            microtubule_growing_end_polymerize_solve(system_graph, match);
+            microtubule_growing_end_polymerize_solve(system_graph, system_graph_old, match);
        }
     }
 }

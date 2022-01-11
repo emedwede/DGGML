@@ -5,6 +5,8 @@
 
 #include "YAGL_Graph.hpp"
 
+#include "MathUtils.hpp"
+
 #include <vector>
 
 namespace Cajete
@@ -132,19 +134,25 @@ void microtubule_growing_end_polymerize_rewrite(GraphType& graph, std::vector<mt
 }
 
 template <typename GraphType, typename MatchType>
-void microtubule_growing_end_polymerize_solve(GraphType& graph, MatchType& match)
+void microtubule_growing_end_polymerize_solve(GraphType& graph, GraphType& graph_old, MatchType& match)
 {
     if(match.size() != 2) return;
     auto i = match[0]; auto j = match[1];
+    auto& node_i_data = graph.findNode(i)->second.getData();
+    auto& node_j_data = graph.findNode(j)->second.getData();
+    auto& node_i_data_old = graph.findNode(i)->second.getData();
+    auto& node_j_data_old = graph.findNode(j)->second.getData();
+    double DELTA_DELTA_T = 0.1;
+    double LENGTH_DIV_FACTOR = 1.2;
+    double DIV_LENGTH = 2.0; // make sure this is bigger than any initialized length
+    double V_PLUS = 1.0;
+    double length_limiter = (1.0 - (calculate_distance(node_i_data_old.position, node_j_data_old.position)/DIV_LENGTH));
     
-    auto& x1 = graph.findNode(i)->second.getData().position;
-    auto& x2 = graph.findNode(j)->second.getData().position;
-    
-    auto dx = 0.01;
     for(auto iter = 0; iter < 3; iter++)
     {
-        x1[iter] += (x1[iter] - x2[iter])*dx;  
-    }
+        node_i_data.velocity[iter] = V_PLUS*node_i_data_old.unit_vec[iter]*length_limiter;
+        node_i_data.position[iter] += node_i_data_old.velocity[iter]*DELTA_DELTA_T; 
+    } 
 }
 
 
