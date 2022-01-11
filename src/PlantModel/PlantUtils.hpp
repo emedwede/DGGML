@@ -10,10 +10,11 @@ namespace Cajete
 {
 namespace Plant 
 {
-    template <typename GraphType, typename CplexType>
-    void microtubule_unit_scatter(GraphType& graph, CplexType& cplex, std::size_t num_mt = 128)
+    template <typename GraphType, typename CplexType, typename ParamType>
+    void microtubule_unit_scatter(GraphType& graph, CplexType& cplex, ParamType& settings)
     {
-        double epsilon = 1.0;
+        double epsilon_min = settings.MT_MIN_SEGMENT_INIT;
+        double epsilon_max = settings.MT_MAX_SEGMENT_INIT;
         std::random_device random_device;
         std::mt19937 random_engine(random_device());
         auto grid = cplex.getCoarseGrid();
@@ -21,14 +22,14 @@ namespace Plant
         std::cout << "Min/Max: " << cplex.min_x << " " << cplex.min_y << " " << cplex.max_x << " " << cplex.max_y << "\n";
 
         std::uniform_real_distribution<double> 
-            distribution_global(cplex.min_x+epsilon, cplex.max_x-epsilon);
+            distribution_global(cplex.min_x+epsilon_max, cplex.max_x-epsilon_max);
         std::uniform_real_distribution<double> 
-            distribution_local(epsilon/2.0, epsilon);
+            distribution_local(epsilon_min, epsilon_max);
         
         using node_type = typename GraphType::node_type;
 
         std::size_t segments = 3;
-        for(auto i = 0; i < num_mt; i++) 
+        for(auto i = 0; i < settings.NUM_MT; i++) 
         {
             auto x_c = distribution_global(random_engine);
             auto y_c = distribution_global(random_engine);

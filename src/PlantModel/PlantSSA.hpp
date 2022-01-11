@@ -43,26 +43,21 @@ auto RandomIntsBetween = [](int low, int high)
     return randomFunc;
 };
 
-
 //template <typename BucketType>
 //void plant_model_ssa(
 //        BucketType& bucket,
 //        ExpandedComplex2D<>& geoplex2D, 
 //        YAGL::Graph<mt_key_type, MT_NodeData>& system_graph) 
-template <typename BucketType, typename GeoplexType, typename GraphType>
-void plant_model_ssa(BucketType& bucket, GeoplexType& geoplex2D, GraphType& system_graph)
+template <typename BucketType, typename GeoplexType, typename GraphType, typename ParamType>
+void plant_model_ssa(BucketType& bucket, GeoplexType& geoplex2D, GraphType& system_graph, ParamType& settings)
 {
-    double DELTA = 0.1;
-    int NUM_INTERNAL_STEPS = 10;
-    double DELTA_DELTA_T = DELTA / NUM_INTERNAL_STEPS;
-
     double delta_t, exp_sample, tau, geocell_propensity;
     std::size_t events;
 
     auto all_matches = microtubule_growing_end_matcher(system_graph, bucket.second); 
     
     delta_t = 0.0; events = 0;
-    while(delta_t < DELTA) 
+    while(delta_t < settings.DELTA) 
     {
         //reset tau
         tau = 0.0;
@@ -73,7 +68,7 @@ void plant_model_ssa(BucketType& bucket, GeoplexType& geoplex2D, GraphType& syst
         exp_sample = -log(1-uniform_sample);
         
         
-        while(delta_t < DELTA && tau < exp_sample)
+        while(delta_t < settings.DELTA && tau < exp_sample)
         {
             // STEP(0) : store old state and find all the matches 
             //do a deep copy? TODO: only need to copy old state parameters
@@ -88,13 +83,13 @@ void plant_model_ssa(BucketType& bucket, GeoplexType& geoplex2D, GraphType& syst
             geocell_propensity = 0.0;
             
             // STEP(2) : solve the system of ODES 
-            microtubule_ode_solver(rule_matches, system_graph, system_graph_old, k); 
+            microtubule_ode_solver(rule_matches, system_graph, system_graph_old, k, settings); 
                         
             // STEP(3) : use forward euler to solve the TAU ODE
-            tau += geocell_propensity*DELTA_DELTA_T; //TODO: we need to be careful not to oversolve
+            tau += geocell_propensity*settings.DELTA_DELTA_T; //TODO: we need to be careful not to oversolve
             
             // STEP(4) : advance the loop timer
-            delta_t += DELTA_DELTA_T; //TODO: make delta_t adaptive
+            delta_t += settings.DELTA_DELTA_T; //TODO: make delta_t adaptive
         }
     
 
@@ -111,11 +106,12 @@ void plant_model_ssa(BucketType& bucket, GeoplexType& geoplex2D, GraphType& syst
 
 //be careful with solving, could lead to a segmentation fault 
 //in the sorting phase if a parameter is solved out to out of bounds
-template <typename MatchSetType, typename GraphType, typename KeyType>
+template <typename MatchSetType, typename GraphType, typename KeyType, typename ParamType>
 void microtubule_ode_solver(MatchSetType* all_matches, 
         GraphType& system_graph,
         GraphType& system_graph_old,
-        KeyType& k)
+        KeyType& k,
+        ParamType& settings)
 {
     for(auto i = 0; i < 2; i++) 
     {
@@ -137,9 +133,9 @@ void microtubule_ode_solver(MatchSetType* all_matches,
            if(!bad_match)
            {
                if(i == 0)
-                    microtubule_growing_end_polymerize_solve(system_graph, system_graph_old, match);
+                    microtubule_growing_end_polymerize_solve(system_graph, system_graph_old, match, settings);
                if(i == 1)
-                   microtubule_retraction_end_depolymerize_solve(system_graph, system_graph_old, match);
+                   microtubule_retraction_end_depolymerize_solve(system_graph, system_graph_old, match, settings);
            }
         }
     }

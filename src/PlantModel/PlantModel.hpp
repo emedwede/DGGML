@@ -25,6 +25,51 @@
 
 namespace Cajete
 {
+    struct Parameters
+    {
+        double DELTA;
+        double DELTA_DELTA_T;
+        int NUM_INTERNAL_STEPS;
+        std::size_t CELL_NX;
+        std::size_t CELL_NY;
+        double CELL_DX;
+        double CELL_DY;
+        bool GHOSTED;
+        std::size_t NUM_MT;
+        double MT_MIN_SEGMENT_INIT;
+        double MT_MAX_SEGMENT_INIT;
+        std::size_t NUM_STEPS;
+        double LENGTH_DIV_FACTOR;
+        double DIV_LENGTH;
+        double V_PLUS;
+        double V_MINUS;
+    };
+    
+    template <typename ParamType>
+    void set_parameters(ParamType& settings)
+    {
+        settings.DELTA = 0.1;
+        settings.NUM_INTERNAL_STEPS = 10;
+        settings.DELTA_DELTA_T = settings.DELTA / settings.NUM_INTERNAL_STEPS;
+        
+        settings.CELL_NX = 1;
+        settings.CELL_NY = 1;
+        
+        settings.CELL_DX = 25.0;
+        settings.CELL_DY = 25.0;
+        settings.GHOSTED = true;
+
+        settings.NUM_MT = 8;
+        settings.MT_MIN_SEGMENT_INIT = 0.5;
+        settings.MT_MAX_SEGMENT_INIT = 1.0;
+        settings.NUM_STEPS = 25;
+
+        settings.LENGTH_DIV_FACTOR = 1.2;
+        settings.DIV_LENGTH = 2.0;
+        settings.V_PLUS = 1.0;
+        settings.V_MINUS = settings.V_PLUS / 2.0;
+    }
+
     //Models are inteded to be designed based on the 
     //DggModel specification. Right now it's very loose
     //and capable of handling almost anything
@@ -45,18 +90,22 @@ namespace Cajete
             
             std::cout << "Parsing the input interface and setting configuration settings\n";
             //TODO: handle the interface input
-            
+            set_parameters(settings); 
+
             std::cout << "Generating the expanded cell complex\n";
-            geoplex2D.init(1, 1, 25.0, 25.0, true); //ghosted
+            geoplex2D.init(settings.CELL_NX, 
+                    settings.CELL_NY, 
+                    settings.CELL_DX, 
+                    settings.CELL_DY, 
+                    settings.GHOSTED); //ghosted
             std::cout << geoplex2D;
             
             //Save expanded cell complex graph
             Cajete::VtkFileWriter<typename Cajete::ExpandedComplex2D<>::types::graph_type> writer;
             writer.save(geoplex2D.getGraph(), "factory_geoplex");
             
-            std::size_t num_mt = 8;
             std::cout << "Initializing the system graph\n";
-            Plant::microtubule_unit_scatter(system_graph, geoplex2D, num_mt); 
+            Plant::microtubule_unit_scatter(system_graph, geoplex2D, settings); 
             
             //std::cout << "Generating the grammar\n";
             //TODO: implement a grammar setup phase
@@ -66,7 +115,6 @@ namespace Cajete
         void run() override {
             std::cout << "Running the plant model simulation\n";
             
-            std::size_t num_steps = 25;
             Cajete::VtkFileWriter<graph_type> vtk_writer;
                 
             std::string title = "results/factory_test_step_";
@@ -75,7 +123,7 @@ namespace Cajete
 
             //TODO: move the simulation algorithm to its own class
             //is this where we run the simulation?
-            for(auto i = 1; i <= num_steps; i++)
+            for(auto i = 1; i <= settings.NUM_STEPS; i++)
             {
                 std::cout << "Running step " << i << std::endl;
                 
@@ -94,7 +142,7 @@ namespace Cajete
                    auto k = bucket.first; //check to see if this is a domain to simulate
                    if(geoplex2D.getGraph().findNode(k)->second.getData().interior)
                    {
-                        plant_model_ssa(bucket, geoplex2D, system_graph);
+                        plant_model_ssa(bucket, geoplex2D, system_graph, settings);
                    }
                 }
                 
@@ -141,6 +189,7 @@ namespace Cajete
 
 
     private:
+        Parameters settings;
         CartesianComplex2D<> cplex2D;
         ExpandedComplex2D<> geoplex2D;
         YAGL::Graph<Plant::mt_key_type, Plant::MT_NodeData> system_graph; 
