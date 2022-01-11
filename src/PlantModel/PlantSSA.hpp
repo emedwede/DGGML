@@ -53,14 +53,18 @@ void plant_model_ssa(BucketType& bucket, GeoplexType& geoplex2D, GraphType& syst
 {
     double delta_t, exp_sample, tau, geocell_propensity;
     std::size_t events;
-
-    auto all_matches = microtubule_growing_end_matcher(system_graph, bucket.second); 
     
     delta_t = 0.0; events = 0;
     while(delta_t < settings.DELTA) 
     {
         //reset tau
         tau = 0.0;
+        
+        auto k = bucket.first;
+        std::size_t num_patterns = 2;
+        std::vector<std::vector<mt_key_type>> rule_matches[num_patterns];
+        rule_matches[0] = microtubule_growing_end_matcher(system_graph, bucket.second); 
+        rule_matches[1] = microtubule_retraction_end_matcher(system_graph, bucket.second); 
         
         double uniform_sample = RandomRealsBetween(0.0, 1.0)();
         
@@ -73,14 +77,10 @@ void plant_model_ssa(BucketType& bucket, GeoplexType& geoplex2D, GraphType& syst
             // STEP(0) : store old state and find all the matches 
             //do a deep copy? TODO: only need to copy old state parameters
             auto system_graph_old = system_graph;
-            auto k = bucket.first;
-            std::size_t num_patterns = 2;
-            std::vector<std::vector<mt_key_type>> rule_matches[num_patterns];
-            rule_matches[0] = microtubule_growing_end_matcher(system_graph, bucket.second); 
-            rule_matches[1] = microtubule_retraction_end_matcher(system_graph, bucket.second);        
+                   
             // STEP(1) : sum all of the rule propensities
             //zero the geocell_propensity
-            geocell_propensity = 0.0;
+            geocell_propensity = 5.0;
             
             // STEP(2) : solve the system of ODES 
             microtubule_ode_solver(rule_matches, system_graph, system_graph_old, k, settings); 
@@ -98,8 +98,7 @@ void plant_model_ssa(BucketType& bucket, GeoplexType& geoplex2D, GraphType& syst
         {
             //determine which rule to file and fire it
             auto k = bucket.first;
-            auto all_matches = microtubule_growing_end_matcher(system_graph, bucket.second);
-            microtubule_rule_firing(all_matches, system_graph, k);
+            microtubule_rule_firing(rule_matches, system_graph, k);
         }
     }
 }
@@ -142,37 +141,40 @@ void microtubule_ode_solver(MatchSetType* all_matches,
 }
 
 template <typename MatchType, typename GraphType, typename KeyType>
-void microtubule_rule_firing(MatchType& all_matches, GraphType& system_graph, KeyType& k)
+void microtubule_rule_firing(MatchType* all_matches, GraphType& system_graph, KeyType& k)
 {
     std::vector<std::vector<mt_key_type>> good_matches;
-    
-    //check match integrity and only fire the good one
-    for(auto match : all_matches)
+    for(auto i = 0; i < 2; i++) 
     {
-       bool bad_match = false;
-       //check match integrity
-       for(auto key : match)
-       {
-            auto dtag = system_graph.findNode(key)->second.getData().tagND[0];
-            if(dtag != k)
-            {
-                bad_match = true;
-                break;
-            }
-       }
-       if(!bad_match)
-       {
-           good_matches.push_back(match);
-       }
+        //check match integrity and only fire the good one
+        for(auto match : all_matches[i])
+        {
+           bool bad_match = false;
+           //check match integrity
+           for(auto key : match)
+           {
+                auto dtag = system_graph.findNode(key)->second.getData().tagND[0];
+                if(dtag != k)
+                {
+                    bad_match = true;
+                    break;
+                }
+           }
+           if(!bad_match)
+           {
+               good_matches.push_back(match);
+           }
+        }
+        
+        if(good_matches.size() == 0) return; //we cant proced without good matches
+        auto rule_fired = RandomIntsBetween(0, good_matches.size())();
+        if(i == 0)
+            microtubule_growing_end_polymerize_rewrite(system_graph, good_matches[rule_fired]); 
+        //if(i == 1)
+            //microtubule_retraction_end_depolymerize_rewrite();
     }
-    
-    if(good_matches.size() == 0) return; //we cant proced without good matches
-    auto rule_fired = RandomIntsBetween(0, good_matches.size())();
-    for(auto x : good_matches[rule_fired]) std::cout << x << " ";
-    microtubule_growing_end_polymerize_rewrite(system_graph, good_matches[rule_fired]); 
 }
-
-
+    
 } //end namespace plant 
 } //end namespace cajete
 
