@@ -163,6 +163,17 @@ void microtubule_growing_end_polymerize_rewrite(GraphType& graph, std::vector<mt
 
 }
 
+template <typename GraphType, typename ParamType>
+double microtubule_growing_end_polymerize_propensity(GraphType& graph, std::vector<mt_key_type>& match, ParamType& settings)
+{
+    auto& node_i_data = graph.findNode(match[0])->second.getData();
+    auto& node_j_data = graph.findNode(match[1])->second.getData();
+    
+    auto len = calculate_distance(node_i_data.position, node_j_data.position);
+    //double propensity = heaviside(len, settings.DIV_LENGTH);
+    double propensity = sigmoid((len/settings.DIV_LENGTH) - 1.0, settings.SIGMOID_K);
+    return propensity;
+}
 template <typename GraphType, typename MatchType, typename ParamType>
 void microtubule_growing_end_polymerize_solve(GraphType& graph, GraphType& graph_old, MatchType& match, ParamType& settings)
 {

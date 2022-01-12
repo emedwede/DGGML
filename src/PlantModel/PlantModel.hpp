@@ -43,6 +43,7 @@ namespace Cajete
         double DIV_LENGTH;
         double V_PLUS;
         double V_MINUS;
+        double SIGMOID_K;
     };
     
     template <typename ParamType>
@@ -55,8 +56,8 @@ namespace Cajete
         settings.CELL_NX = 2;
         settings.CELL_NY = 2;
         
-        settings.CELL_DX = 5.0;
-        settings.CELL_DY = 5.0;
+        settings.CELL_DX = 15.0;
+        settings.CELL_DY = 15.0;
         settings.GHOSTED = true;
 
         settings.NUM_MT = 32;
@@ -68,6 +69,8 @@ namespace Cajete
         settings.DIV_LENGTH = 2.0;
         settings.V_PLUS = 1.0;
         settings.V_MINUS = settings.V_PLUS / 2.0;
+
+        settings.SIGMOID_K = 10.0; 
     }
 
     //Models are inteded to be designed based on the 
@@ -156,7 +159,7 @@ namespace Cajete
                 for(auto& item : bucketsND) item.clear();
                 
 
-                std::cout << "Binning the graph into 1D partitions\n";
+                /*std::cout << "Binning the graph into 1D partitions\n";
                 //TODO: optimize this to work only for 1D
                 Cajete::expanded_cartesian_complex_sort_stl(bucketsND, complementND, geoplex2D, system_graph);
 
@@ -192,7 +195,7 @@ namespace Cajete
                 std::cout << "Synchronizing work\n";
                 //TODO: this is where a barrier would be for a parallel code
                 for(auto item : bucketsND) item.clear();
-               
+               */
                 std::cout << "Running the checkpointer\n";
                 //TODO: The checkpointer to save time steps
                 vtk_writer.save(system_graph, title+std::to_string(i));

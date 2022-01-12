@@ -19,6 +19,23 @@ double calculate_distance(PositionType (&p1)[N], PositionType (&p2)[N])
     return sqrt(l);
 }
 
+double sigmoid(double input, double coeffcient)
+{
+    return 1.0/(1.0+exp(-coeffcient*input));
+}
+
+double heaviside(double input, double threshold)
+{
+    if(input >= threshold)
+    {
+        return 1.0;
+    } 
+    else
+    {
+        return 0.0;
+    }
+}
+
 } //end namespace Cajete 
 
 #endif 
