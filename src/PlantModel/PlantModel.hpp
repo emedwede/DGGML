@@ -41,6 +41,7 @@ namespace Cajete
         std::size_t NUM_STEPS;
         double LENGTH_DIV_FACTOR;
         double DIV_LENGTH;
+        double DIV_LENGTH_RETRACT;
         double V_PLUS;
         double V_MINUS;
         double SIGMOID_K;
@@ -63,10 +64,11 @@ namespace Cajete
         settings.NUM_MT = 32;
         settings.MT_MIN_SEGMENT_INIT = 0.5;
         settings.MT_MAX_SEGMENT_INIT = 1.0;
-        settings.NUM_STEPS = 25;
+        settings.NUM_STEPS = 50;
 
         settings.LENGTH_DIV_FACTOR = 1.2;
         settings.DIV_LENGTH = 2.0;
+        settings.DIV_LENGTH_RETRACT = -0.2*settings.DIV_LENGTH;
         settings.V_PLUS = 1.0;
         settings.V_MINUS = settings.V_PLUS / 2.0;
 

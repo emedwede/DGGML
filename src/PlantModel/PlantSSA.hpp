@@ -87,13 +87,13 @@ void plant_model_ssa(BucketType& bucket, GeoplexType& geoplex2D, GraphType& syst
         //reset tau
         tau = 0.0;
         auto k = bucket.first;
-        std::size_t num_patterns = 2;
+        std::size_t num_patterns = 3;
         std::vector<std::vector<mt_key_type>> rule_matches[num_patterns];
         std::vector<std::vector<mt_key_type>> unfiltered_matches[num_patterns];
         unfiltered_matches[0] = microtubule_growing_end_matcher(system_graph, bucket.second); 
         unfiltered_matches[1] = microtubule_retraction_end_matcher(system_graph, bucket.second); 
+        unfiltered_matches[2] = microtubule_retraction_end_two_intermediate_matcher(system_graph, bucket.second);
         filter_matches(unfiltered_matches, rule_matches, num_patterns, system_graph, k);
-        
         double uniform_sample = RandomRealsBetween(0.0, 1.0)();
         
         //sample the exponential variable
@@ -109,13 +109,21 @@ void plant_model_ssa(BucketType& bucket, GeoplexType& geoplex2D, GraphType& syst
             // STEP(1) : sum all of the rule propensities
             //zero the geocell_propensity
             geocell_propensity = 0.0;
+            double rule_propensities[2] = {0.0, 0.0};
 
             for(auto& match : rule_matches[0])
             {
-                geocell_propensity += 
+                rule_propensities[0] += 
                     microtubule_growing_end_polymerize_propensity(system_graph, match, settings);
+                
             }
-            std::cout << "Propensity in cell " << k << ": " << geocell_propensity << "\n";
+            for(auto& match : rule_matches[2]) 
+            {
+                rule_propensities[1] += 
+                    microtubule_retraction_end_depolymerize_propensity(system_graph, match, settings);
+            }
+            geocell_propensity += rule_propensities[0] + rule_propensities[1];
+            
             // STEP(2) : solve the system of ODES 
             microtubule_ode_solver(rule_matches, system_graph, system_graph_old, k, settings); 
                         
@@ -131,8 +139,7 @@ void plant_model_ssa(BucketType& bucket, GeoplexType& geoplex2D, GraphType& syst
         if(tau > exp_sample) 
         {
             //determine which rule to file and fire it
-            auto k = bucket.first;
-            microtubule_rule_firing(rule_matches, system_graph, k);
+            microtubule_rule_firing(rule_matches, system_graph, bucket);
         }
     }
 }
@@ -158,20 +165,22 @@ void microtubule_ode_solver(MatchSetType* all_matches,
     }
 }
 
-template <typename MatchType, typename GraphType, typename KeyType>
-void microtubule_rule_firing(MatchType* all_matches, GraphType& system_graph, KeyType& k)
+template <typename MatchType, typename GraphType, typename BucketType>
+void microtubule_rule_firing(MatchType* all_matches, GraphType& system_graph, BucketType& bucket)
 {
+    auto k = bucket.first;
     //std::vector<std::vector<mt_key_type>> good_matches;
-    for(auto i = 0; i < 2; i++) 
-    {
-        if(all_matches[i].size() == 0) return; //we cant proced without good matches
-        auto rule_fired = RandomIntsBetween(0, all_matches[i].size())();
-        if(i == 0)
-            microtubule_growing_end_polymerize_rewrite(system_graph, all_matches[i][rule_fired]); 
-        //if(i == 1)
-            //microtubule_retraction_end_depolymerize_rewrite();
-    }
+    std::size_t total_size = all_matches[0].size() + all_matches[2].size();
+    if(total_size == 0) return;
+
+    auto rule_fired = RandomIntsBetween(1, total_size)();
+    if(rule_fired < all_matches[0].size())  //fire rule 0
+        microtubule_growing_end_polymerize_rewrite(system_graph, all_matches[0][rule_fired], bucket); 
+            
+    if(rule_fired > all_matches[0].size())
+        microtubule_retraction_end_depolymerize_rewrite(system_graph, all_matches[2][rule_fired - all_matches[0].size()], bucket);
 }
+
     
 } //end namespace plant 
 } //end namespace cajete
