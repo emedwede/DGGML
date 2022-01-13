@@ -96,10 +96,10 @@ void plant_model_ssa(BucketType& bucket, GeoplexType& geoplex2D, GraphType& syst
         unfiltered_matches[2] = microtubule_retraction_end_two_intermediate_matcher(system_graph, bucket.second);
         std::size_t dim = geoplex2D.getGraph().findNode(k)->second.getData().type;
         auto total_matches = 0; for(auto i = 0; i < 3; i++) total_matches += unfiltered_matches[i].size(); 
-        std::cout << "Found " << total_matches << " unfiltered matches\n";
+        //std::cout << "Found " << total_matches << " unfiltered matches\n";
         filter_matches(unfiltered_matches, rule_matches, num_patterns, system_graph, k, dim);
         total_matches = 0; for(auto i = 0; i < 3; i++) total_matches += rule_matches[i].size(); 
-        std::cout << "Found " << total_matches << " filtered matches\n";
+        //std::cout << "Found " << total_matches << " filtered matches\n";
 
 
         double uniform_sample = RandomRealsBetween(0.0, 1.0)();
@@ -200,9 +200,7 @@ void microtubule_rule_firing(MatchType* all_matches, GraphType& system_graph, Bu
     if(rule_fired == 1)
     {
         auto selected = RandomIntsBetween(0, all_matches[2].size()-1)();
-        std::cout << bucket.second.size() << "\n";
-        microtubule_retraction_end_depolymerize_rewrite(system_graph, all_matches[2][selected], bucket);    
-        std::cout << bucket.second.size() << "\n";
+        microtubule_retraction_end_depolymerize_rewrite(system_graph, all_matches[2][selected], bucket);
     }
 }
 

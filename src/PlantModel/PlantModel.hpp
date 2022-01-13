@@ -22,7 +22,7 @@
 
 #include <map>
 #include <random>
-
+#include <chrono>
 namespace Cajete
 {
     struct Parameters
@@ -50,7 +50,7 @@ namespace Cajete
     template <typename ParamType>
     void set_parameters(ParamType& settings)
     {
-        settings.DELTA = 0.1;
+        settings.DELTA = 3*0.1;
         settings.NUM_INTERNAL_STEPS = 10;
         settings.DELTA_DELTA_T = settings.DELTA / settings.NUM_INTERNAL_STEPS;
         
@@ -62,15 +62,15 @@ namespace Cajete
         settings.GHOSTED = true;
 
         settings.NUM_MT = 128;
-        settings.MT_MIN_SEGMENT_INIT = 0.5;
-        settings.MT_MAX_SEGMENT_INIT = 1.0;
-        settings.NUM_STEPS = 50;
+        settings.MT_MIN_SEGMENT_INIT = 0.25;
+        settings.MT_MAX_SEGMENT_INIT = 0.4;
+        settings.NUM_STEPS = 2;
 
         settings.LENGTH_DIV_FACTOR = 1.2;
-        settings.DIV_LENGTH = 2.0;
+        settings.DIV_LENGTH = 0.5;
         settings.DIV_LENGTH_RETRACT = -0.2*settings.DIV_LENGTH;
         settings.V_PLUS = 1.0;
-        settings.V_MINUS = settings.V_PLUS / 2.0;
+        settings.V_MINUS = settings.V_PLUS / 4.0;
 
         settings.SIGMOID_K = 10.0; 
     }
@@ -134,22 +134,37 @@ namespace Cajete
                 
                 std::map<gplex_key_type, std::vector<key_type>> bucketsND[3];
                 std::size_t complementND[3] = {0, 0, 0};
-
                 
+                double dim_time = 0.0;
+                double tot_time = 0.0;
                 std::cout << "Binning the graph into 2D partitions\n";
+                
+                auto start = std::chrono::high_resolution_clock::now();
                 //TODO: optimize this to work only for 2D
                 Cajete::expanded_cartesian_complex_sort_stl(bucketsND, complementND, geoplex2D, system_graph);
-
+                auto stop = std::chrono::high_resolution_clock::now();
+                auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(stop-start);
+                std::cout << "Sorting took " << duration.count() << " milliseconds\n";
+                dim_time += duration.count();
+                 
                 std::cout << "Running the Hybrid ODES/SSA inner loop 2D phase\n";
                 for(auto& bucket : bucketsND[0])
                 {
                    auto k = bucket.first; //check to see if this is a domain to simulate
                    if(geoplex2D.getGraph().findNode(k)->second.getData().interior)
                    {
+                        auto start = std::chrono::high_resolution_clock::now();
                         plant_model_ssa(bucket, geoplex2D, system_graph, settings);
+                        auto stop = std::chrono::high_resolution_clock::now();
+                        auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(stop-start);
+                        std::cout << "Cell " << k << " took " << duration.count() << " milliseconds\n";
+                        dim_time += duration.count();
                    }
                 }
                 
+                tot_time += dim_time;
+                std::cout << "2D took " << dim_time << " milliseconds\n";
+
                 //TODO: remove, right now connected_components should remain constant with only 
                 //growth rules
                 std::cout << "----------------\n";
@@ -159,11 +174,17 @@ namespace Cajete
                 std::cout << "Synchronizing work\n";
                 //TODO: this is where a barrier would be for a parallel code
                 for(auto& item : bucketsND) item.clear();
+               
+                dim_time = 0.0;
                 
-
                 std::cout << "Binning the graph into 1D partitions\n";
+                start = std::chrono::high_resolution_clock::now();
                 //TODO: optimize this to work only for 1D
                 Cajete::expanded_cartesian_complex_sort_stl(bucketsND, complementND, geoplex2D, system_graph);
+                stop = std::chrono::high_resolution_clock::now();
+                duration = std::chrono::duration_cast<std::chrono::milliseconds>(stop-start);
+                std::cout << "Sorting took " << duration.count() << " milliseconds\n";
+                dim_time += duration.count();
 
                 std::cout << "Running the Hybrid ODES/SSA inner loop 1D phase\n";
                 for(auto& bucket : bucketsND[1])
@@ -171,18 +192,32 @@ namespace Cajete
                    auto k = bucket.first; //check to see if this is a domain to simulate
                    if(geoplex2D.getGraph().findNode(k)->second.getData().interior)
                    {
-                        std::cout << bucket.second.size() << " objects in bucket " << k << "\n";
+                        auto start = std::chrono::high_resolution_clock::now();
                         plant_model_ssa(bucket, geoplex2D, system_graph, settings);
+                        auto stop = std::chrono::high_resolution_clock::now();
+                        auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(stop-start);
+                        std::cout << "Cell " << k << " took " << duration.count() << " milliseconds\n";
+                        dim_time += duration.count();
                    }
                 }
-               
+                
+                tot_time += dim_time;
+                std::cout << "1D took " << dim_time << " milliseconds\n";
+
                 std::cout << "Synchronizing work\n";
                 //TODO: this is where a barrier would be for a parallel code
                 for(auto& item : bucketsND) item.clear();
-                
+            
+                dim_time = 0.0;
+
                 std::cout << "Binning the graph into 0D partitions\n";
-                //TODO: optimize this so it only works for 0D
+                start = std::chrono::high_resolution_clock::now();
+                //TODO: optimize this to work only for 0D
                 Cajete::expanded_cartesian_complex_sort_stl(bucketsND, complementND, geoplex2D, system_graph);
+                stop = std::chrono::high_resolution_clock::now();
+                duration = std::chrono::duration_cast<std::chrono::milliseconds>(stop-start);
+                std::cout << "Sorting took " << duration.count() << " milliseconds\n";
+                dim_time += duration.count();
 
                 std::cout << "Running the Hybrid ODES/SSA inner loop 0D phase\n";
                 for(auto& bucket : bucketsND[2])
@@ -190,10 +225,18 @@ namespace Cajete
                    auto k = bucket.first; //check to see if this is a domain to simulate
                    if(geoplex2D.getGraph().findNode(k)->second.getData().interior)
                    {
+                        auto start = std::chrono::high_resolution_clock::now();
                         plant_model_ssa(bucket, geoplex2D, system_graph, settings);
+                        auto stop = std::chrono::high_resolution_clock::now();
+                        auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(stop-start);
+                        std::cout << "Cell " << k << " took " << duration.count() << " milliseconds\n";
+                        dim_time += duration.count();
                    }
                 }
-
+                
+                tot_time += dim_time;
+                std::cout << "0D took " << dim_time << " milliseconds\n";
+        
                 std::cout << "Synchronizing work\n";
                 //TODO: this is where a barrier would be for a parallel code
                 for(auto item : bucketsND) item.clear();
@@ -201,6 +244,8 @@ namespace Cajete
                 std::cout << "Running the checkpointer\n";
                 //TODO: The checkpointer to save time steps
                 vtk_writer.save(system_graph, title+std::to_string(i));
+
+                std::cout << "Total dimensional time is " << tot_time << " milliseconds\n";
             }
             std::cout << "-----------------------------------------------------------------------\n\n";
 
