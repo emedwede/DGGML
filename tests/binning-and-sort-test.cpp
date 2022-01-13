@@ -6,6 +6,7 @@
 #include "CartesianHashFunctions.hpp"
 #include "MemoryManager.hpp"
 #include "Histobucket.hpp"
+#include "PlantModel.hpp"
 #include "PlantTypes.hpp"
 #include "PlantUtils.hpp"
 #include "YAGL_Graph.hpp"
@@ -188,14 +189,17 @@ TEST_CASE("VectorMap ND Test", "[binning-test]")
     using key_type = typename Cajete::ExpandedComplex2D<>::graph_type::key_type;
     using cplex_type = Cajete::ExpandedComplex2D<>;
     
+    Cajete::Parameters settings;
+    Cajete::set_parameters(settings);
     cplex_type geoplex2D;
     geoplex2D.init(2, 2, 15.0, 15.0, true); //ghosted
     auto& geoplex_graph = geoplex2D.getGraph();
     
     std::size_t ppmt = 3; std::size_t num_mt = 5'000; std::size_t total_objects = ppmt*num_mt;
+    settings.NUM_MT = num_mt;
     YAGL::Graph<Cajete::Plant::mt_key_type, Cajete::Plant::MT_NodeData> system_graph; 
     std::cout << "Initializing system graph\n";
-    Cajete::Plant::microtubule_unit_scatter(system_graph, geoplex2D, num_mt); 
+    Cajete::Plant::microtubule_unit_scatter(system_graph, geoplex2D, settings); 
     
     std::cout << "Sorting the graph\n";
     std::map<key_type, std::vector<key_type>> bucketsND[3];
