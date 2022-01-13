@@ -35,7 +35,7 @@ auto RandomRealsBetween = [](double low, double high)
 auto RandomIntsBetween = [](int low, int high)
 {
     auto randomFunc = 
-        [distribution_ = std::uniform_real_distribution<double>(low, high),
+        [distribution_ = std::uniform_int_distribution<int>(low, high),
          random_engine_ = std::mt19937{std::random_device{}() }]() mutable
        {
            return distribution_(random_engine_);
@@ -44,7 +44,7 @@ auto RandomIntsBetween = [](int low, int high)
 };
 
 template <typename GraphType, typename MatchSetType>
-void filter_matches(MatchSetType* unfiltered, MatchSetType* filtered, std::size_t N, GraphType& system_graph, std::size_t k)
+void filter_matches(MatchSetType* unfiltered, MatchSetType* filtered, std::size_t N, GraphType& system_graph, std::size_t k, std::size_t dim)
 {
     for(auto i = 0; i < N; i++) 
     {
@@ -54,13 +54,14 @@ void filter_matches(MatchSetType* unfiltered, MatchSetType* filtered, std::size_
             //check match integrity
             for(auto key : match)
             {
-                auto dtag = system_graph.findNode(key)->second.getData().tagND[0];
+                auto dtag = system_graph.findNode(key)->second.getData().tagND[dim];
                 if(dtag != k)
                 {
                      bad_match = true;
                      break;
                 }
-            }
+            } 
+
             if(!bad_match)
             {
                 filtered[i].push_back(match);
@@ -93,7 +94,14 @@ void plant_model_ssa(BucketType& bucket, GeoplexType& geoplex2D, GraphType& syst
         unfiltered_matches[0] = microtubule_growing_end_matcher(system_graph, bucket.second); 
         unfiltered_matches[1] = microtubule_retraction_end_matcher(system_graph, bucket.second); 
         unfiltered_matches[2] = microtubule_retraction_end_two_intermediate_matcher(system_graph, bucket.second);
-        filter_matches(unfiltered_matches, rule_matches, num_patterns, system_graph, k);
+        std::size_t dim = geoplex2D.getGraph().findNode(k)->second.getData().type;
+        auto total_matches = 0; for(auto i = 0; i < 3; i++) total_matches += unfiltered_matches[i].size(); 
+        std::cout << "Found " << total_matches << " unfiltered matches\n";
+        filter_matches(unfiltered_matches, rule_matches, num_patterns, system_graph, k, dim);
+        total_matches = 0; for(auto i = 0; i < 3; i++) total_matches += rule_matches[i].size(); 
+        std::cout << "Found " << total_matches << " filtered matches\n";
+
+
         double uniform_sample = RandomRealsBetween(0.0, 1.0)();
         
         //sample the exponential variable
@@ -109,24 +117,27 @@ void plant_model_ssa(BucketType& bucket, GeoplexType& geoplex2D, GraphType& syst
             // STEP(1) : sum all of the rule propensities
             //zero the geocell_propensity
             geocell_propensity = 0.0;
+            
             double rule_propensities[2] = {0.0, 0.0};
-
+            
             for(auto& match : rule_matches[0])
             {
                 rule_propensities[0] += 
                     microtubule_growing_end_polymerize_propensity(system_graph, match, settings);
                 
             }
+            
             for(auto& match : rule_matches[2]) 
             {
                 rule_propensities[1] += 
                     microtubule_retraction_end_depolymerize_propensity(system_graph, match, settings);
             }
+            
             geocell_propensity += rule_propensities[0] + rule_propensities[1];
             
             // STEP(2) : solve the system of ODES 
             microtubule_ode_solver(rule_matches, system_graph, system_graph_old, k, settings); 
-                        
+
             // STEP(3) : use forward euler to solve the TAU ODE
             tau += geocell_propensity*settings.DELTA_DELTA_T; //TODO: we need to be careful not to oversolve
             
@@ -172,16 +183,29 @@ void microtubule_rule_firing(MatchType* all_matches, GraphType& system_graph, Bu
     //std::vector<std::vector<mt_key_type>> good_matches;
     std::size_t total_size = all_matches[0].size() + all_matches[2].size();
     if(total_size == 0) return;
+    
+    int rule_fired;
+    if(all_matches[0].size() == 0)
+        rule_fired = 1;
+    else if(all_matches[2].size() == 0)
+        rule_fired = 0;
+    else 
+        rule_fired = RandomIntsBetween(0, 1)();
 
-    auto rule_fired = RandomIntsBetween(1, total_size)();
-    if(rule_fired < all_matches[0].size())  //fire rule 0
-        microtubule_growing_end_polymerize_rewrite(system_graph, all_matches[0][rule_fired], bucket); 
-            
-    if(rule_fired > all_matches[0].size())
-        microtubule_retraction_end_depolymerize_rewrite(system_graph, all_matches[2][rule_fired - all_matches[0].size()], bucket);
+    if(rule_fired == 0)  //fire rule 0
+    {
+        auto selected = RandomIntsBetween(0, all_matches[0].size()-1)();
+        microtubule_growing_end_polymerize_rewrite(system_graph, all_matches[0][selected], bucket); 
+    }       
+    if(rule_fired == 1)
+    {
+        auto selected = RandomIntsBetween(0, all_matches[2].size()-1)();
+        std::cout << bucket.second.size() << "\n";
+        microtubule_retraction_end_depolymerize_rewrite(system_graph, all_matches[2][selected], bucket);    
+        std::cout << bucket.second.size() << "\n";
+    }
 }
 
-    
 } //end namespace plant 
 } //end namespace cajete
 

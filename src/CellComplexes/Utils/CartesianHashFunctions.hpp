@@ -34,7 +34,7 @@ int64_t cartesian_complex_expanded_hash2D(NodeType& node, CplexType& geoplex2D)
     
     auto cardinal = fine_grid.cardinalLatticeIndex(ic, jc);
     
-    for(auto i = 0; i < 3; i++) node_data.tagND[i] = cardinal;
+    node_data.tagND[0] = cardinal;
 
     return cardinal;
 }
@@ -65,7 +65,7 @@ int64_t cartesian_complex_expanded_hash1D(NodeType& node, CplexType& geoplex2D)
     geoplex2D.coarse_cell_to_fine_lattice(ic, jc);
     
     auto cardinal = fine_grid.cardinalLatticeIndex(ic, jc);
-    
+    node_data.tagND[0] = cardinal;
     for(auto jter = geoplex_graph.out_neighbors_begin(cardinal); jter != geoplex_graph.out_neighbors_end(cardinal); jter++)
     {
         auto jd = *jter;
@@ -86,12 +86,12 @@ int64_t cartesian_complex_expanded_hash1D(NodeType& node, CplexType& geoplex2D)
             {
                 if(ymin <= yp && yp <= ymax)
                 {
+                    node_data.tagND[1] = jd;
                     return jd; //returns the expanded 1D cell is belongs to
                 }
             }
         }
-    }
-    
+    } 
     return cardinal; //returns the 2D cell it belongs to
 }
 
@@ -122,6 +122,8 @@ int64_t cartesian_complex_expanded_hash0D(NodeType& node, CplexType& geoplex2D)
     
     auto cardinal = fine_grid.cardinalLatticeIndex(ic, jc);
     
+    node_data.tagND[0] = cardinal;
+
     for(auto jter = geoplex_graph.out_neighbors_begin(cardinal); jter != geoplex_graph.out_neighbors_end(cardinal); jter++)
     {
         auto jd = *jter;
@@ -152,6 +154,7 @@ int64_t cartesian_complex_expanded_hash0D(NodeType& node, CplexType& geoplex2D)
                     {
                         if(ymin <= yp && yp <= ymax)
                         {
+                            node_data.tagND[2] = kd; 
                             return kd; //returns the expanded 0D cell is belongs to
                         }
                     }

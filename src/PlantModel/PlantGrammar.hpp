@@ -55,7 +55,7 @@ std::vector<std::vector<mt_key_type>> microtubule_growing_end_matcher(GraphType&
     for(auto i : bucket)
     {
         auto itype = graph.findNode(i)->second.getData().type;
-
+        
         if(itype != positive) continue;
         
         for(auto jter = graph.out_neighbors_begin(i); jter != graph.out_neighbors_end(i); jter++)
@@ -179,9 +179,10 @@ void microtubule_growing_end_polymerize_rewrite(GraphType& graph, std::vector<mt
 {
     if(match.size() != 2) return;
     auto i = match[0]; auto j = match[1];
-
+    
     //TODO: need a unique key generator
     typename GraphType::key_type key = graph.numNodes()+1;
+    
     while(graph.findNode(key) != graph.node_list_end()) key++; //TODO: fix, very greedy
     double x3[3];
 
@@ -206,7 +207,6 @@ void microtubule_growing_end_polymerize_rewrite(GraphType& graph, std::vector<mt
     graph.removeEdge(i, j);
     graph.addEdge(i, key);
     graph.addEdge(j, key);
-
 }
 
 template <typename GraphType, typename ParamType>
@@ -307,6 +307,7 @@ void microtubule_retraction_end_depolymerize_rewrite(GraphType& graph, std::vect
     auto node_j = graph.findNode(j)->second;
     graph.removeNode(node_j);
     graph.addEdge(i, k);
+    
     std::size_t found;
     for(auto iter = 0; iter < bucket.second.size(); iter++)
     {
@@ -318,7 +319,6 @@ void microtubule_retraction_end_depolymerize_rewrite(GraphType& graph, std::vect
     }
     //TODO: improve this O(N) search
     bucket.second.erase(bucket.second.begin()+found); //remove from bucket
-
 }
 
 

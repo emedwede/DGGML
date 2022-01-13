@@ -54,14 +54,14 @@ namespace Cajete
         settings.NUM_INTERNAL_STEPS = 10;
         settings.DELTA_DELTA_T = settings.DELTA / settings.NUM_INTERNAL_STEPS;
         
-        settings.CELL_NX = 2;
-        settings.CELL_NY = 2;
+        settings.CELL_NX = 3;
+        settings.CELL_NY = 3;
         
         settings.CELL_DX = 15.0;
         settings.CELL_DY = 15.0;
         settings.GHOSTED = true;
 
-        settings.NUM_MT = 32;
+        settings.NUM_MT = 128;
         settings.MT_MIN_SEGMENT_INIT = 0.5;
         settings.MT_MAX_SEGMENT_INIT = 1.0;
         settings.NUM_STEPS = 50;
@@ -161,7 +161,7 @@ namespace Cajete
                 for(auto& item : bucketsND) item.clear();
                 
 
-                /*std::cout << "Binning the graph into 1D partitions\n";
+                std::cout << "Binning the graph into 1D partitions\n";
                 //TODO: optimize this to work only for 1D
                 Cajete::expanded_cartesian_complex_sort_stl(bucketsND, complementND, geoplex2D, system_graph);
 
@@ -171,20 +171,20 @@ namespace Cajete
                    auto k = bucket.first; //check to see if this is a domain to simulate
                    if(geoplex2D.getGraph().findNode(k)->second.getData().interior)
                    {
+                        std::cout << bucket.second.size() << " objects in bucket " << k << "\n";
                         plant_model_ssa(bucket, geoplex2D, system_graph, settings);
                    }
                 }
                
                 std::cout << "Synchronizing work\n";
                 //TODO: this is where a barrier would be for a parallel code
-                for(auto item : bucketsND) item.clear();
-
+                for(auto& item : bucketsND) item.clear();
+                
                 std::cout << "Binning the graph into 0D partitions\n";
                 //TODO: optimize this so it only works for 0D
                 Cajete::expanded_cartesian_complex_sort_stl(bucketsND, complementND, geoplex2D, system_graph);
 
                 std::cout << "Running the Hybrid ODES/SSA inner loop 0D phase\n";
-                //TODO: implement the inner loop of the SSA for 0D
                 for(auto& bucket : bucketsND[2])
                 {
                    auto k = bucket.first; //check to see if this is a domain to simulate
@@ -197,7 +197,7 @@ namespace Cajete
                 std::cout << "Synchronizing work\n";
                 //TODO: this is where a barrier would be for a parallel code
                 for(auto item : bucketsND) item.clear();
-               */
+        
                 std::cout << "Running the checkpointer\n";
                 //TODO: The checkpointer to save time steps
                 vtk_writer.save(system_graph, title+std::to_string(i));

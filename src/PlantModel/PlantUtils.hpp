@@ -35,11 +35,11 @@ namespace Plant
             auto y_c = distribution_global(random_engine);
             auto z_c = 0.0; //distribution_global(random_engine);
 
-            auto x_r = x_c + distribution_local(random_engine);
+            auto x_r = x_c; //+ distribution_local(random_engine);
             auto y_r = y_c + distribution_local(random_engine); 
             auto z_r = 0.0; //z_c + distribution_local(random_engine);
             
-            auto x_l = x_c - distribution_local(random_engine);
+            auto x_l = x_c; // - distribution_local(random_engine);
             auto y_l = y_c - distribution_local(random_engine); 
             auto z_l = 0.0; //z_c - distribution_local(random_engine);
             

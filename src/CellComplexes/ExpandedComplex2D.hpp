@@ -21,7 +21,7 @@ namespace Cajete
            void init(std::size_t n, std::size_t m, double d_x, double d_y, bool g_c = false)
            {
                 CartesianComplex2D<GraphType>::init(n, m, d_x, d_y, g_c);
-                epsilon = 0.1*dx; //currently default epsilon, make it a parameter related to reaction distance later
+                epsilon = 0.2*dx; //currently default epsilon, make it a parameter related to reaction distance later
                 build();
            }
 
