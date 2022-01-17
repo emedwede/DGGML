@@ -24,6 +24,7 @@ if (USE_DEBUG)
 endif()
 
 include_directories(dependencies/YAGL/include)
+include_directories(thirdparty/simdjson)
 include_directories(src)
 include_directories(src/PlantModel)
 include_directories(src/Grids)
@@ -35,3 +36,4 @@ add_subdirectory(src)
 add_subdirectory(tests)
 add_subdirectory(tools)
 add_subdirectory(simulators)
+
