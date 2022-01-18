@@ -17,13 +17,13 @@ namespace Cajete
 
         ~DggFactory() {}
         
-        model_type* create(interface_type interface) const {
+        model_type* create(interface_type& interface) const {
             //allocate the model using my memory manager wrapper
             return Cajete::MemoryManager::allocate_std<model_type>(1);
             //return new model_type(); 
         }
 
-        void execute(interface_type interface) const {
+        void execute(interface_type& interface) const {
             model_type* model = this->create(interface);
 
             model->init(interface);

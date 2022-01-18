@@ -47,32 +47,33 @@ namespace Cajete
         double SIGMOID_K;
     };
     
-    template <typename ParamType>
-    void set_parameters(ParamType& settings)
+    template <typename ParamType, typename InterfaceType>
+    void set_parameters(ParamType& settings, InterfaceType& interface)
     {
-        settings.DELTA = 3*0.1;
-        settings.NUM_INTERNAL_STEPS = 10;
+        settings.DELTA = double(interface["SETTINGS"]["DELTA"]);
+        settings.NUM_INTERNAL_STEPS = std::size_t(interface["SETTINGS"]["NUM_INTERNAL_STEPS"]);
         settings.DELTA_DELTA_T = settings.DELTA / settings.NUM_INTERNAL_STEPS;
         
-        settings.CELL_NX = 3;
-        settings.CELL_NY = 3;
+        settings.CELL_NX = std::size_t(interface["SETTINGS"]["CELL_NX"]); 
+        settings.CELL_NY = std::size_t(interface["SETTINGS"]["CELL_NY"]);
         
-        settings.CELL_DX = 15.0;
-        settings.CELL_DY = 15.0;
-        settings.GHOSTED = true;
+        settings.CELL_DX = double(interface["SETTINGS"]["CELL_DX"]);
+        settings.CELL_DY = double(interface["SETTINGS"]["CELL_DY"]);
+        settings.GHOSTED = bool(interface["SETTINGS"]["GHOSTED"]);
 
-        settings.NUM_MT = 128;
-        settings.MT_MIN_SEGMENT_INIT = 0.25;
-        settings.MT_MAX_SEGMENT_INIT = 0.4;
-        settings.NUM_STEPS = 2;
+        settings.NUM_MT = std::size_t(interface["SETTINGS"]["NUM_MT"]);
+        settings.MT_MIN_SEGMENT_INIT = double(interface["SETTINGS"]["MT_MIN_SEGMENT_INIT"]);
+        settings.MT_MAX_SEGMENT_INIT = double(interface["SETTINGS"]["MT_MAX_SEGMENT_INIT"]);
+        settings.NUM_STEPS = std::size_t(interface["SETTINGS"]["NUM_STEPS"]);
 
-        settings.LENGTH_DIV_FACTOR = 1.2;
-        settings.DIV_LENGTH = 0.5;
-        settings.DIV_LENGTH_RETRACT = -0.2*settings.DIV_LENGTH;
-        settings.V_PLUS = 1.0;
-        settings.V_MINUS = settings.V_PLUS / 4.0;
+        settings.LENGTH_DIV_FACTOR = double(interface["SETTINGS"]["LENGTH_DIV_FACTOR"]);
+        settings.DIV_LENGTH = double(interface["SETTINGS"]["DIV_LENGTH"]);
+        settings.DIV_LENGTH_RETRACT = double(interface["SETTINGS"]["DIV_LENGTH_RETRACT"]);
+        settings.V_PLUS = double(interface["SETTINGS"]["V_PLUS"]);
+        settings.V_MINUS = double(interface["SETTINGS"]["V_MINUS"]);
 
-        settings.SIGMOID_K = 10.0; 
+        settings.SIGMOID_K = double(interface["SETTINGS"]["SIGMOID_K"]);
+        
     }
 
     //Models are inteded to be designed based on the 
@@ -87,15 +88,17 @@ namespace Cajete
         using graph_type = YAGL::Graph<key_type, data_type>;
         using node_type = typename graph_type::node_type;
 
-        void init(InterfaceType interface) override {
+        void init(InterfaceType& interface) override {
 
             std::cout << "\n\n-----------------------------------------------------------------------\n";
             //TODO: implement timers to monitor start up phase
             std::cout << "Initializing the plant model simulation\n";
             
+            std::cout << interface["SETTINGS"]["NUM_STEPS"] << " interface num steps\n";
+
             std::cout << "Parsing the input interface and setting configuration settings\n";
             //TODO: handle the interface input
-            set_parameters(settings); 
+            set_parameters(settings, interface); 
 
             std::cout << "Generating the expanded cell complex\n";
             geoplex2D.init(settings.CELL_NX, 

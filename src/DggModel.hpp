@@ -16,7 +16,7 @@ class DggModel {
 
         virtual ~DggModel() = default;
 
-        virtual void init(InterfaceType interface) = 0;
+        virtual void init(InterfaceType& interface) = 0;
 
         virtual void run() = 0;
 };
