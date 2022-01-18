@@ -23,10 +23,14 @@
 #include <map>
 #include <random>
 #include <chrono>
+#include <string>
+#include <filesystem>
+
 namespace Cajete
 {
     struct Parameters
     {
+        std::string EXPERIMENT_NAME;
         double DELTA;
         double DELTA_DELTA_T;
         int NUM_INTERNAL_STEPS;
@@ -50,6 +54,9 @@ namespace Cajete
     template <typename ParamType, typename InterfaceType>
     void set_parameters(ParamType& settings, InterfaceType& interface)
     {
+        std::string_view temp = interface["META"]["EXPERIMENT"];
+        settings.EXPERIMENT_NAME = static_cast<std::string>(temp);
+        std::cout << settings.EXPERIMENT_NAME << "+++\n";
         settings.DELTA = double(interface["SETTINGS"]["DELTA"]);
         settings.NUM_INTERNAL_STEPS = std::size_t(interface["SETTINGS"]["NUM_INTERNAL_STEPS"]);
         settings.DELTA_DELTA_T = settings.DELTA / settings.NUM_INTERNAL_STEPS;
@@ -94,12 +101,15 @@ namespace Cajete
             //TODO: implement timers to monitor start up phase
             std::cout << "Initializing the plant model simulation\n";
             
-            std::cout << interface["SETTINGS"]["NUM_STEPS"] << " interface num steps\n";
-
             std::cout << "Parsing the input interface and setting configuration settings\n";
             //TODO: handle the interface input
             set_parameters(settings, interface); 
-
+            
+            std::cout << "Cleaning up old results folder if it exists and creating a new one\n";
+            results_dir_name = settings.EXPERIMENT_NAME + "_results";
+            std::filesystem::remove_all(results_dir_name);
+            std::filesystem::create_directory(results_dir_name);
+            
             std::cout << "Generating the expanded cell complex\n";
             geoplex2D.init(settings.CELL_NX, 
                     settings.CELL_NY, 
@@ -110,7 +120,7 @@ namespace Cajete
             
             //Save expanded cell complex graph
             Cajete::VtkFileWriter<typename Cajete::ExpandedComplex2D<>::types::graph_type> writer;
-            writer.save(geoplex2D.getGraph(), "factory_geoplex");
+            writer.save(geoplex2D.getGraph(), results_dir_name+"/factory_geoplex");
             
             std::cout << "Initializing the system graph\n";
             Plant::microtubule_unit_scatter(system_graph, geoplex2D, settings); 
@@ -125,7 +135,7 @@ namespace Cajete
             
             Cajete::VtkFileWriter<graph_type> vtk_writer;
                 
-            std::string title = "results/factory_test_step_";
+            std::string title = results_dir_name+"/simulation_step_";
             std::cout << "Saving the initial state of the system graph\n";
             vtk_writer.save(system_graph, title+std::to_string(0));
 
@@ -260,6 +270,7 @@ namespace Cajete
         CartesianComplex2D<> cplex2D;
         ExpandedComplex2D<> geoplex2D;
         YAGL::Graph<Plant::mt_key_type, Plant::MT_NodeData> system_graph; 
+        std::string results_dir_name;
 };
 
 } //end namespace Cajete

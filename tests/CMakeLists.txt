@@ -1,7 +1,9 @@
+configure_file("settings.json" "settings.json" COPYONLY)
+
 #TODO: Upgrade testing workflow
 add_executable(memory-manager-test tests_main.cpp memory-manager-test.cpp)
 #add_executable(graph-test tests_main.cpp graph-test.cpp)
-add_executable(factory-test tests_main.cpp factory-test.cpp)
+add_executable(factory-test tests_main.cpp factory-test.cpp  ../thirdparty/simdjson/simdjson.cpp)
 add_executable(file-writer-test tests_main.cpp file-writer-test.cpp)
 add_executable(grid-test tests_main.cpp grid-test.cpp)
 add_executable(cplex-test tests_main.cpp cplex-test.cpp)

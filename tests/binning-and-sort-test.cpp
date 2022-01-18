@@ -190,7 +190,6 @@ TEST_CASE("VectorMap ND Test", "[binning-test]")
     using cplex_type = Cajete::ExpandedComplex2D<>;
     
     Cajete::Parameters settings;
-    Cajete::set_parameters(settings);
     cplex_type geoplex2D;
     geoplex2D.init(2, 2, 15.0, 15.0, true); //ghosted
     auto& geoplex_graph = geoplex2D.getGraph();
