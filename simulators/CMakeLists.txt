@@ -1,6 +1,7 @@
 file(MAKE_DIRECTORY "results")
 
 configure_file("settings.json" "settings.json" COPYONLY)
+configure_file("quick_vis.sh" "quick_vis.sh" COPYONLY)
 
 add_executable(mt_dgg_simulator mt_dgg_simulator.cpp ../thirdparty/simdjson/simdjson.cpp)
 
