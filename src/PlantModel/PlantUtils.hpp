@@ -43,8 +43,7 @@ namespace Plant
 
             auto theta = distribution_angle(random_engine);
             auto seg_len = distribution_local(random_engine);
-            std::cout << x_c << " " << y_c << "\n"; 
-            std::cout << "Theta: " << theta << "\n";
+
             auto x_s = 0.0;
             auto y_s = seg_len;
             auto x_r_t = x_s*cos(theta) + y_s*sin(theta);
@@ -52,11 +51,11 @@ namespace Plant
             auto x_r = x_c + x_r_t;
             auto y_r = y_c + y_r_t;
             auto z_r = 0.0;
-            std::cout << x_r_t << " " << y_r_t << "\n";
+
             auto x_l = x_c - (x_r - x_c);
             auto y_l = y_c - (y_r - y_c);
             auto z_l = 0.0;
-            std::cout << x_l << " " << y_l << "\n";
+            
             //compute dist and unit vector
             double p1[3] = {x_r - x_c, y_r - y_c, 0.0};
             double p2[3] = {0.0, 0.0, 0.0};
