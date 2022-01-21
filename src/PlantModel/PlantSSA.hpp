@@ -142,8 +142,11 @@ void plant_model_ssa(BucketType& bucket, GeoplexType& geoplex2D, GraphType& syst
             
             for(auto& match : rule_matches[4])
             {
-                rule_propensities[2] += microtubule_collision_crossover_propensity(system_graph, match, settings);
+                auto p = microtubule_collision_crossover_propensity(system_graph, match, settings);
+                rule_propensities[2] += p;
+                if(p > 0.0) std::cout << "Collision Propensity: " << p << "\n";
             }
+            
             geocell_propensity += rule_propensities[0] + rule_propensities[1] + rule_propensities[2];
             
             // STEP(2) : solve the system of ODES 
