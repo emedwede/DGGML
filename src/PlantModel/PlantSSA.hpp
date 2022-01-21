@@ -88,19 +88,26 @@ void plant_model_ssa(BucketType& bucket, GeoplexType& geoplex2D, GraphType& syst
         //reset tau
         tau = 0.0;
         auto k = bucket.first;
-        std::size_t num_patterns = 3;
+        std::size_t num_patterns = 5;
         std::vector<std::vector<mt_key_type>> rule_matches[num_patterns];
         std::vector<std::vector<mt_key_type>> unfiltered_matches[num_patterns];
         unfiltered_matches[0] = microtubule_growing_end_matcher(system_graph, bucket.second); 
         unfiltered_matches[1] = microtubule_retraction_end_matcher(system_graph, bucket.second); 
         unfiltered_matches[2] = microtubule_retraction_end_two_intermediate_matcher(system_graph, bucket.second);
+        unfiltered_matches[3] = wildcard_intermediate_wildcard_matcher(system_graph, bucket.second);
         std::size_t dim = geoplex2D.getGraph().findNode(k)->second.getData().type;
-        auto total_matches = 0; for(auto i = 0; i < 3; i++) total_matches += unfiltered_matches[i].size(); 
+        auto total_matches = 0; for(auto i = 0; i < num_patterns; i++) total_matches += unfiltered_matches[i].size(); 
         //std::cout << "Found " << total_matches << " unfiltered matches\n";
         filter_matches(unfiltered_matches, rule_matches, num_patterns, system_graph, k, dim);
-        total_matches = 0; for(auto i = 0; i < 3; i++) total_matches += rule_matches[i].size(); 
+        total_matches = 0; for(auto i = 0; i < num_patterns; i++) total_matches += rule_matches[i].size(); 
         //std::cout << "Found " << total_matches << " filtered matches\n";
 
+        std::cout << "Total growing ends: " << rule_matches[0].size() << "\n";
+        std::cout << "Total wildcard_matches: " << rule_matches[3].size() << "\n";
+
+        collision_match_refinement(system_graph, 3.0*settings.DIV_LENGTH, rule_matches[0], rule_matches[3], rule_matches[4]);
+
+        std::cout << "Total potential collisions: " << rule_matches[4].size() << "\n";
 
         double uniform_sample = RandomRealsBetween(0.0, 1.0)();
         
@@ -118,7 +125,7 @@ void plant_model_ssa(BucketType& bucket, GeoplexType& geoplex2D, GraphType& syst
             //zero the geocell_propensity
             geocell_propensity = 0.0;
             
-            double rule_propensities[2] = {0.0, 0.0};
+            double rule_propensities[3] = {0.0, 0.0, 0.0};
             
             for(auto& match : rule_matches[0])
             {
@@ -133,7 +140,11 @@ void plant_model_ssa(BucketType& bucket, GeoplexType& geoplex2D, GraphType& syst
                     microtubule_retraction_end_depolymerize_propensity(system_graph, match, settings);
             }
             
-            geocell_propensity += rule_propensities[0] + rule_propensities[1];
+            for(auto& match : rule_matches[4])
+            {
+                rule_propensities[2] += microtubule_collision_crossover_propensity(system_graph, match, settings);
+            }
+            geocell_propensity += rule_propensities[0] + rule_propensities[1] + rule_propensities[2];
             
             // STEP(2) : solve the system of ODES 
             microtubule_ode_solver(rule_matches, system_graph, system_graph_old, k, settings); 
@@ -181,26 +192,31 @@ void microtubule_rule_firing(MatchType* all_matches, GraphType& system_graph, Bu
 {
     auto k = bucket.first;
     //std::vector<std::vector<mt_key_type>> good_matches;
-    std::size_t total_size = all_matches[0].size() + all_matches[2].size();
+    std::size_t total_size = all_matches[0].size() + all_matches[2].size() + all_matches[4].size();
     if(total_size == 0) return;
     
-    int rule_fired;
-    if(all_matches[0].size() == 0)
-        rule_fired = 1;
-    else if(all_matches[2].size() == 0)
-        rule_fired = 0;
-    else 
-        rule_fired = RandomIntsBetween(0, 1)();
+    int rule_fired; std::vector<std::size_t> rules_in_play;
+    
+    if(all_matches[0].size() != 0) rules_in_play.push_back(0);
+    if(all_matches[2].size() != 0) rules_in_play.push_back(2);   
+    if(all_matches[4].size() != 0) rules_in_play.push_back(4);
+    
+    rule_fired = RandomIntsBetween(0, rules_in_play.size()-1)();
 
-    if(rule_fired == 0)  //fire rule 0
+    if(rules_in_play[rule_fired] == 0)  //fire rule 0
     {
         auto selected = RandomIntsBetween(0, all_matches[0].size()-1)();
         microtubule_growing_end_polymerize_rewrite(system_graph, all_matches[0][selected], bucket); 
     }       
-    if(rule_fired == 1)
+    if(rules_in_play[rule_fired] == 2)
     {
         auto selected = RandomIntsBetween(0, all_matches[2].size()-1)();
         microtubule_retraction_end_depolymerize_rewrite(system_graph, all_matches[2][selected], bucket);
+    }
+    if(rules_in_play[rule_fired] == 4)
+    {
+        auto selected = RandomIntsBetween(0, all_matches[4].size()-1)();
+        std::cout << "-----Firing the collision rule-----\n";
     }
 }
 

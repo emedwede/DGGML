@@ -140,6 +140,47 @@ std::vector<std::vector<mt_key_type>> wildcard_intermediate_wildcard_matcher(Gra
     return matches;
 }
 
+template <typename GraphType, typename MatchType>
+void collision_match_refinement(GraphType& graph, double cutoff, MatchType& growing_matches, MatchType& wildcard_matches, MatchType& collision_matches)
+{
+    std::vector<mt_key_type> temp; temp.reserve(6);
+
+    //loop over all the matches and ensure that they
+    //do not share any keys
+    for (auto& match_g : growing_matches)
+    {
+        for(auto& match_w : wildcard_matches)
+        {
+            bool valid = true;
+            for(auto& i : match_g)
+            {
+                for(auto& j : match_w)
+                {
+                    if(i == j) valid = false;
+                }
+            }
+            //as long as the match is valid, return it only if it passes
+            //the distance check
+            if(valid) 
+            {
+                //we choose to anchor the subgraph match at a point in order to compute the 
+                //nearness
+                auto& anchor_pos_g = graph.findNode(match_g[0])->second.getData().position;
+                auto& anchor_pos_w = graph.findNode(match_w[0])->second.getData().position;
+
+                auto distance = calculate_distance(anchor_pos_g, anchor_pos_w);
+                if(distance <= cutoff)
+                {
+                    for(auto& i : match_g) temp.push_back(i);
+                    for(auto& j : match_w) temp.push_back(j);
+                    collision_matches.push_back(temp);
+                    temp.clear();    
+                }
+            }
+        }
+    }
+}
+
 //Simple first attempt a polymerizing
 template <typename GraphType>
 void microtubule_growing_end_polymerize_rewrite(GraphType& graph, std::vector<mt_key_type>& match)
@@ -232,6 +273,13 @@ double microtubule_retraction_end_depolymerize_propensity(GraphType& graph, std:
     auto len = calculate_distance(node_i_data.position, node_j_data.position);
     //double propensity = heaviside(-len, settings.DIV_LENGTH_RETRACT);
     double propensity = sigmoid(-(len/settings.DIV_LENGTH), settings.SIGMOID_K);
+    return propensity;
+}
+
+template <typename GraphType, typename ParamType>
+double microtubule_collision_crossover_propensity(GraphType& graph, std::vector<mt_key_type>& match, ParamType& settings)
+{
+    double propensity = 0.0;
     return propensity;
 }
 
