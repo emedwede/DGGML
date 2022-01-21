@@ -8,6 +8,7 @@
 #include "MemoryManager.hpp"
 #include "PlantTypes.hpp"
 #include "PlantGrammar.hpp"
+#include "ExpandedComplex2D.hpp"
 
 #include <vector> 
 
@@ -73,10 +74,10 @@ void initialize_plant_test_graph(graph_type& graph)
 void print_matches(std::vector<std::vector<key_type>>& matches)
 {
     std::cout << "Found " << matches.size() << " Matches: \n";
-    for(auto m : matches)
+    for(auto& m : matches)
     {
         std::cout << "\t{ ";
-        for(auto v : m)
+        for(auto& v : m)
         {
             std::cout << v << " ";
         } std::cout << "}\n";
@@ -164,12 +165,26 @@ auto heuristic_search_junctions_extended(graph_type& graph)
     return matches;
 }
 
+template<typename GraphType, typename BucketType>
+void push_to_bucket(GraphType& graph, BucketType& bucket)
+{
+    for(auto iter = graph.node_list_begin(); iter != graph.node_list_end(); iter++)
+    {
+        bucket.push_back(iter->first);
+    }
+}
+
 TEST_CASE("Heuristic Growing End Matcher Test", "[heuristic-matcher-test]")
 {
     graph_type graph;
+    
     initialize_plant_test_graph(graph);
+    
+    std::vector<Cajete::Plant::mt_key_type> bucket;
 
-    auto matches = Cajete::Plant::microtubule_growing_end_matcher(graph);
+    push_to_bucket(graph, bucket);
+
+    auto matches = Cajete::Plant::microtubule_growing_end_matcher(graph, bucket);
     print_matches(matches);
     REQUIRE(matches.size() == 2);
     
@@ -194,14 +209,32 @@ TEST_CASE("Heuristic Retraction End Matcher Test", "[heuristic-matcher-test]")
 {
     graph_type graph;
     initialize_plant_test_graph(graph);
+    
+    std::vector<Cajete::Plant::mt_key_type> bucket;
 
-    auto matches = Cajete::Plant::microtubule_retraction_end_matcher(graph);
+    push_to_bucket(graph, bucket);
+
+    auto matches = Cajete::Plant::microtubule_retraction_end_matcher(graph, bucket);
     print_matches(matches);
     REQUIRE(matches.size() == 3);
 
     
 }
 
+TEST_CASE("Heuristic Wildcard Matcher Test", "[heuristic-matcher-test]")
+{
+    graph_type graph;
+    initialize_plant_test_graph(graph);
+
+    std::vector<Cajete::Plant::mt_key_type> bucket;
+
+    push_to_bucket(graph, bucket);
+
+    auto matches = Cajete::Plant::wildcard_intermediate_wildcard_matcher(graph, bucket);
+    print_matches(matches);
+
+    REQUIRE(matches.size() == 32);
+}
 
 TEST_CASE("Heuristic Extended Junction Matcher Test", "[heuristic-matcher-test]")
 {  

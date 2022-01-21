@@ -141,6 +141,34 @@ std::vector<std::vector<mt_key_type>> microtubule_retraction_end_two_intermediat
     return matches;
 }
 
+//search for wild carded match types
+template <typename GraphType, typename BucketType>
+std::vector<std::vector<mt_key_type>> wildcard_intermediate_wildcard_matcher(GraphType& graph, BucketType& bucket)
+{
+    std::vector<std::vector<mt_key_type>> matches;
+    for(auto& i : bucket)
+    {
+        auto& itype = graph.findNode(i)->second.getData().type;
+
+        if(itype != intermediate) continue;
+
+        for(auto jter = graph.out_neighbors_begin(i); jter != graph.out_neighbors_end(i); jter++)
+        {
+            auto j = *jter;
+            //since we are doing a wildcard, the type of j does not matter
+            for(auto kter = graph.out_neighbors_begin(i); kter != graph.out_neighbors_end(i); kter++)
+            {
+                auto k = *kter;
+                if(j != k) //as long as j and k are not the same, we have a match 
+                {
+                    matches.push_back({{i, j, k}});
+                }
+            }
+        }
+    }
+
+    return matches;
+}
 
 // search for retracting ends 
 template <typename GraphType>
