@@ -114,7 +114,16 @@ void plant_model_ssa(BucketType& bucket, GeoplexType& geoplex2D, GraphType& syst
         //sample the exponential variable
         exp_sample = -log(1-uniform_sample);
         
-        
+        //the sums of the particular rules propensities
+        double rule_propensities[3] = {0.0, 0.0, 0.0};
+            
+        //the propensities calculated for a particular rule
+        std::vector<double> prop[3];
+        prop[0].reserve(rule_matches[0].size());
+        prop[1].reserve(rule_matches[2].size());
+        prop[2].reserve(rule_matches[4].size());
+
+
         while(delta_t < settings.DELTA && tau < exp_sample)
         {
             // STEP(0) : store old state and find all the matches 
@@ -125,26 +134,35 @@ void plant_model_ssa(BucketType& bucket, GeoplexType& geoplex2D, GraphType& syst
             //zero the geocell_propensity
             geocell_propensity = 0.0;
             
-            double rule_propensities[3] = {0.0, 0.0, 0.0};
-            
+            //reset
+            for(auto i = 0; i < 3; i++)
+            {
+                rule_propensities[i] = 0.0; 
+                prop[i].clear();
+            }
+
             for(auto& match : rule_matches[0])
             {
-                rule_propensities[0] += 
+                auto rho = 
                     microtubule_growing_end_polymerize_propensity(system_graph, match, settings);
+                rule_propensities[0] += rho;
+                prop[0].push_back(rho);
                 
             }
             
             for(auto& match : rule_matches[2]) 
             {
-                rule_propensities[1] += 
+                auto rho = 
                     microtubule_retraction_end_depolymerize_propensity(system_graph, match, settings);
-            }
+                rule_propensities[1] += rho;
+                prop[1].push_back(rho);
+             }
             
             for(auto& match : rule_matches[4])
             {
-                auto p = microtubule_collision_crossover_propensity(system_graph, match, settings);
-                rule_propensities[2] += p;
-                if(p > 0.0) std::cout << "Collision Propensity: " << p << "\n";
+                auto rho = microtubule_collision_crossover_propensity(system_graph, match, settings);
+                rule_propensities[2] += rho;
+                prop[2].push_back(rho);
             }
             
             geocell_propensity += rule_propensities[0] + rule_propensities[1] + rule_propensities[2];
@@ -164,7 +182,7 @@ void plant_model_ssa(BucketType& bucket, GeoplexType& geoplex2D, GraphType& syst
         if(tau > exp_sample) 
         {
             //determine which rule to file and fire it
-            microtubule_rule_firing(rule_matches, system_graph, bucket);
+            microtubule_rule_firing(rule_matches, system_graph, bucket, prop);
         }
     }
 }
@@ -190,35 +208,75 @@ void microtubule_ode_solver(MatchSetType* all_matches,
     }
 }
 
-template <typename MatchType, typename GraphType, typename BucketType>
-void microtubule_rule_firing(MatchType* all_matches, GraphType& system_graph, BucketType& bucket)
+template <typename MatchType, typename GraphType, typename BucketType, typename PropensityType>
+void microtubule_rule_firing(MatchType* all_matches, GraphType& system_graph, BucketType& bucket, PropensityType& prop)
 {
     auto k = bucket.first;
     //std::vector<std::vector<mt_key_type>> good_matches;
     std::size_t total_size = all_matches[0].size() + all_matches[2].size() + all_matches[4].size();
     if(total_size == 0) return;
     
-    int rule_fired; std::vector<std::size_t> rules_in_play;
+    double sums[3] = 
+        {std::accumulate(prop[0].begin(), prop[0].end(), 0.0),
+         std::accumulate(prop[1].begin(), prop[1].end(), 0.0),
+         std::accumulate(prop[2].begin(), prop[2].end(), 0.0)};
     
-    if(all_matches[0].size() != 0) rules_in_play.push_back(0);
-    if(all_matches[2].size() != 0) rules_in_play.push_back(2);   
-    if(all_matches[4].size() != 0) rules_in_play.push_back(4);
-    
-    rule_fired = RandomIntsBetween(0, rules_in_play.size()-1)();
+    double globSum = sums[0] + sums[1] + sums[2];
 
-    if(rules_in_play[rule_fired] == 0)  //fire rule 0
+    int ruleFired = 0; 
+    auto sample = RandomRealsBetween(0.0, 1.0)();
+    double progress = sample*globSum - sums[ruleFired];
+    
+    while(progress > 0.0)
     {
-        auto selected = RandomIntsBetween(0, all_matches[0].size()-1)();
-        microtubule_growing_end_polymerize_rewrite(system_graph, all_matches[0][selected], bucket); 
-    }       
-    if(rules_in_play[rule_fired] == 2)
-    {
-        auto selected = RandomIntsBetween(0, all_matches[2].size()-1)();
-        microtubule_retraction_end_depolymerize_rewrite(system_graph, all_matches[2][selected], bucket);
+        ruleFired++;
+        progress -= sums[ruleFired];
     }
-    if(rules_in_play[rule_fired] == 4)
+    std::cout << "Rule " << ruleFired << " has been selected to fire\n";
+    std::vector<std::size_t> rules_in_play;
+    
+    rules_in_play.push_back(0);
+    rules_in_play.push_back(2);   
+    rules_in_play.push_back(4);
+
+    if(rules_in_play[ruleFired] == 0)  //fire rule 0
     {
-        auto selected = RandomIntsBetween(0, all_matches[4].size()-1)();
+        std::cout << "Sum 0: " << sums[ruleFired] << "\n";
+        double local_sample = RandomRealsBetween(0.0, 1.0)();
+        int eventFired = 0;
+        double local_progress = local_sample*sums[ruleFired] - prop[ruleFired][eventFired];
+        while(local_progress > 0.0) 
+        {
+            eventFired++;
+            local_progress -= prop[ruleFired][eventFired];
+        }
+        microtubule_growing_end_polymerize_rewrite(system_graph, all_matches[0][eventFired], bucket); 
+    }       
+    if(rules_in_play[ruleFired] == 2)
+    {
+        std::cout << "Sum 2: " << sums[ruleFired] << "\n";
+        double local_sample = RandomRealsBetween(0.0, 1.0)();
+        int eventFired = 0;
+        double local_progress = local_sample*sums[ruleFired] - prop[ruleFired][eventFired];
+        while(local_progress > 0.0) 
+        {
+            eventFired++;
+            local_progress -= prop[ruleFired][eventFired];
+        }
+
+        microtubule_retraction_end_depolymerize_rewrite(system_graph, all_matches[2][eventFired], bucket);
+    }
+    if(rules_in_play[ruleFired] == 4)
+    {
+        std::cout << "Sum 4: " << sums[ruleFired] << "\n";
+        double local_sample = RandomRealsBetween(0.0, 1.0)();
+        int eventFired = 0;
+        double local_progress = local_sample*sums[ruleFired] - prop[ruleFired][eventFired];
+        while(local_progress > 0.0) 
+        {
+            eventFired++;
+            local_progress -= prop[ruleFired][eventFired];
+        }
         std::cout << "-----Firing the collision rule-----\n";
     }
 }
