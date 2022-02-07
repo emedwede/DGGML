@@ -173,8 +173,12 @@ void plant_model_ssa(BucketType& bucket, GeoplexType& geoplex2D, GraphType& syst
             // STEP(3) : use forward euler to solve the TAU ODE
             tau += geocell_propensity*settings.DELTA_DELTA_T; //TODO: we need to be careful not to oversolve
             
+            //the step adapts based on propensity or systems fastest dynamic
+            double dt_min = std::min(1.0/(10.0*geocell_propensity), settings.DELTA_DELTA_T);
+            
             // STEP(4) : advance the loop timer
-            delta_t += settings.DELTA_DELTA_T; //TODO: make delta_t adaptive
+            delta_t += dt_min; //TODO: make delta_t adaptive
+            std::cout << "[ t , dt ]: [ " << delta_t << " , " << dt_min << " ]\n";
         }
     
 

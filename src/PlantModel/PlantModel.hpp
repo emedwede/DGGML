@@ -49,6 +49,8 @@ namespace Cajete
         double V_PLUS;
         double V_MINUS;
         double SIGMOID_K;
+        double TOTAL_TIME;
+        double MAXIMAL_REACTION_RADIUS;
     };
     
     template <typename ParamType, typename InterfaceType>
@@ -56,12 +58,9 @@ namespace Cajete
     {
         std::string_view temp = interface["META"]["EXPERIMENT"];
         settings.EXPERIMENT_NAME = static_cast<std::string>(temp);
+
         std::cout << settings.EXPERIMENT_NAME << "+++\n";
-        settings.DELTA = double(interface["SETTINGS"]["DELTA"]);
-        settings.NUM_INTERNAL_STEPS = std::size_t(interface["SETTINGS"]["NUM_INTERNAL_STEPS"]);
-        settings.DELTA_DELTA_T = settings.DELTA / settings.NUM_INTERNAL_STEPS;
-        
-        settings.CELL_NX = std::size_t(interface["SETTINGS"]["CELL_NX"]); 
+                settings.CELL_NX = std::size_t(interface["SETTINGS"]["CELL_NX"]); 
         settings.CELL_NY = std::size_t(interface["SETTINGS"]["CELL_NY"]);
         
         settings.CELL_DX = double(interface["SETTINGS"]["CELL_DX"]);
@@ -71,7 +70,6 @@ namespace Cajete
         settings.NUM_MT = std::size_t(interface["SETTINGS"]["NUM_MT"]);
         settings.MT_MIN_SEGMENT_INIT = double(interface["SETTINGS"]["MT_MIN_SEGMENT_INIT"]);
         settings.MT_MAX_SEGMENT_INIT = double(interface["SETTINGS"]["MT_MAX_SEGMENT_INIT"]);
-        settings.NUM_STEPS = std::size_t(interface["SETTINGS"]["NUM_STEPS"]);
 
         settings.LENGTH_DIV_FACTOR = double(interface["SETTINGS"]["LENGTH_DIV_FACTOR"]);
         settings.DIV_LENGTH = double(interface["SETTINGS"]["DIV_LENGTH"]);
@@ -81,6 +79,18 @@ namespace Cajete
 
         settings.SIGMOID_K = double(interface["SETTINGS"]["SIGMOID_K"]);
         
+        settings.MAXIMAL_REACTION_RADIUS = settings.DIV_LENGTH*2.0;
+        
+        //Simulate until the specified unit time
+        settings.TOTAL_TIME = double(interface["SETTINGS"]["TOTAL_TIME"]);
+        settings.NUM_INTERNAL_STEPS = 10;
+        //Delta should be big, but not to big. In this case, the maximum amount of time it would
+        //take one MT to grow a single unit of MT
+        settings.DELTA = 
+            0.25*settings.MAXIMAL_REACTION_RADIUS / std::max(settings.V_PLUS, settings.V_MINUS);
+        //The internal step of the solver should be at least this small
+        settings.DELTA_DELTA_T = settings.DELTA / settings.NUM_INTERNAL_STEPS; 
+        settings.NUM_STEPS = settings.TOTAL_TIME / settings.DELTA;
     }
 
     //Models are inteded to be designed based on the 
