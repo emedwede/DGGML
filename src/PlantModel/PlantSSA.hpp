@@ -94,7 +94,7 @@ void plant_model_ssa(BucketType& bucket, GeoplexType& geoplex2D, GraphType& syst
         unfiltered_matches[0] = microtubule_growing_end_matcher(system_graph, bucket.second); 
         unfiltered_matches[1] = microtubule_retraction_end_matcher(system_graph, bucket.second); 
         unfiltered_matches[2] = microtubule_retraction_end_two_intermediate_matcher(system_graph, bucket.second);
-        unfiltered_matches[3] = wildcard_intermediate_wildcard_matcher(system_graph, bucket.second);
+        unfiltered_matches[3] = three_intermediate_matcher(system_graph, bucket.second);
         std::size_t dim = geoplex2D.getGraph().findNode(k)->second.getData().type;
         auto total_matches = 0; for(auto i = 0; i < num_patterns; i++) total_matches += unfiltered_matches[i].size(); 
         //std::cout << "Found " << total_matches << " unfiltered matches\n";
@@ -167,6 +167,9 @@ void plant_model_ssa(BucketType& bucket, GeoplexType& geoplex2D, GraphType& syst
             
             geocell_propensity += rule_propensities[0] + rule_propensities[1] + rule_propensities[2];
             
+            std::cout << "Growing propensity: " << rule_propensities[0] << "\n";
+            std::cout << "Retract propensity: " << rule_propensities[1] << "\n";
+            std::cout << "Crossin propensity: " << rule_propensities[2] << "\n"; 
             // STEP(2) : solve the system of ODES 
             microtubule_ode_solver(rule_matches, system_graph, system_graph_old, k, settings); 
 
@@ -186,7 +189,7 @@ void plant_model_ssa(BucketType& bucket, GeoplexType& geoplex2D, GraphType& syst
         if(tau > exp_sample) 
         {
             //determine which rule to file and fire it
-            microtubule_rule_firing(rule_matches, system_graph, bucket, prop);
+            microtubule_rule_firing(rule_matches, system_graph, bucket, prop, settings);
         }
     }
 }
@@ -212,8 +215,8 @@ void microtubule_ode_solver(MatchSetType* all_matches,
     }
 }
 
-template <typename MatchType, typename GraphType, typename BucketType, typename PropensityType>
-void microtubule_rule_firing(MatchType* all_matches, GraphType& system_graph, BucketType& bucket, PropensityType& prop)
+template <typename MatchType, typename GraphType, typename BucketType, typename PropensityType, typename ParamType>
+void microtubule_rule_firing(MatchType* all_matches, GraphType& system_graph, BucketType& bucket, PropensityType& prop, ParamType& settings)
 {
     auto k = bucket.first;
     //std::vector<std::vector<mt_key_type>> good_matches;
@@ -282,6 +285,8 @@ void microtubule_rule_firing(MatchType* all_matches, GraphType& system_graph, Bu
             local_progress -= prop[ruleFired][eventFired];
         }
         std::cout << "-----Firing the collision rule-----\n";
+        //int a; std::cin >> a;
+        microtubule_crossover_rewrite(system_graph, all_matches[4][eventFired], bucket, settings);
     }
 }
 

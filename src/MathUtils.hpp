@@ -84,6 +84,26 @@ void set_unit_vector(PositionType (&p1)[N], PositionType (&p2)[N], PositionType 
         u[i] /= len;
 }
 
+template<typename PositionType, std::size_t N>
+void paramaterized_intersection(
+        PositionType (&p1)[N], 
+        PositionType (&p2)[N],
+        PositionType (&p3)[N],
+        PositionType (&u)[N], 
+        PositionType (&s)[2])
+{
+    //Calculation copied from mathematica, TODO: make more efficient 
+    s[0] = (-p2[1]*p3[0]+p1[1]*(-p2[0]+p3[0])+p1[0]*(p2[1]-p3[1])+p2[0]*p3[1])
+            /
+            (-p2[1]*u[0]+p3[1]*u[0]+(p2[0]-p3[0]*u[1]));
+    
+    s[1] = (p1[1]*u[0]-p2[1]*u[0]+(-p1[0]+p2[0])*u[1])
+            /
+            (-p2[1]*u[0]+p3[1]*u[0]+(p2[0]-p3[0])*u[1]);
+
+}
+
+
 double cross_product(double a1, double a2, double b1, double b2)
 {
     return ( ( a1 * b2 ) - ( a2 * b1 ) );

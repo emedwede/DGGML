@@ -111,6 +111,42 @@ std::vector<std::vector<mt_key_type>> microtubule_retraction_end_two_intermediat
     return matches;
 }
 
+template <typename GraphType, typename BucketType>
+std::vector<std::vector<mt_key_type>> three_intermediate_matcher(GraphType& graph, BucketType& bucket)
+{
+    std::vector<std::vector<mt_key_type>> matches;
+    for(auto& i : bucket)
+    {
+        auto& itype = graph.findNode(i)->second.getData().type;
+
+        if(itype != intermediate) continue;
+
+        for(auto jter = graph.out_neighbors_begin(i); jter != graph.out_neighbors_end(i); jter++)
+        {
+            auto j = *jter;
+            
+            auto& jtype = graph.findNode(j)->second.getData().type;
+            if(jtype != intermediate) continue;
+
+            //since we are doing a wildcard, the type of j does not matter
+            for(auto kter = graph.out_neighbors_begin(i); kter != graph.out_neighbors_end(i); kter++)
+            {
+                auto k = *kter;
+                
+                auto& ktype = graph.findNode(k)->second.getData().type;
+                if(ktype != intermediate) continue;
+
+                if(j != k) //as long as j and k are not the same, we have a match 
+                {
+                    matches.push_back({{i, j, k}});
+                }
+            }
+        }
+    }
+
+    return matches;
+}
+
 //search for wild carded match types
 template <typename GraphType, typename BucketType>
 std::vector<std::vector<mt_key_type>> wildcard_intermediate_wildcard_matcher(GraphType& graph, BucketType& bucket)
@@ -139,6 +175,7 @@ std::vector<std::vector<mt_key_type>> wildcard_intermediate_wildcard_matcher(Gra
 
     return matches;
 }
+
 
 template <typename GraphType, typename MatchType>
 void collision_match_refinement(GraphType& graph, double cutoff, MatchType& growing_matches, MatchType& wildcard_matches, MatchType& collision_matches)
@@ -276,6 +313,69 @@ double microtubule_retraction_end_depolymerize_propensity(GraphType& graph, std:
     return propensity;
 }
 
+template <typename GraphType, typename BucketType, typename ParamType>
+void microtubule_crossover_rewrite(GraphType& graph, std::vector<mt_key_type>& match, BucketType& bucket, ParamType& settings)
+{
+    //TODO: need a unique key generator
+    typename GraphType::key_type key = graph.numNodes()+1;
+    
+    while(graph.findNode(key) != graph.node_list_end()) key++; //TODO: fix, very greedy
+    
+    auto x1 = match[2]; //intermediate wildcard rule
+    auto x2 = match[3]; //wildcard left relative to intermediate
+    auto x3 = match[4]; //wildcard right relative to intermediate
+    auto x4 = match[1]; //intermediate growing end
+    auto x5 = match[0]; //positive growing end
+   
+    //find all the node data
+    auto& dat1 = graph.findNode(x1)->second.getData();
+    auto& dat2 = graph.findNode(x2)->second.getData();
+    auto& dat3 = graph.findNode(x3)->second.getData();
+    auto& dat4 = graph.findNode(x4)->second.getData();
+    auto& dat5 = graph.findNode(x5)->second.getData();
+   
+    //get references to position vector
+    auto& pos1 = dat1.position;
+    auto& pos2 = dat2.position;
+    auto& pos3 = dat3.position;
+    auto& pos4 = dat4.position;
+    auto& pos5 = dat5.position;
+
+    //get references to unit vectors
+    auto& u1 = dat1.unit_vec;
+    auto& u2 = dat2.unit_vec;
+    auto& u3 = dat3.unit_vec;
+    auto& u4 = dat4.unit_vec;
+    auto& u5 = dat5.unit_vec;
+   
+    set_unit_vector(pos1, pos5, u5);
+
+    //place x5 past the point of the intersecting node, keep unit vec the same
+    pos5[0] += (abs(pos5[0]-pos1[0]) + settings.MT_MIN_SEGMENT_INIT)*u5[0];
+    pos5[1] += (abs(pos5[1]-pos1[1]) + settings.MT_MIN_SEGMENT_INIT)*u5[1];
+     
+    //create an intermediate node between the new x5 and x1
+    int64_t k = bucket.first;
+    graph.addNode({key, 
+            {{pos1[0]+(pos5[0]-pos1[0])/2.0, pos1[1]+(pos5[1]-pos1[1])/2.0, pos1[2]+(pos5[2]-pos1[2])/2.0}, 
+            {0, 0, 0}, 
+            intermediate, 
+            {k, k, k}, 
+            {u5[0], u5[1], u5[2]}}});
+    bucket.second.push_back(key);
+
+    //rewrite x5s connections and connect up the new node, key
+    graph.removeEdge(x5, x4);
+    graph.addEdge(x5, key);
+    graph.addEdge(key, x1);
+    graph.addEdge(x1, x4);
+    
+    set_unit_vector(pos4, pos1, u4);
+    //chage the type of x1
+    dat1.type = junction;
+}
+
+
 template <typename GraphType, typename ParamType>
 double microtubule_collision_crossover_propensity(GraphType& graph, std::vector<mt_key_type>& match, ParamType& settings)
 {
@@ -305,10 +405,48 @@ double microtubule_collision_crossover_propensity(GraphType& graph, std::vector<
     auto& u3 = dat3.unit_vec;
     auto& u4 = dat4.unit_vec;
     auto& u5 = dat5.unit_vec;
+    
+    double sol_l[2];
+    double sol_r[2];
+    double theta_l = unit_dot_product(u5, u2);
+    double theta_r = unit_dot_product(u5, u3);
 
-    double propensity = 0.0; 
+    double propensity = 0.0;
 
-    double gamma_l = 
+    if(theta_l != 1.0 && theta_l != -1.0)
+    {
+        paramaterized_intersection(pos5, pos2, pos1, u5, sol_l);
+        
+        if(sol_l[0] > 0.0 && sol_l[1] >= 0.0 && sol_l[1] <= 1.0) 
+        {
+            propensity = 
+                exp(-pow(calculate_distance(pos1, pos5), 2.0) / pow(0.5*settings.DIV_LENGTH, 2.0)); 
+            return propensity;
+        } 
+    } 
+    else if(theta_r != 1.0 && theta_r != -1.0)
+    {
+        paramaterized_intersection(pos5, pos3, pos1, u5, sol_r);
+        
+        if(sol_r[0] > 0.0 && sol_r[1] >= 0.0 && sol_r[1] <= 1.0) 
+        {
+            propensity = 
+                exp(-pow(calculate_distance(pos1, pos5), 2.0) / pow(0.5*settings.DIV_LENGTH, 2.0));
+            return propensity;
+        }
+    } 
+    else 
+    {
+        propensity = 0.0;
+        return propensity;
+    }
+
+
+
+    //propensity = exp(-pow(calculate_distance(pos1, pos5), 2.0) / pow(0.5*settings.DIV_LENGTH, 2.0));
+    
+    return propensity;
+    /*double gamma_l = 
         cross_product((pos1[0]-pos2[0]), (pos1[1]-pos2[1]), (pos2[0]-pos5[0]), (pos2[1]-pos5[1]))
         /
         cross_product((pos1[0]-pos2[0]), (pos1[1]-pos2[1]), u5[0], u5[1]);
@@ -365,9 +503,9 @@ double microtubule_collision_crossover_propensity(GraphType& graph, std::vector<
         in_range = 1;
     }
 
-    propensity = e*in_range;//*crit_out_range 
+    propensity = e*in_range;//crit_out_range 
     
-    return propensity;
+    return propensity;*/
 }
 
 template <typename GraphType, typename MatchType, typename ParamType>
