@@ -289,6 +289,25 @@ void microtubule_growing_end_polymerize_rewrite(GraphType& graph, std::vector<mt
     graph.addEdge(j, key);
 }
 
+template <typename GraphType, typename BucketType>
+void microtubule_positive_to_negative_rewrite(GraphType& graph, std::vector<mt_key_type>& match, BucketType& bucket)
+{
+    auto& data = graph.findNode(match[0])->second.getData();
+    //change type and switch directions
+    data.type = negative;
+    for(int i = 0; i < 3; i++) data.unit_vec[i] *= -1;
+}
+
+template <typename GraphType, typename BucketType>
+void microtubule_negative_to_positive_rewrite(GraphType& graph, std::vector<mt_key_type>& match, BucketType& bucket)
+{
+    auto& data = graph.findNode(match[0])->second.getData();
+    //change type and switch directions
+    data.type = positive;
+    for(int i = 0; i < 3; i++) data.unit_vec[i] *= -1;
+}
+
+
 template <typename GraphType, typename ParamType>
 double microtubule_growing_end_polymerize_propensity(GraphType& graph, std::vector<mt_key_type>& match, ParamType& settings)
 {
@@ -311,6 +330,18 @@ double microtubule_retraction_end_depolymerize_propensity(GraphType& graph, std:
     //double propensity = heaviside(-len, settings.DIV_LENGTH_RETRACT);
     double propensity = sigmoid(-(len/settings.DIV_LENGTH), settings.SIGMOID_K);
     return propensity;
+}
+
+template <typename GraphType, typename ParamType>
+double microtubule_positive_to_negative_propensity(GraphType& graph, std::vector<mt_key_type>& match, ParamType& settings)
+{
+    return 0.2;
+}
+
+template <typename GraphType, typename ParamType>
+double microtubule_negative_to_positive_propensity(GraphType& graph, std::vector<mt_key_type>& match, ParamType& settings)
+{
+    return 0.2;
 }
 
 template <typename GraphType, typename BucketType, typename ParamType>
@@ -347,39 +378,12 @@ void microtubule_crossover_rewrite(GraphType& graph, std::vector<mt_key_type>& m
     auto& u3 = dat3.unit_vec;
     auto& u4 = dat4.unit_vec;
     auto& u5 = dat5.unit_vec;
-   std::cout << "pos5: { ";
-        for(int i = 0; i < 3; i++)
-        {
-            std::cout << pos5[i] << " ";
-        } std::cout << "}\n";
-std::cout << "pos1: { ";
-        for(int i = 0; i < 3; i++)
-        {
-            std::cout << pos1[i] << " ";
-        } std::cout << "}\n";
-std::cout << "pos2: { ";
-        for(int i = 0; i < 3; i++)
-        {
-            std::cout << pos2[i] << " ";
-        } std::cout << "}\n";
-std::cout << "pos3: { ";
-        for(int i = 0; i < 3; i++)
-        {
-            std::cout << pos3[i] << " ";
-        } std::cout << "}\n";
 
-std::cout << "u5: { ";
-        for(int i = 0; i < 3; i++)
-        {
-            std::cout << u5[i] << " ";
-        } std::cout << "}\n";
-
-
-    set_unit_vector(pos1, pos5, u5);
+    set_unit_vector(pos1, pos4, u5);
 
     //place x5 past the point of the intersecting node, keep unit vec the same
-    pos5[0] += (abs(pos5[0]-pos1[0]) + settings.MT_MIN_SEGMENT_INIT)*u5[0];
-    pos5[1] += (abs(pos5[1]-pos1[1]) + settings.MT_MIN_SEGMENT_INIT)*u5[1];
+    pos5[0] = pos1[0] + settings.MT_MIN_SEGMENT_INIT*u5[0];
+    pos5[1] = pos1[1] + settings.MT_MIN_SEGMENT_INIT*u5[1];
      
     //create an intermediate node between the new x5 and x1
     int64_t k = bucket.first;
@@ -397,9 +401,64 @@ std::cout << "u5: { ";
     graph.addEdge(key, x1);
     graph.addEdge(x1, x4);
     
-    set_unit_vector(pos4, pos1, u4);
+    set_unit_vector(pos1, pos4, u4);
     //chage the type of x1
     dat1.type = junction;
+}
+
+template <typename GraphType, typename BucketType, typename ParamType>
+void microtubule_zippering_rewrite(GraphType& graph, std::vector<mt_key_type>& match, BucketType& bucket, ParamType& settings)
+{
+    auto x1 = match[2]; //intermediate wildcard rule
+    auto x4 = match[1]; //intermediate growing end
+    auto x5 = match[0]; //positive growing end
+   
+    //find all the node data
+    auto& dat1 = graph.findNode(x1)->second.getData();
+    auto& dat4 = graph.findNode(x4)->second.getData();
+   
+    //get references to position vector
+    auto& pos1 = dat1.position;
+    auto& pos4 = dat4.position;
+
+    //get references to unit vectors
+    auto& u4 = dat4.unit_vec;
+    
+    //remove the positive node and connect it's intermediate to
+    //the threeway juntion
+    graph.removeNode(graph.findNode(x5)->second);
+    graph.addEdge(x1, x4);
+    set_unit_vector(pos1, pos4, u4);
+    
+    dat1.type = zipper;
+    
+    //remove deleted node from the bucket
+    std::size_t found;
+    for(auto iter = 0; iter < bucket.second.size(); iter++)
+    {
+        if(bucket.second[iter] == x5)
+        {
+            found = iter;
+            break;    
+        }
+    }
+    //TODO: improve this O(N) search
+    bucket.second.erase(bucket.second.begin()+found); //remove from bucket
+
+}
+
+
+template <typename GraphType, typename BucketType, typename ParamType>
+void microtubule_catastrophe_rewrite(GraphType& graph, std::vector<mt_key_type>& match, BucketType& bucket, ParamType& settings)
+{
+    auto x5 = match[0]; //positive growing end
+    auto& dat5 = graph.findNode(x5)->second.getData();
+    auto& pos5 = dat5.position;
+    auto& u5 = dat5.unit_vec;
+    
+    //change the positive type to negative and reverse the unit vector
+    dat5.type = negative;
+    u5[0] = -u5[0]; u5[1] = -u5[1]; u5[2] = -u5[2];
 }
 
 
@@ -583,7 +642,7 @@ void microtubule_retraction_end_depolymerize_solve(GraphType& graph, GraphType& 
     double length_limiter = 
         ((calculate_distance(node_i_data_old.position, node_j_data_old.position)/d_l));
 
-    if(length_limiter <= 0.000001) length_limiter = 0.0; //absolutely needed 
+    if(length_limiter <= 0.01) length_limiter = 0.0; //absolutely needed 
 
     for(auto iter = 0; iter < 3; iter++)
     {
