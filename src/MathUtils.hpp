@@ -95,7 +95,7 @@ void paramaterized_intersection(
     //Calculation copied from mathematica, TODO: make more efficient 
     s[0] = (-p2[1]*p3[0]+p1[1]*(-p2[0]+p3[0])+p1[0]*(p2[1]-p3[1])+p2[0]*p3[1])
             /
-            (-p2[1]*u[0]+p3[1]*u[0]+(p2[0]-p3[0]*u[1]));
+            (-p2[1]*u[0]+p3[1]*u[0]+(p2[0]-p3[0])*u[1]);
     
     s[1] = (p1[1]*u[0]-p2[1]*u[0]+(-p1[0]+p2[0])*u[1])
             /

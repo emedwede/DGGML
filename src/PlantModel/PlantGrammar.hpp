@@ -347,7 +347,34 @@ void microtubule_crossover_rewrite(GraphType& graph, std::vector<mt_key_type>& m
     auto& u3 = dat3.unit_vec;
     auto& u4 = dat4.unit_vec;
     auto& u5 = dat5.unit_vec;
-   
+   std::cout << "pos5: { ";
+        for(int i = 0; i < 3; i++)
+        {
+            std::cout << pos5[i] << " ";
+        } std::cout << "}\n";
+std::cout << "pos1: { ";
+        for(int i = 0; i < 3; i++)
+        {
+            std::cout << pos1[i] << " ";
+        } std::cout << "}\n";
+std::cout << "pos2: { ";
+        for(int i = 0; i < 3; i++)
+        {
+            std::cout << pos2[i] << " ";
+        } std::cout << "}\n";
+std::cout << "pos3: { ";
+        for(int i = 0; i < 3; i++)
+        {
+            std::cout << pos3[i] << " ";
+        } std::cout << "}\n";
+
+std::cout << "u5: { ";
+        for(int i = 0; i < 3; i++)
+        {
+            std::cout << u5[i] << " ";
+        } std::cout << "}\n";
+
+
     set_unit_vector(pos1, pos5, u5);
 
     //place x5 past the point of the intersecting node, keep unit vec the same
@@ -419,6 +446,7 @@ double microtubule_collision_crossover_propensity(GraphType& graph, std::vector<
         
         if(sol_l[0] > 0.0 && sol_l[1] >= 0.0 && sol_l[1] <= 1.0) 
         {
+            std::cout << "Sol l:" << sol_l[0] << " " << sol_l[1] << "\n";
             propensity = 
                 exp(-pow(calculate_distance(pos1, pos5), 2.0) / pow(0.5*settings.DIV_LENGTH, 2.0)); 
             return propensity;
@@ -430,6 +458,7 @@ double microtubule_collision_crossover_propensity(GraphType& graph, std::vector<
         
         if(sol_r[0] > 0.0 && sol_r[1] >= 0.0 && sol_r[1] <= 1.0) 
         {
+            std::cout << "Sol r:" << sol_r[0] << " " << sol_r[1] << "\n";
             propensity = 
                 exp(-pow(calculate_distance(pos1, pos5), 2.0) / pow(0.5*settings.DIV_LENGTH, 2.0));
             return propensity;

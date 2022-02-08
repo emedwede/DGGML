@@ -163,7 +163,7 @@ void plant_model_ssa(BucketType& bucket, GeoplexType& geoplex2D, GraphType& syst
                 auto rho = microtubule_collision_crossover_propensity(system_graph, match, settings);
                 rule_propensities[2] += rho;
                 prop[2].push_back(rho);
-            }
+            } std::cout << "Size: " << prop[2].size() << "\n";
             
             geocell_propensity += rule_propensities[0] + rule_propensities[1] + rule_propensities[2];
             
@@ -285,6 +285,7 @@ void microtubule_rule_firing(MatchType* all_matches, GraphType& system_graph, Bu
             local_progress -= prop[ruleFired][eventFired];
         }
         std::cout << "-----Firing the collision rule-----\n";
+        std::cout << "propensity: " << prop[ruleFired][eventFired] << "\n";
         //int a; std::cin >> a;
         microtubule_crossover_rewrite(system_graph, all_matches[4][eventFired], bucket, settings);
     }
