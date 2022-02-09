@@ -685,7 +685,7 @@ void microtubule_retraction_end_depolymerize_solve(GraphType& graph, GraphType& 
     
     auto dtdt = settings.DELTA_DELTA_T;
     auto l_d_f = settings.LENGTH_DIV_FACTOR;
-    auto d_l = settings.DIV_LENGTH;
+    auto d_l_r = settings.DIV_LENGTH_RETRACT;
     auto v_minus = settings.V_MINUS;
 
 
@@ -696,9 +696,9 @@ void microtubule_retraction_end_depolymerize_solve(GraphType& graph, GraphType& 
     auto& node_j_data_old = graph.findNode(j)->second.getData();
 
     double length_limiter = 
-        ((calculate_distance(node_i_data_old.position, node_j_data_old.position)/d_l));
+        ((calculate_distance(node_i_data_old.position, node_j_data_old.position)/d_l_r));
 
-    if(length_limiter <= 0.01) length_limiter = 0.0; //absolutely needed 
+    if(length_limiter <= d_l_r) length_limiter = 0.0; //absolutely needed 
 
     for(auto iter = 0; iter < 3; iter++)
     {
