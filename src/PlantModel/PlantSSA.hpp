@@ -195,17 +195,18 @@ void plant_model_ssa(BucketType& bucket, GeoplexType& geoplex2D, GraphType& syst
             } std::cout << "Size: " << prop[2].size() << "\n";
             
             geocell_propensity += rule_propensities[0] + rule_propensities[1] + rule_propensities[2] + rule_propensities[3] + rule_propensities[4] + rule_propensities[5] + rule_propensities[6] + rule_propensities[7];
+           
+            //the step adapts based on propensity or systems fastest dynamic
+            double dt_min = std::min(1.0/(10.0*geocell_propensity), settings.DELTA_DELTA_T);
             
+            settings.DELTA_DELTA_T = dt_min;
             // STEP(2) : solve the system of ODES 
             microtubule_ode_solver(rule_matches, system_graph, system_graph_old, k, settings); 
 
             // STEP(3) : use forward euler to solve the TAU ODE
             tau += geocell_propensity*settings.DELTA_DELTA_T; //TODO: we need to be careful not to oversolve
             
-            //the step adapts based on propensity or systems fastest dynamic
-            double dt_min = std::min(1.0/(10.0*geocell_propensity), settings.DELTA_DELTA_T);
-            
-            // STEP(4) : advance the loop timer
+                        // STEP(4) : advance the loop timer
             delta_t += dt_min; //TODO: make delta_t adaptive
             std::cout << "[ t , dt ]: [ " << delta_t << " , " << dt_min << " ]\n";
         }

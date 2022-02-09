@@ -695,14 +695,18 @@ void microtubule_retraction_end_depolymerize_solve(GraphType& graph, GraphType& 
     auto& node_i_data_old = graph.findNode(i)->second.getData();
     auto& node_j_data_old = graph.findNode(j)->second.getData();
 
-    double length_limiter = 
-        ((calculate_distance(node_i_data_old.position, node_j_data_old.position)/d_l_r));
+    double dist = calculate_distance(node_i_data_old.position, node_j_data_old.position);
+
+    double length_limiter = dist/settings.DIV_LENGTH;
 
     if(length_limiter <= d_l_r) length_limiter = 0.0; //absolutely needed 
 
     for(auto iter = 0; iter < 3; iter++)
     {
-        node_i_data.velocity[iter] = v_minus*node_i_data_old.unit_vec[iter]*length_limiter;
+        if(dist < v_minus*dtdt*length_limiter)
+            node_i_data.velocity[iter] = 0.0;
+        else
+            node_i_data.velocity[iter] = v_minus*node_i_data_old.unit_vec[iter]*length_limiter;
         node_i_data.position[iter] += node_i_data_old.velocity[iter]*dtdt; 
     } 
 }
