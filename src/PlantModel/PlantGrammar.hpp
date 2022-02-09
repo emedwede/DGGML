@@ -335,14 +335,70 @@ double microtubule_retraction_end_depolymerize_propensity(GraphType& graph, std:
 template <typename GraphType, typename ParamType>
 double microtubule_positive_to_negative_propensity(GraphType& graph, std::vector<mt_key_type>& match, ParamType& settings)
 {
-    return 0.2;
+    return 0.01;
 }
 
 template <typename GraphType, typename ParamType>
 double microtubule_negative_to_positive_propensity(GraphType& graph, std::vector<mt_key_type>& match, ParamType& settings)
 {
-    return 0.2;
+    return 0.01;
 }
+
+template <typename GraphType, typename ParamType>
+double microtubule_katanin_severing_propensity(GraphType& graph, std::vector<mt_key_type>& match, ParamType& settings)
+{
+    return 0.001;
+}
+
+
+template <typename GraphType, typename BucketType, typename ParamType>
+void microtubule_katanin_severing_rewrite(GraphType& graph, std::vector<mt_key_type>& match, BucketType& bucket, ParamType& settings)
+{
+    //TODO: need a unique key generator
+    typename GraphType::key_type key = graph.numNodes()+1;
+    
+    while(graph.findNode(key) != graph.node_list_end()) key++; //TODO: fix, very greedy
+    
+
+    auto x1 = match[0];
+    auto x2 = match[1];
+    auto x3 = match[2];
+
+    auto& dat1 = graph.findNode(x1)->second.getData();
+    auto& dat2 = graph.findNode(x2)->second.getData();
+    auto& dat3 = graph.findNode(x3)->second.getData();
+
+    auto& pos1 = dat1.position;
+    auto& pos2 = dat2.position;
+    auto& pos3 = dat3.position;
+
+    auto& u1 = dat1.unit_vec;
+    auto& u2 = dat2.unit_vec; 
+    auto& u3 = dat3.unit_vec;
+    
+    double u4[3], pos4[3];
+    for(int i = 0; i < 3; i++) 
+    {
+        pos4[i] = pos1[i] + 0.1*settings.MT_MIN_SEGMENT_INIT;
+        pos1[i] = pos1[i] - 0.1*settings.MT_MIN_SEGMENT_INIT;
+    }
+    set_unit_vector(pos2, pos4, u4);
+   
+    int64_t k = bucket.first;
+    graph.addNode({key, 
+            {{pos4[0], pos4[1], pos4[2]}, 
+            {0, 0, 0}, 
+            negative, 
+            {k, k, k}, 
+            {u4[0], u4[1], u4[2]}}});
+    bucket.second.push_back(key);
+
+    graph.removeEdge(x1, x2);
+    graph.addEdge(key, x2);
+    set_unit_vector(pos3, pos1, u1);
+    dat1.type = negative;
+}
+
 
 template <typename GraphType, typename BucketType, typename ParamType>
 void microtubule_crossover_rewrite(GraphType& graph, std::vector<mt_key_type>& match, BucketType& bucket, ParamType& settings)
