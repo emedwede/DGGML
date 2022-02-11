@@ -51,6 +51,7 @@ namespace Cajete
         double SIGMOID_K;
         double TOTAL_TIME;
         double MAXIMAL_REACTION_RADIUS;
+        double DELTA_T_MIN;
     };
     
     template <typename ParamType, typename InterfaceType>
@@ -90,6 +91,7 @@ namespace Cajete
             0.25*settings.MAXIMAL_REACTION_RADIUS / std::max(settings.V_PLUS, settings.V_MINUS);
         //The internal step of the solver should be at least this small
         settings.DELTA_DELTA_T = settings.DELTA / settings.NUM_INTERNAL_STEPS; 
+        settings.DELTA_T_MIN = settings.DELTA_DELTA_T;
         settings.NUM_STEPS = settings.TOTAL_TIME / settings.DELTA;
     }
 
@@ -156,6 +158,7 @@ namespace Cajete
                 std::cout << "Running step " << i << std::endl;
                 
                 std::map<gplex_key_type, std::vector<key_type>> bucketsND[3];
+                std::map<gplex_key_type, std::vector<node_type>> test_bucketsND[3];
                 std::size_t complementND[3] = {0, 0, 0};
                 
                 double dim_time = 0.0;
@@ -164,7 +167,7 @@ namespace Cajete
                 
                 auto start = std::chrono::high_resolution_clock::now();
                 //TODO: optimize this to work only for 2D
-                Cajete::expanded_cartesian_complex_sort_stl(bucketsND, complementND, geoplex2D, system_graph);
+                Cajete::expanded_cartesian_complex_sort_stl(bucketsND, test_bucketsND, complementND, geoplex2D, system_graph);
                 auto stop = std::chrono::high_resolution_clock::now();
                 auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(stop-start);
                 std::cout << "Sorting took " << duration.count() << " milliseconds\n";
@@ -190,9 +193,9 @@ namespace Cajete
 
                 //TODO: remove, right now connected_components should remain constant with only 
                 //growth rules
-                std::cout << "----------------\n";
-                std::cout << "CC: " << YAGL::connected_components(system_graph); 
-                std::cout << "\n---------------\n";
+                //std::cout << "----------------\n";
+                //std::cout << "CC: " << YAGL::connected_components(system_graph); 
+                //std::cout << "\n---------------\n";
                 
                 std::cout << "Synchronizing work\n";
                 //TODO: this is where a barrier would be for a parallel code
@@ -203,7 +206,7 @@ namespace Cajete
                 std::cout << "Binning the graph into 1D partitions\n";
                 start = std::chrono::high_resolution_clock::now();
                 //TODO: optimize this to work only for 1D
-                Cajete::expanded_cartesian_complex_sort_stl(bucketsND, complementND, geoplex2D, system_graph);
+                Cajete::expanded_cartesian_complex_sort_stl(bucketsND, test_bucketsND, complementND, geoplex2D, system_graph);
                 stop = std::chrono::high_resolution_clock::now();
                 duration = std::chrono::duration_cast<std::chrono::milliseconds>(stop-start);
                 std::cout << "Sorting took " << duration.count() << " milliseconds\n";
@@ -236,7 +239,7 @@ namespace Cajete
                 std::cout << "Binning the graph into 0D partitions\n";
                 start = std::chrono::high_resolution_clock::now();
                 //TODO: optimize this to work only for 0D
-                Cajete::expanded_cartesian_complex_sort_stl(bucketsND, complementND, geoplex2D, system_graph);
+                Cajete::expanded_cartesian_complex_sort_stl(bucketsND, test_bucketsND, complementND, geoplex2D, system_graph);
                 stop = std::chrono::high_resolution_clock::now();
                 duration = std::chrono::duration_cast<std::chrono::milliseconds>(stop-start);
                 std::cout << "Sorting took " << duration.count() << " milliseconds\n";

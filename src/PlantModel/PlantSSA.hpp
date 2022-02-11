@@ -80,9 +80,8 @@ template <typename BucketType, typename GeoplexType, typename GraphType, typenam
 void plant_model_ssa(BucketType& bucket, GeoplexType& geoplex2D, GraphType& system_graph, ParamType& settings)
 {
     double delta_t, exp_sample, tau, geocell_propensity;
-    std::size_t events;
-    
-    delta_t = 0.0; events = 0; geocell_propensity = 0.0;
+    std::size_t events, steps; 
+    delta_t = 0.0; events = 0; steps = 0; geocell_propensity = 0.0;
     while(delta_t < settings.DELTA) 
     {
         //reset tau
@@ -102,12 +101,12 @@ void plant_model_ssa(BucketType& bucket, GeoplexType& geoplex2D, GraphType& syst
         total_matches = 0; for(auto i = 0; i < num_patterns; i++) total_matches += rule_matches[i].size(); 
         //std::cout << "Found " << total_matches << " filtered matches\n";
 
-        std::cout << "Total growing ends: " << rule_matches[0].size() << "\n";
-        std::cout << "Total wildcard_matches: " << rule_matches[3].size() << "\n";
+        //std::cout << "Total growing ends: " << rule_matches[0].size() << "\n";
+        //std::cout << "Total wildcard_matches: " << rule_matches[3].size() << "\n";
 
         collision_match_refinement(system_graph, 3.0*settings.DIV_LENGTH, rule_matches[0], rule_matches[3], rule_matches[4]);
 
-        std::cout << "Total potential collisions: " << rule_matches[4].size() << "\n";
+        //std::cout << "Total potential collisions: " << rule_matches[4].size() << "\n";
 
         double uniform_sample = RandomRealsBetween(0.0, 1.0)();
         
@@ -128,13 +127,22 @@ void plant_model_ssa(BucketType& bucket, GeoplexType& geoplex2D, GraphType& syst
         prop[6].reserve(rule_matches[4].size());
         prop[7].reserve(rule_matches[3].size());
 
-
+        std::vector<std::vector<typename GraphType::node_type>> prev_state[2];
+        for(auto i = 0; i < 2; i++)
+        {
+            for(auto& match : rule_matches[i])
+            {
+                prev_state[i].push_back({system_graph.findNode(match[0])->second, 
+                                         system_graph.findNode(match[1])->second});
+            }
+        }
+        
         while(delta_t < settings.DELTA && tau < exp_sample)
         {
             // STEP(0) : store old state and find all the matches 
             //do a deep copy? TODO: only need to copy old state parameters
-            auto system_graph_old = system_graph;
-                   
+            auto& system_graph_old = system_graph;
+                    
             // STEP(1) : sum all of the rule propensities
             //zero the geocell_propensity
             geocell_propensity = 0.0;
@@ -192,23 +200,23 @@ void plant_model_ssa(BucketType& bucket, GeoplexType& geoplex2D, GraphType& syst
                 prop[5].push_back(rho);
                 prop[6].push_back(rho);
 
-            } std::cout << "Size: " << prop[2].size() << "\n";
+            } 
             
             geocell_propensity += rule_propensities[0] + rule_propensities[1] + rule_propensities[2] + rule_propensities[3] + rule_propensities[4] + rule_propensities[5] + rule_propensities[6] + rule_propensities[7];
            
             //the step adapts based on propensity or systems fastest dynamic
-            double dt_min = std::min(1.0/(10.0*geocell_propensity), settings.DELTA_DELTA_T);
+            settings.DELTA_T_MIN = std::min(1.0/(10.0*geocell_propensity), settings.DELTA_DELTA_T);
             
-            settings.DELTA_DELTA_T = dt_min;
             // STEP(2) : solve the system of ODES 
-            microtubule_ode_solver(rule_matches, system_graph, system_graph_old, k, settings); 
+            microtubule_ode_solver(rule_matches, system_graph, prev_state, system_graph_old, k, settings); 
 
             // STEP(3) : use forward euler to solve the TAU ODE
-            tau += geocell_propensity*settings.DELTA_DELTA_T; //TODO: we need to be careful not to oversolve
+            tau += geocell_propensity*settings.DELTA_T_MIN; //TODO: we need to be careful not to oversolve
             
                         // STEP(4) : advance the loop timer
-            delta_t += dt_min; //TODO: make delta_t adaptive
-            std::cout << "[ t , dt ]: [ " << delta_t << " , " << dt_min << " ]\n";
+            delta_t += settings.DELTA_T_MIN; //TODO: make delta_t adaptive
+
+            steps++;
         }
     
 
@@ -219,25 +227,27 @@ void plant_model_ssa(BucketType& bucket, GeoplexType& geoplex2D, GraphType& syst
             microtubule_rule_firing(rule_matches, system_graph, bucket, prop, settings);
         }
     }
+    std::cout << "Total steps taken: " << steps << "\n";
 }
 
 //be careful with solving, could lead to a segmentation fault 
 //in the sorting phase if a parameter is solved out to out of bounds
-template <typename MatchSetType, typename GraphType, typename KeyType, typename ParamType>
+template <typename MatchSetType, typename GraphType, typename StateType, typename KeyType, typename ParamType>
 void microtubule_ode_solver(MatchSetType* all_matches, 
         GraphType& system_graph,
+        StateType& prev_state,
         GraphType& system_graph_old,
         KeyType& k,
         ParamType& settings)
 {
     for(auto i = 0; i < 2; i++) 
     {
-        for(auto match : all_matches[i])
+        for(auto j = 0; j < all_matches[i].size(); j++)
         {
            if(i == 0)
-                microtubule_growing_end_polymerize_solve(system_graph, system_graph_old, match, settings);
+                microtubule_growing_end_polymerize_solve(system_graph, prev_state[i][j], system_graph_old, all_matches[i][j], settings);
            if(i == 1)
-               microtubule_retraction_end_depolymerize_solve(system_graph, system_graph_old, match, settings);
+               microtubule_retraction_end_depolymerize_solve(system_graph, prev_state[i][j], system_graph_old, all_matches[i][j], settings);
     }
     }
 }
@@ -277,7 +287,7 @@ void microtubule_rule_firing(MatchType* all_matches, GraphType& system_graph, Bu
 
     if(ruleFired == 0)  //fire rule 0
     {
-        std::cout << "Sum 0: " << sums[ruleFired] << "\n";
+        //std::cout << "Sum 0: " << sums[ruleFired] << "\n";
         double local_sample = RandomRealsBetween(0.0, 1.0)();
         int eventFired = 0;
         double local_progress = local_sample*sums[ruleFired] - prop[ruleFired][eventFired];
@@ -290,7 +300,7 @@ void microtubule_rule_firing(MatchType* all_matches, GraphType& system_graph, Bu
     }       
     if(ruleFired == 1)
     {
-        std::cout << "Sum 1: " << sums[ruleFired] << "\n";
+        //std::cout << "Sum 1: " << sums[ruleFired] << "\n";
         double local_sample = RandomRealsBetween(0.0, 1.0)();
         int eventFired = 0;
         double local_progress = local_sample*sums[ruleFired] - prop[ruleFired][eventFired];
@@ -304,7 +314,7 @@ void microtubule_rule_firing(MatchType* all_matches, GraphType& system_graph, Bu
     }
     if(ruleFired == 2)
     {
-        std::cout << "Sum 2: " << sums[ruleFired] << "\n";
+        //std::cout << "Sum 2: " << sums[ruleFired] << "\n";
         double local_sample = RandomRealsBetween(0.0, 1.0)();
         int eventFired = 0;
         double local_progress = local_sample*sums[ruleFired] - prop[ruleFired][eventFired];
@@ -317,7 +327,7 @@ void microtubule_rule_firing(MatchType* all_matches, GraphType& system_graph, Bu
     }
     if(ruleFired == 3)
     {
-        std::cout << "Sum 3: " << sums[ruleFired] << "\n";
+        //std::cout << "Sum 3: " << sums[ruleFired] << "\n";
         double local_sample = RandomRealsBetween(0.0, 1.0)();
         int eventFired = 0;
         double local_progress = local_sample*sums[ruleFired] - prop[ruleFired][eventFired];
@@ -330,7 +340,7 @@ void microtubule_rule_firing(MatchType* all_matches, GraphType& system_graph, Bu
     }
     if(ruleFired == 4)
     {
-        std::cout << "Sum 4: " << sums[ruleFired] << "\n";
+        //std::cout << "Sum 4: " << sums[ruleFired] << "\n";
         double local_sample = RandomRealsBetween(0.0, 1.0)();
         int eventFired = 0;
         double local_progress = local_sample*sums[ruleFired] - prop[ruleFired][eventFired];
@@ -343,7 +353,7 @@ void microtubule_rule_firing(MatchType* all_matches, GraphType& system_graph, Bu
     }
     if(ruleFired == 5)
     {
-        std::cout << "Sum 5: " << sums[ruleFired] << "\n";
+        //std::cout << "Sum 5: " << sums[ruleFired] << "\n";
         double local_sample = RandomRealsBetween(0.0, 1.0)();
         int eventFired = 0;
         double local_progress = local_sample*sums[ruleFired] - prop[ruleFired][eventFired];
@@ -356,7 +366,7 @@ void microtubule_rule_firing(MatchType* all_matches, GraphType& system_graph, Bu
     }
     if(ruleFired == 6)
     {
-        std::cout << "Sum 6: " << sums[ruleFired] << "\n";
+        //std::cout << "Sum 6: " << sums[ruleFired] << "\n";
         double local_sample = RandomRealsBetween(0.0, 1.0)();
         int eventFired = 0;
         double local_progress = local_sample*sums[ruleFired] - prop[ruleFired][eventFired];
@@ -369,7 +379,7 @@ void microtubule_rule_firing(MatchType* all_matches, GraphType& system_graph, Bu
     }
     if(ruleFired == 7)
     {
-        std::cout << "Sum 7: " << sums[ruleFired] << "\n";
+        //std::cout << "Sum 7: " << sums[ruleFired] << "\n";
         double local_sample = RandomRealsBetween(0.0, 1.0)();
         int eventFired = 0;
         double local_progress = local_sample*sums[ruleFired] - prop[ruleFired][eventFired];

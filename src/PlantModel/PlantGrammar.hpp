@@ -347,7 +347,7 @@ double microtubule_negative_to_positive_propensity(GraphType& graph, std::vector
 template <typename GraphType, typename ParamType>
 double microtubule_katanin_severing_propensity(GraphType& graph, std::vector<mt_key_type>& match, ParamType& settings)
 {
-    return 0.001;
+    return 0.0;//0.001;
 }
 
 
@@ -561,7 +561,6 @@ double microtubule_collision_crossover_propensity(GraphType& graph, std::vector<
         
         if(sol_l[0] > 0.0 && sol_l[1] >= 0.0 && sol_l[1] <= 1.0) 
         {
-            std::cout << "Sol l:" << sol_l[0] << " " << sol_l[1] << "\n";
             propensity = 
                 exp(-pow(calculate_distance(pos1, pos5), 2.0) / pow(0.5*settings.DIV_LENGTH, 2.0)); 
             return propensity;
@@ -573,7 +572,6 @@ double microtubule_collision_crossover_propensity(GraphType& graph, std::vector<
         
         if(sol_r[0] > 0.0 && sol_r[1] >= 0.0 && sol_r[1] <= 1.0) 
         {
-            std::cout << "Sol r:" << sol_r[0] << " " << sol_r[1] << "\n";
             propensity = 
                 exp(-pow(calculate_distance(pos1, pos5), 2.0) / pow(0.5*settings.DIV_LENGTH, 2.0));
             return propensity;
@@ -652,12 +650,12 @@ double microtubule_collision_crossover_propensity(GraphType& graph, std::vector<
     return propensity;*/
 }
 
-template <typename GraphType, typename MatchType, typename ParamType>
-void microtubule_growing_end_polymerize_solve(GraphType& graph, GraphType& graph_old, MatchType& match, ParamType& settings)
+template <typename GraphType, typename StateType, typename MatchType, typename ParamType>
+void microtubule_growing_end_polymerize_solve(GraphType& graph, StateType& prev_state, GraphType& graph_old, MatchType& match, ParamType& settings)
 {
     if(match.size() != 2) return;
 
-    auto dtdt = settings.DELTA_DELTA_T;
+    auto dtdt = settings.DELTA_T_MIN;
     auto l_d_f = settings.LENGTH_DIV_FACTOR;
     auto d_l = settings.DIV_LENGTH;
     auto v_plus = settings.V_PLUS;
@@ -665,8 +663,8 @@ void microtubule_growing_end_polymerize_solve(GraphType& graph, GraphType& graph
     auto i = match[0]; auto j = match[1];
     auto& node_i_data = graph.findNode(i)->second.getData();
     auto& node_j_data = graph.findNode(j)->second.getData();
-    auto& node_i_data_old = graph.findNode(i)->second.getData();
-    auto& node_j_data_old = graph.findNode(j)->second.getData();
+    auto& node_i_data_old = prev_state[0].getData();//graph.findNode(i)->second.getData();
+    auto& node_j_data_old = prev_state[1].getData();//graph.findNode(j)->second.getData();
 
     double length_limiter = 
         (1.0 - (calculate_distance(node_i_data_old.position, node_j_data_old.position)/d_l));
@@ -675,11 +673,12 @@ void microtubule_growing_end_polymerize_solve(GraphType& graph, GraphType& graph
     {
         node_i_data.velocity[iter] = v_plus*node_i_data_old.unit_vec[iter]*length_limiter;
         node_i_data.position[iter] += node_i_data_old.velocity[iter]*dtdt; 
-    } 
+    }
+    prev_state[0] = graph.findNode(i)->second; prev_state[1] = graph.findNode(j)->second;
 }
 
-template <typename GraphType, typename MatchType, typename ParamType>
-void microtubule_retraction_end_depolymerize_solve(GraphType& graph, GraphType& graph_old, MatchType& match, ParamType& settings)
+template <typename GraphType, typename StateType, typename MatchType, typename ParamType>
+void microtubule_retraction_end_depolymerize_solve(GraphType& graph, StateType& prev_state, GraphType& graph_old, MatchType& match, ParamType& settings)
 {
     if(match.size() != 2) return;
     
@@ -692,8 +691,8 @@ void microtubule_retraction_end_depolymerize_solve(GraphType& graph, GraphType& 
     auto i = match[0]; auto j = match[1];
     auto& node_i_data = graph.findNode(i)->second.getData();
     auto& node_j_data = graph.findNode(j)->second.getData();
-    auto& node_i_data_old = graph.findNode(i)->second.getData();
-    auto& node_j_data_old = graph.findNode(j)->second.getData();
+    auto& node_i_data_old = prev_state[0].getData();//graph.findNode(i)->second.getData();
+    auto& node_j_data_old = prev_state[1].getData();//graph.findNode(j)->second.getData();
 
     double dist = calculate_distance(node_i_data_old.position, node_j_data_old.position);
 
@@ -709,6 +708,7 @@ void microtubule_retraction_end_depolymerize_solve(GraphType& graph, GraphType& 
             node_i_data.velocity[iter] = v_minus*node_i_data_old.unit_vec[iter]*length_limiter;
         node_i_data.position[iter] += node_i_data_old.velocity[iter]*dtdt; 
     } 
+    prev_state[0] = graph.findNode(i)->second; prev_state[1] = graph.findNode(j)->second;
 }
 
 //Simple first attempt at depolymerizing
