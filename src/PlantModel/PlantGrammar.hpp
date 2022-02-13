@@ -7,6 +7,8 @@
 
 #include "MathUtils.hpp"
 
+#include <random>
+
 #include <vector>
 
 namespace Cajete
@@ -274,7 +276,13 @@ void microtubule_growing_end_polymerize_rewrite(GraphType& graph, std::vector<mt
     {
         x3[iter] = x2[iter] - ((x2[iter]-x1[iter]) * gamma); 
     }
-    
+    std::random_device random_device; std::mt19937 random_engine(random_device());
+    std::uniform_real_distribution<double> distribution_angle(-3.14/8.0, 3.14/8.0); 
+    double theta = distribution_angle(random_engine);
+    auto u10_rot = u1[0]*cos(theta) + u1[1]*sin(theta);
+    auto u11_rot = -u1[0]*sin(theta) +u1[1]*cos(theta);
+    u1[0] = u10_rot; u1[1] = u11_rot;
+
     int64_t k = bucket.first;
     graph.addNode({key, 
             {{x3[0], x3[1], x3[2]}, 
