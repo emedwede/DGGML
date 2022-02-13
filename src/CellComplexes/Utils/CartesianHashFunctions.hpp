@@ -166,8 +166,8 @@ int64_t cartesian_complex_expanded_hash0D(NodeType& node, CplexType& geoplex2D)
     return cardinal; //returns the 2D cell it belongs to
 }
 
-template <typename BucketType, typename TestBucketType, typename ComplementType, typename GeoplexType, typename SysGraphType>
-void expanded_cartesian_complex_sort_stl(BucketType& bucketsND, TestBucketType& test_bucketsND, ComplementType& complementND, GeoplexType& geoplex2D, SysGraphType& system_graph)
+template <typename BucketType, typename ComplementType, typename GeoplexType, typename SysGraphType>
+void expanded_cartesian_complex_sort_stl(BucketType& bucketsND, ComplementType& complementND, GeoplexType& geoplex2D, SysGraphType& system_graph)
 {
     auto& geoplex_graph = geoplex2D.getGraph();
     
@@ -177,17 +177,14 @@ void expanded_cartesian_complex_sort_stl(BucketType& bucketsND, TestBucketType& 
         auto itype = iter->second.getData().type;
         if(itype == 0) { 
             bucketsND[0].insert({id, {}});
-            test_bucketsND[0].insert({id, {}});
         }
         if(itype == 1)
         {
             bucketsND[1].insert({id, {}});
-            test_bucketsND[0].insert({id, {}});
         }
         if(itype == 2)
         {
             bucketsND[2].insert({id, {}});
-            test_bucketsND[0].insert({id, {}});
         }
     }
     
@@ -208,9 +205,6 @@ void expanded_cartesian_complex_sort_stl(BucketType& bucketsND, TestBucketType& 
                 bucketsND[i].find(cardinal)->second.push_back(id);
             else
                 complementND[i]++;
-            auto test_search = test_bucketsND[i].find(cardinal);
-            if(test_search != test_bucketsND[i].end())
-                test_bucketsND[i].find(cardinal)->second.push_back(node);
         }
     }
 }

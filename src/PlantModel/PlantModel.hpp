@@ -158,7 +158,6 @@ namespace Cajete
                 std::cout << "Running step " << i << std::endl;
                 
                 std::map<gplex_key_type, std::vector<key_type>> bucketsND[3];
-                std::map<gplex_key_type, std::vector<node_type>> test_bucketsND[3];
                 std::size_t complementND[3] = {0, 0, 0};
                 
                 double dim_time = 0.0;
@@ -167,7 +166,7 @@ namespace Cajete
                 
                 auto start = std::chrono::high_resolution_clock::now();
                 //TODO: optimize this to work only for 2D
-                Cajete::expanded_cartesian_complex_sort_stl(bucketsND, test_bucketsND, complementND, geoplex2D, system_graph);
+                Cajete::expanded_cartesian_complex_sort_stl(bucketsND, complementND, geoplex2D, system_graph);
                 auto stop = std::chrono::high_resolution_clock::now();
                 auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(stop-start);
                 std::cout << "Sorting took " << duration.count() << " milliseconds\n";
@@ -206,7 +205,7 @@ namespace Cajete
                 std::cout << "Binning the graph into 1D partitions\n";
                 start = std::chrono::high_resolution_clock::now();
                 //TODO: optimize this to work only for 1D
-                Cajete::expanded_cartesian_complex_sort_stl(bucketsND, test_bucketsND, complementND, geoplex2D, system_graph);
+                Cajete::expanded_cartesian_complex_sort_stl(bucketsND, complementND, geoplex2D, system_graph);
                 stop = std::chrono::high_resolution_clock::now();
                 duration = std::chrono::duration_cast<std::chrono::milliseconds>(stop-start);
                 std::cout << "Sorting took " << duration.count() << " milliseconds\n";
@@ -239,7 +238,7 @@ namespace Cajete
                 std::cout << "Binning the graph into 0D partitions\n";
                 start = std::chrono::high_resolution_clock::now();
                 //TODO: optimize this to work only for 0D
-                Cajete::expanded_cartesian_complex_sort_stl(bucketsND, test_bucketsND, complementND, geoplex2D, system_graph);
+                Cajete::expanded_cartesian_complex_sort_stl(bucketsND, complementND, geoplex2D, system_graph);
                 stop = std::chrono::high_resolution_clock::now();
                 duration = std::chrono::duration_cast<std::chrono::milliseconds>(stop-start);
                 std::cout << "Sorting took " << duration.count() << " milliseconds\n";
