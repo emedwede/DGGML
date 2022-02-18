@@ -283,7 +283,7 @@ void microtubule_rule_firing(MatchType* all_matches, GraphType& system_graph, Bu
         ruleFired++;
         progress -= sums[ruleFired];
     }
-    std::cout << "Rule " << ruleFired << " has been selected to fire\n";
+    //std::cout << "Rule " << ruleFired << " has been selected to fire\n";
 
     if(ruleFired == 0)  //fire rule 0
     {

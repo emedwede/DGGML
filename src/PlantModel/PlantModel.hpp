@@ -53,7 +53,22 @@ namespace Cajete
         double MAXIMAL_REACTION_RADIUS;
         double DELTA_T_MIN;
     };
-    
+  
+    template <typename DataType>
+    void print_numpy_array_stats(DataType& data, std::string var_name)
+    {
+        std::cout << var_name << " = np.asarray([";
+            for(auto i = 0; i < data.size(); i++)
+            {
+                if(i != 0 && i % 20 == 0) std::cout << "\n";
+                if(i != data.size() - 1)
+                    std::cout << data[i] << ", ";
+                else
+                    std::cout << data[i];
+            }
+            std::cout << "]);\n";
+    }
+
     template <typename ParamType, typename InterfaceType>
     void set_parameters(ParamType& settings, InterfaceType& interface)
     {
@@ -146,6 +161,38 @@ namespace Cajete
             std::cout << "Running the plant model simulation\n";
             
             Cajete::VtkFileWriter<graph_type> vtk_writer;
+            std::vector<std::size_t> con_com;
+            con_com.push_back(YAGL::connected_components(system_graph));
+            std::vector<std::size_t> total_nodes;
+            std::vector<std::size_t> type_counts[5];
+            std::vector<double> time_count; 
+            std::size_t junction_count = 0;
+            std::size_t positive_count = 0;
+            std::size_t negative_count = 0;
+            std::size_t zipper_count = 0;
+            std::size_t intermediate_count = 0;
+            for(auto iter = system_graph.node_list_begin(); 
+                    iter != system_graph.node_list_end(); iter++) {
+                    auto itype = iter->second.getData().type;
+                    if(itype == Plant::negative)
+                        negative_count++;
+                    if(itype == Plant::positive)
+                        positive_count++;
+                    if(itype == Plant::intermediate)
+                        intermediate_count++;
+                    if(itype == Plant::junction)
+                        junction_count++;
+                    if(itype == Plant::zipper)
+                        zipper_count++;
+            }
+            type_counts[Plant::negative].push_back(negative_count);
+            type_counts[Plant::positive].push_back(positive_count);
+            type_counts[Plant::intermediate].push_back(intermediate_count);
+            type_counts[Plant::junction].push_back(junction_count);
+            type_counts[Plant::zipper].push_back(zipper_count);
+            
+            total_nodes.push_back(negative_count +
+                    positive_count + intermediate_count + junction_count + zipper_count);
                 
             std::string title = results_dir_name+"/simulation_step_";
             std::cout << "Saving the initial state of the system graph\n";
@@ -195,7 +242,7 @@ namespace Cajete
                 //std::cout << "----------------\n";
                 //std::cout << "CC: " << YAGL::connected_components(system_graph); 
                 //std::cout << "\n---------------\n";
-                
+                                
                 std::cout << "Synchronizing work\n";
                 //TODO: this is where a barrier would be for a parallel code
                 for(auto& item : bucketsND) item.clear();
@@ -269,11 +316,50 @@ namespace Cajete
                 std::cout << "Running the checkpointer\n";
                 //TODO: The checkpointer to save time steps
                 vtk_writer.save(system_graph, title+std::to_string(i));
-
+                
+                con_com.push_back(YAGL::connected_components(system_graph)); 
+                
+                std::size_t junction_count = 0;
+                std::size_t positive_count = 0;
+                std::size_t negative_count = 0;
+                std::size_t zipper_count = 0;
+                std::size_t intermediate_count = 0;
+                for(auto iter = system_graph.node_list_begin(); 
+                        iter != system_graph.node_list_end(); iter++) {
+                        auto itype = iter->second.getData().type;
+                        if(itype == Plant::negative)
+                            negative_count++;
+                        if(itype == Plant::positive)
+                            positive_count++;
+                        if(itype == Plant::intermediate)
+                            intermediate_count++;
+                        if(itype == Plant::junction)
+                            junction_count++;
+                        if(itype == Plant::zipper)
+                            zipper_count++;
+                }
+                type_counts[Plant::negative].push_back(negative_count);
+                type_counts[Plant::positive].push_back(positive_count);
+                type_counts[Plant::intermediate].push_back(intermediate_count);
+                type_counts[Plant::junction].push_back(junction_count);
+                type_counts[Plant::zipper].push_back(zipper_count);
+                
+                total_nodes.push_back(negative_count +
+                        positive_count + intermediate_count + junction_count + zipper_count);
+                
                 std::cout << "Total dimensional time is " << tot_time << " milliseconds\n";
+                time_count.push_back(tot_time);
             }
             std::cout << "-----------------------------------------------------------------------\n\n";
-
+            
+            print_numpy_array_stats(con_com, "con_com");
+            print_numpy_array_stats(type_counts[Plant::negative], "negative");
+            print_numpy_array_stats(type_counts[Plant::positive], "positive");
+            print_numpy_array_stats(type_counts[Plant::intermediate], "intermediate");
+            print_numpy_array_stats(type_counts[Plant::junction], "junction");
+            print_numpy_array_stats(type_counts[Plant::zipper], "zipper");
+            print_numpy_array_stats(total_nodes, "total_nodes");
+            print_numpy_array_stats(time_count, "time_count");
         }
 
 

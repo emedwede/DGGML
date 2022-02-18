@@ -355,7 +355,7 @@ double microtubule_negative_to_positive_propensity(GraphType& graph, std::vector
 template <typename GraphType, typename ParamType>
 double microtubule_katanin_severing_propensity(GraphType& graph, std::vector<mt_key_type>& match, ParamType& settings)
 {
-    return 0.0;//0.001;
+    return 0.0;//1.0;
 }
 
 
