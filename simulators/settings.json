@@ -14,7 +14,7 @@
     "MT_MAX_SEGMENT_INIT": 0.8,
     "LENGTH_DIV_FACTOR": 1.2,
     "DIV_LENGTH": 1.0,
-    "DIV_LENGTH_RETRACT": -0.125,
+    "DIV_LENGTH_RETRACT": 0.125,
     "V_PLUS": 1.0,
     "V_MINUS": 0.25,
     "SIGMOID_K": 10.0
