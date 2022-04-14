@@ -705,7 +705,8 @@ void microtubule_retraction_end_depolymerize_solve(GraphType& graph, StateType& 
     double dist = calculate_distance(node_i_data_old.position, node_j_data_old.position);
 
     double length_limiter = dist/settings.DIV_LENGTH;
-
+    
+    //TODO: find a way to remove this later, is it absolutely needed?
     if(length_limiter <= d_l_r) length_limiter = 0.0; //absolutely needed 
 
     for(auto iter = 0; iter < 3; iter++)

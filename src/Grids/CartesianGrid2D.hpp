@@ -97,8 +97,8 @@ class CartesianGrid2D {
             int i, j;
             ijCellIndex(cardinal, i, j);
 
-            xp = i*_dx + _dx/2.0;
-            yp = j*_dy + _dy/2.0;
+            xp = _min_x + i*_dx + _dx/2.0;
+            yp = _min_y + j*_dy + _dy/2.0;
         }
         
         //converts the cardinal index of a lattice point to it's exact point 
@@ -106,8 +106,8 @@ class CartesianGrid2D {
         {
             int i, j;
             ijLatticeIndex(cardinal, i, j);
-            xp = i*_dx;
-            yp = j*_dy;
+            xp = _min_x + i*_dx;
+            yp = _min_y + j*_dy;
         }
 
         friend std::ostream& operator<<(std::ostream& os, CartesianGrid2D& grid)

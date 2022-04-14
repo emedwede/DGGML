@@ -18,5 +18,8 @@
     "V_PLUS": 1.0,
     "V_MINUS": 0.25,
     "SIGMOID_K": 10.0
+  },
+  "EXPERIMENTAL": {
+    "RHO_TEST_RATE": 10.0
   }
 }

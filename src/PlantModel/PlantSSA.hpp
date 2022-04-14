@@ -192,7 +192,7 @@ void plant_model_ssa(BucketType& bucket, GeoplexType& geoplex2D, GraphType& syst
             }
             for(auto& match : rule_matches[4])
             {
-                auto rho = microtubule_collision_crossover_propensity(system_graph, match, settings);
+                auto rho = settings.RHO_TEST_RATE*microtubule_collision_crossover_propensity(system_graph, match, settings);
                 rule_propensities[2] += rho;
                 rule_propensities[5] += rho;
                 rule_propensities[6] += rho;

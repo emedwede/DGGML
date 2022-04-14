@@ -52,6 +52,7 @@ namespace Cajete
         double TOTAL_TIME;
         double MAXIMAL_REACTION_RADIUS;
         double DELTA_T_MIN;
+        double RHO_TEST_RATE; //a tunable test paramater for MT dynamics
     };
   
     template <typename DataType>
@@ -99,7 +100,7 @@ namespace Cajete
         
         //Simulate until the specified unit time
         settings.TOTAL_TIME = double(interface["SETTINGS"]["TOTAL_TIME"]);
-        settings.NUM_INTERNAL_STEPS = 10;
+        settings.NUM_INTERNAL_STEPS = 1000;
         //Delta should be big, but not to big. In this case, the maximum amount of time it would
         //take one MT to grow a single unit of MT
         settings.DELTA = 
@@ -108,6 +109,8 @@ namespace Cajete
         settings.DELTA_DELTA_T = settings.DELTA / settings.NUM_INTERNAL_STEPS; 
         settings.DELTA_T_MIN = settings.DELTA_DELTA_T;
         settings.NUM_STEPS = settings.TOTAL_TIME / settings.DELTA;
+
+        settings.RHO_TEST_RATE = double(interface["EXPERIMENTAL"]["RHO_TEST_RATE"]);
     }
 
     //Models are inteded to be designed based on the 
@@ -150,7 +153,7 @@ namespace Cajete
             writer.save(geoplex2D.getGraph(), results_dir_name+"/factory_geoplex");
             
             std::cout << "Initializing the system graph\n";
-            Plant::microtubule_unit_scatter(system_graph, geoplex2D, settings); 
+            Plant::microtubule_uniform_scatter(system_graph, geoplex2D, settings); 
             
             //std::cout << "Generating the grammar\n";
             //TODO: implement a grammar setup phase
