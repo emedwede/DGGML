@@ -23,6 +23,15 @@ if (USE_DEBUG)
 	add_definitions(-DCAJETE_DEBUG)
 endif()
 
+# In the build script simpy do this:
+#
+# Set the variable SUNDIALS_DIR to the SUNDIALS instdir.
+# When using the cmake CLI command, this can be done like so:
+#   cmake -D SUNDIALS_DIR=/path/to/sundials/installation
+
+#find the sundials package for ODE solving 
+find_package(SUNDIALS REQUIRED)
+
 include_directories(dependencies/YAGL/include)
 include_directories(thirdparty/simdjson)
 include_directories(src)
