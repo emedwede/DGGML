@@ -7,6 +7,8 @@
 #include "ExpandedComplex2D.hpp"
 #include "YAGL_Graph.hpp"
 
+#include "SundialsUtils.hpp"
+
 #include <chrono>
 #include <random>
 #include <algorithm>
@@ -14,6 +16,11 @@
 #include <iostream>
 #include <math.h>
 #include <map>
+
+#include <arkode/arkode_erkstep.h>
+#include <nvector/nvector_serial.h>
+#include <sundials/sundials_types.h> 
+#include <sundials/sundials_math.h>
 
 namespace Cajete 
 {
@@ -82,6 +89,15 @@ void plant_model_ssa(BucketType& bucket, GeoplexType& geoplex2D, GraphType& syst
     double delta_t, exp_sample, tau, geocell_propensity;
     std::size_t events, steps; 
     delta_t = 0.0; events = 0; steps = 0; geocell_propensity = 0.0;
+
+    int flag; //generic reusable flag 
+
+    //Create the suncontext 
+    SUNContext ctx;
+    flag = SUNContext_Create(NULL, &ctx);
+    if(!Cajete::SundialsUtils::check_flag(&flag, "SUNContext_Create", 1))
+        std::cout << "Passed the error check, suncontext created\n";
+    
     while(delta_t < settings.DELTA) 
     {
         //reset tau
