@@ -90,6 +90,14 @@ void plant_model_ssa(BucketType& bucket, GeoplexType& geoplex2D, GraphType& syst
     std::size_t events, steps; 
     delta_t = 0.0; events = 0; steps = 0; geocell_propensity = 0.0;
 
+    /* Begin the generic sundials skeleton */ 
+    
+    /* Step 1: initalize the parallel env */
+    
+    // For now, serial, so skip
+    
+    /* Step 2: Create the sun context */
+    
     int flag; //generic reusable flag 
 
     //Create the suncontext 
@@ -98,6 +106,32 @@ void plant_model_ssa(BucketType& bucket, GeoplexType& geoplex2D, GraphType& syst
     if(!Cajete::SundialsUtils::check_flag(&flag, "SUNContext_Create", 1))
         std::cout << "Passed the error check, suncontext created\n";
     
+    /* Step 3: set the problem dimensions */
+
+    /* Step 4: set the vector of initial values */ 
+
+    /* Step 5: create the explicit stepper object */ 
+
+    /* Step 6: specify the integration tolerances */ 
+
+    /* Step 7: set any optional inputs */
+
+    /* Step 8: specify an optional root finding problem to solve */ 
+
+    /* Step 9: advance the solution in time */ 
+
+    /* Step 10: get optional outputs */ 
+    
+    /* Step 11: deallocate memory for solution vector */
+
+    /* Step 12: free the solver memory and the context if not reused */ 
+    SUNContext_Free(&ctx);
+    std::cout << "Freeing the suncontext\n";
+    
+    /* Step 13: Finalilze MPI, if used */ 
+
+    /* End the generic sundials skeleton */
+
     while(delta_t < settings.DELTA) 
     {
         //reset tau
