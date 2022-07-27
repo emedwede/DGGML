@@ -78,6 +78,16 @@ void filter_matches(MatchSetType* unfiltered, MatchSetType* filtered, std::size_
     }
 }
 
+int rhs_func(realtype t, N_Vector y, N_Vector ydot, void* user_data) 
+{
+    return 0;
+}
+
+int root_func(realtype t, N_Vector y, realtype* gout, void* user_data)
+{
+    return 0;
+}
+
 //template <typename BucketType>
 //void plant_model_ssa(
 //        BucketType& bucket,
@@ -107,25 +117,42 @@ void plant_model_ssa(BucketType& bucket, GeoplexType& geoplex2D, GraphType& syst
         std::cout << "Passed the error check, suncontext created\n";
     
     /* Step 3: set the problem dimensions */
-
+    realtype t_start, t_final, t, tout;
+    sunindextype num_eq;
+    
     /* Step 4: set the vector of initial values */ 
+    N_Vector y = NULL; 
+    y = N_VNew_Serial(num_eq, ctx);
 
     /* Step 5: create the explicit stepper object */ 
+    void* arkode_mem = NULL;
+    arkode_mem = ERKStepCreate(rhs_func, t_start, y, ctx); 
 
     /* Step 6: specify the integration tolerances */ 
+    realtype reltol = 1.0e-6;
+    realtype abstol = 1.0e-10;
+    flag = ERKStepSStolerances(arkode_mem, reltol, abstol);
 
     /* Step 7: set any optional inputs */
-
+    //flag = ERKStepSetUserData(arkode_mem, user_data); 
+    
     /* Step 8: specify an optional root finding problem to solve */ 
+    int num_roots = 1;
+    int roots_found[num_roots];
+    int root_flag;
+    // specify the root finding function having num_roots  
+    flag = ERKStepRootInit(arkode_mem, num_roots, root_func); 
 
     /* Step 9: advance the solution in time */ 
 
     /* Step 10: get optional outputs */ 
     
     /* Step 11: deallocate memory for solution vector */
+    N_VDestroy(y);
 
     /* Step 12: free the solver memory and the context if not reused */ 
-    SUNContext_Free(&ctx);
+    ERKStepFree(&arkode_mem); //free the solver memory
+    SUNContext_Free(&ctx); //always call prior to MPI_Finalize
     std::cout << "Freeing the suncontext\n";
     
     /* Step 13: Finalilze MPI, if used */ 
