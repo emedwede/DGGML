@@ -17,7 +17,8 @@ int main()
     Cajete::DggFactory<Cajete::PlantModel, simdjson::ondemand::document> plant_factory;
     
     auto num_simulations = 1;
-    
+   
+    //TODO: add some sort of ensemble simulation mode
     for(auto i = 0; i < num_simulations; i++)
         plant_factory.execute(settings_file);
 }

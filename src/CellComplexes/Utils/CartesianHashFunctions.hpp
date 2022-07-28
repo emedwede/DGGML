@@ -193,6 +193,10 @@ void expanded_cartesian_complex_sort_stl(BucketType& bucketsND, ComplementType& 
         auto id = iter->first;
         auto& node = iter->second;
         
+        //TODO: Need to make sure the dimensional NDTags are reset
+        for(auto i = 0; i < 3; i++)
+           node.getData().tagND[i] = -1;
+
         for(auto i = 0; i < 3; i++) 
         {
             std::size_t cardinal;
