@@ -84,6 +84,10 @@ void print_matches(std::vector<std::vector<key_type>>& matches)
     }
 }
 
+void create_junction_graph(graph_type& graph)
+{
+    //graph.addNode()
+}
 auto heuristic_search_junctions_extended(graph_type& graph)
 {
     std::vector<std::vector<key_type>> matches;
