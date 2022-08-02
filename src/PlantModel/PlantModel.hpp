@@ -217,6 +217,9 @@ namespace Cajete
                 auto start = std::chrono::high_resolution_clock::now();
                 //TODO: optimize this to work only for 2D
                 Cajete::expanded_cartesian_complex_sort_stl(bucketsND, complementND, geoplex2D, system_graph);
+
+                //TODO: hoist the initial system pattern matcher code outside of the ssa phase 
+                //      since we only want to smartly recomputed rule updates 
                 auto stop = std::chrono::high_resolution_clock::now();
                 auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(stop-start);
                 std::cout << "Sorting took " << duration.count() << " milliseconds\n";
