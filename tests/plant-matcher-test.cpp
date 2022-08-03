@@ -11,7 +11,8 @@
 #include "ExpandedComplex2D.hpp"
 
 #include <vector> 
-
+#include <set>
+#include <unordered_map> 
 #include <string>
 
 struct MyInterface {};
@@ -87,6 +88,19 @@ void print_matches(std::vector<std::vector<key_type>>& matches)
 void create_junction_graph(graph_type& graph)
 {
     //graph.addNode()
+    graph.addNode({1, {{0, 0, 0}, {0, 0, 0}, Cajete::Plant::intermediate}});
+    graph.addNode({2, {{0, 0, 0}, {0, 0, 0}, Cajete::Plant::intermediate}});
+    graph.addNode({3, {{0, 0, 0}, {0, 0, 0}, Cajete::Plant::intermediate}});
+    graph.addNode({4, {{0, 0, 0}, {0, 0, 0}, Cajete::Plant::intermediate}});
+    graph.addNode({5, {{0, 0, 0}, {0, 0, 0}, Cajete::Plant::junction}});
+    graph.addNode({6, {{0, 0, 0}, {0, 0, 0}, Cajete::Plant::junction}});
+
+    graph.addEdge(5, 1);
+    graph.addEdge(5, 2);
+    graph.addEdge(5, 3);
+    graph.addEdge(5, 4);
+    graph.addEdge(1, 6);
+
 }
 auto heuristic_search_junctions_extended(graph_type& graph)
 {
@@ -293,3 +307,46 @@ TEST_CASE("Heuristic Extended Junction Matcher Test", "[heuristic-matcher-test]"
     Cajete::MemoryManager::deallocate_std(vtk_writer);
 
 }
+
+TEST_CASE("Labeled Subgraph Isomorphism Matcher Test", "[subgraph-iso-matcher-test]")
+{
+    graph_type g1, g2;
+    
+    create_junction_graph(g1);
+    initialize_plant_test_graph(g2);
+   
+    //should find 12 permutations, so the 6 automorphisms for each match
+    auto matches = YAGL::subgraph_isomorphism(g1, g2);
+    
+    REQUIRE(matches.size() == 12); 
+    
+    //sloppy way of ordering the permutations and hashing them to 
+    //find the number of unique matches
+    std::set<std::string> match_count;
+    for(auto& item : matches)
+    {
+        std::set<key_type> ordering;
+        std::cout << "Permutation : { ";
+        for(auto& [key, value] : item)
+        {
+            ordering.insert(value);
+            std::cout << "[ "<< key << " -> " << value << "] ";
+        } std::cout << " } \n";
+        std::string str{"+"};
+        for(auto& s : ordering)
+        {
+            str += std::to_string(s) + "+";
+        }
+        match_count.insert(str);
+    }
+    
+    // there should be two unique matches
+    REQUIRE(match_count.size() == 2);
+
+    std::cout << "Unique matches: ";
+    for(auto& s : match_count)
+        std::cout << s << " ";
+    std::cout << "\n";
+}
+
+
