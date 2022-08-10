@@ -10,6 +10,8 @@
 #include <random>
 
 #include <vector>
+#include <set>
+#include <string>
 
 namespace Cajete
 {
@@ -36,10 +38,7 @@ std::vector<std::vector<mt_key_type>> microtubule_growing_end_matcher(GraphType&
             auto jtype = graph.findNode(j)->second.getData().type;
             
             if(jtype != intermediate) continue;
-            std::vector<mt_key_type> temp;
-            temp.push_back(i);
-            temp.push_back(j);
-            matches.push_back(temp);
+            matches.push_back(std::vector<mt_key_type>{i, j});
         }
     }
 
@@ -65,10 +64,7 @@ std::vector<std::vector<mt_key_type>> microtubule_retraction_end_matcher(GraphTy
             auto jtype = graph.findNode(j)->second.getData().type;
             
             if(jtype != intermediate) continue;
-            std::vector<mt_key_type> temp;
-            temp.push_back(i);
-            temp.push_back(j);
-            matches.push_back(temp);
+            matches.push_back(std::vector<mt_key_type>{i,j});
         }
     }
 
@@ -81,6 +77,7 @@ std::vector<std::vector<mt_key_type>> microtubule_retraction_end_two_intermediat
 {
     //YAGL::Graph<mt_key_type, MT_NodeData> graph;    
     std::vector<std::vector<mt_key_type>> matches;
+    std::set<std::string> permutations;
     //iterate the whole graph 
     for(auto i : bucket) 
     {
@@ -101,11 +98,12 @@ std::vector<std::vector<mt_key_type>> microtubule_retraction_end_two_intermediat
                 auto ktype = graph.findNode(k)->second.getData().type;
 
                 if(ktype != intermediate) continue;
-                std::vector<mt_key_type> temp;
-                temp.push_back(i);
-                temp.push_back(j);
-                temp.push_back(k);
-                matches.push_back(temp); 
+                //check to see if it's already been found
+                mt_key_type a[3] = {i, j, k};
+                std::sort(a, a+3);
+                auto pattern = std::to_string(a[0]) + std::to_string(a[1]) + std::to_string(a[2]);
+                if(permutations.insert(pattern).second) 
+                    matches.push_back(std::vector<mt_key_type>{i,j,k}); 
             }
         }
     }
@@ -117,6 +115,7 @@ template <typename GraphType, typename BucketType>
 std::vector<std::vector<mt_key_type>> three_intermediate_matcher(GraphType& graph, BucketType& bucket)
 {
     std::vector<std::vector<mt_key_type>> matches;
+    std::set<std::string> permutations;
     for(auto& i : bucket)
     {
         auto& itype = graph.findNode(i)->second.getData().type;
@@ -140,7 +139,11 @@ std::vector<std::vector<mt_key_type>> three_intermediate_matcher(GraphType& grap
 
                 if(j != k) //as long as j and k are not the same, we have a match 
                 {
-                    matches.push_back({{i, j, k}});
+                    mt_key_type a[3] = {i, j, k};
+                    std::sort(a, a+3);
+                    auto pattern = std::to_string(a[0]) + std::to_string(a[1]) + std::to_string(a[2]);
+                    if(permutations.insert(pattern).second) 
+                        matches.push_back(std::vector<mt_key_type>{i, j, k});
                 }
             }
         }

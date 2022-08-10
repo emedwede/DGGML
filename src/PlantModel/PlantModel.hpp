@@ -207,6 +207,51 @@ namespace Cajete
             {
                 std::cout << "Running step " << i << std::endl;
                 
+                //TODO: single component matching should be hoisted to be performed only once 
+                // at the beginning of the simulation. Afterwards, matches should be incrementally 
+                // updated 
+                std::vector<Plant::mt_key_type> node_keys;
+                for(auto& [key, value] : system_graph.getNodeSetRef())
+                    node_keys.push_back(key);
+
+                //TODO: rule system needs to be organized into a class 
+                //grow intermediate
+                std::vector<std::vector<Plant::mt_key_type>> gi_matches;  
+                //retraction intermediate 
+                std::vector<std::vector<Plant::mt_key_type>> ri_matches;
+                //retraction intermediate intermediate 
+                std::vector<std::vector<Plant::mt_key_type>> rii_matches;
+                //intermediate intermediate intermediate 
+                std::vector<std::vector<Plant::mt_key_type>> iii_matches;
+
+                gi_matches = Plant::microtubule_growing_end_matcher(system_graph, node_keys); 
+                ri_matches = Plant::microtubule_retraction_end_matcher(system_graph, node_keys);
+                rii_matches = 
+                    Plant::microtubule_retraction_end_two_intermediate_matcher(system_graph, node_keys);
+                iii_matches = Plant::three_intermediate_matcher(system_graph, node_keys);
+                
+                std::cout << "\nSingle Component System Matches\n";
+                std::cout << "GI  Matches: " <<  gi_matches.size() << "\n";
+                std::cout << "RI  Matches: " <<  ri_matches.size() << "\n";
+                std::cout << "RII Matches: " << rii_matches.size() << "\n";
+                std::cout << "III Matches: " << iii_matches.size() << "\n";
+                //break;
+                
+                std::cout << "\n";
+                for(const auto& item : iii_matches)
+                {
+                    for(const auto& key : item)
+                    {
+                        std::cout << key << " ";
+                    }
+                    std::cout << "\n";
+                }
+                std::cout << "\n";
+                //TODO: muliticomponent matches within a reaction radius should be computed at every
+                //larger time step i.e. the iterations in this loop  
+                //
+                // implement a neighbor list but with graphs!
+                //
                 std::map<gplex_key_type, std::vector<key_type>> bucketsND[3];
                 std::size_t complementND[3] = {0, 0, 0};
                 
@@ -217,7 +262,6 @@ namespace Cajete
                 auto start = std::chrono::high_resolution_clock::now();
                 //TODO: optimize this to work only for 2D
                 Cajete::expanded_cartesian_complex_sort_stl(bucketsND, complementND, geoplex2D, system_graph);
-
                 //TODO: hoist the initial system pattern matcher code outside of the ssa phase 
                 //      since we only want to smartly recomputed rule updates 
                 auto stop = std::chrono::high_resolution_clock::now();
