@@ -213,40 +213,63 @@ namespace Cajete
                 std::vector<Plant::mt_key_type> node_keys;
                 for(auto& [key, value] : system_graph.getNodeSetRef())
                     node_keys.push_back(key);
-
-                //TODO: rule system needs to be organized into a class 
-                //grow intermediate
-                std::vector<std::vector<Plant::mt_key_type>> gi_matches;  
-                //retraction intermediate 
-                std::vector<std::vector<Plant::mt_key_type>> ri_matches;
-                //retraction intermediate intermediate 
-                std::vector<std::vector<Plant::mt_key_type>> rii_matches;
-                //intermediate intermediate intermediate 
-                std::vector<std::vector<Plant::mt_key_type>> iii_matches;
-
-                gi_matches = Plant::microtubule_growing_end_matcher(system_graph, node_keys); 
-                ri_matches = Plant::microtubule_retraction_end_matcher(system_graph, node_keys);
-                rii_matches = 
-                    Plant::microtubule_retraction_end_two_intermediate_matcher(system_graph, node_keys);
-                iii_matches = Plant::three_intermediate_matcher(system_graph, node_keys);
                 
+                //TODO: rule system needs to be organized into a class grow intermediate
+                auto gi_matches = Plant::microtubule_growing_end_matcher(system_graph, node_keys); 
+                //first test for incremental should be to find all occurrences of one single component 
+                //match and then perform a RHS rewrite/match invalidation and a localized recompute
+                std::unordered_map<std::size_t, std::vector<key_type>> gi_map;
+                for(std::size_t i = 0; i < gi_matches.size(); i++)
+                {
+                    gi_map.insert({i, gi_matches[i]});
+                }
+                //each node needs to know what match it belongs to 
+                std::unordered_map<key_type, std::vector<std::size_t>> gi_inverse;
+                for(const auto& key : node_keys)
+                   gi_inverse.insert({key, {}}); 
+                for(const auto& [key, match] : gi_map)
+                {
+                    for(const auto& item : match)
+                    {
+                        auto search = gi_inverse.find(item);
+                        if(search != gi_inverse.end())
+                        {
+                            search->second.push_back(key);
+                        }
+                    }
+                }
+                std::cout << "GI_MAP Size: " << gi_map.size() << "\n";
+                for(const auto& [key, value] : gi_inverse)
+                {
+                    std::cout << "Node " << key << ": {";
+                    for(const auto& node : value)
+                        std::cout << " " << node << " ";
+                    std::cout << "}\n";
+
+                }
+                //retraction intermediate 
+                auto ri_matches = Plant::microtubule_retraction_end_matcher(system_graph, node_keys);
+                //retraction intermediate intermediate 
+                auto rii_matches = 
+                    Plant::microtubule_retraction_end_two_intermediate_matcher(system_graph, node_keys);
+                //intermediate intermediate intermediate 
+                auto iii_matches = Plant::three_intermediate_matcher(system_graph, node_keys);
+                //do we even need to sort nodes by geocell? or is it just 
+                //LHS matches that need to be sorted?
                 std::cout << "\nSingle Component System Matches\n";
                 std::cout << "GI  Matches: " <<  gi_matches.size() << "\n";
                 std::cout << "RI  Matches: " <<  ri_matches.size() << "\n";
                 std::cout << "RII Matches: " << rii_matches.size() << "\n";
                 std::cout << "III Matches: " << iii_matches.size() << "\n";
-                //break;
                 
-                std::cout << "\n";
-                for(const auto& item : iii_matches)
-                {
-                    for(const auto& key : item)
-                    {
-                        std::cout << key << " ";
-                    }
-                    std::cout << "\n";
-                }
-                std::cout << "\n";
+
+                //after finding matches, the matches need to be assigned to a dimensional geocell
+
+                //for muliticomponent rules some assignment has to be made that ultimately breaks 
+                //causality
+                //Q: is it possible that many simulations of a stochastic process with out of order
+                //causality would lead to the same average in the ensemble?
+                
                 //TODO: muliticomponent matches within a reaction radius should be computed at every
                 //larger time step i.e. the iterations in this loop  
                 //
@@ -260,8 +283,25 @@ namespace Cajete
                 std::cout << "Binning the graph into 2D partitions\n";
                 
                 auto start = std::chrono::high_resolution_clock::now();
-                //TODO: optimize this to work only for 2D
+                //TODO: make this better 
+                // This function originally was written to sort each node into an expanded cell spatially,
+                // but maybe that's not what needs to happen?
+                // Perhaps instead:
+                // 1) sort nodes into highest dimension 
+                // 2) sort motif matches into dimension based on sorting rules 
+                // ----maybe we can just sort motifs by a single anchor node instead of by all nodes?
+                // 3) double check if matches demoted to lower dim are valid in the scale space
+                // ----basically, we want to catch rules that are interacting at a distance too far from 
+                // ----the boundary and ignore them
                 Cajete::expanded_cartesian_complex_sort_stl(bucketsND, complementND, geoplex2D, system_graph);
+                for(int i = 0; i < 3; i++)
+                {
+                    auto sum = 0;
+                    for(auto& [key, bucket] : bucketsND[i])
+                        sum += bucket.size();
+                    std::cout << "Dim " << i << " size: " << sum << "\n";
+                }
+                break;
                 //TODO: hoist the initial system pattern matcher code outside of the ssa phase 
                 //      since we only want to smartly recomputed rule updates 
                 auto stop = std::chrono::high_resolution_clock::now();
