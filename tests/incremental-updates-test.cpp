@@ -9,6 +9,9 @@
 #include "PlantUtils.hpp"
 #include <vector> 
 #include <random> 
+#include <unordered_map> 
+#include <set>
+#include <algorithm> 
 
 using key_type = Cajete::Plant::mt_key_type; 
 using node_type = Cajete::Plant::MT_NodeData;
@@ -27,6 +30,20 @@ void print_matches(std::vector<std::vector<key_type>>& matches)
         } std::cout << "}\n";
     }
 }
+
+void print_matches(std::unordered_map<key_type, std::vector<key_type>>& matches)
+{
+    std::cout << "Found " << matches.size() << " Matches: \n";
+    for(auto& [key, m] : matches)
+    {
+        std::cout << "\t{ ";
+        for(auto& v : m)
+        {
+            std::cout << v << " ";
+        } std::cout << "}\n";
+    }
+}
+
 template <typename GraphType>
 void microtubule_scatter(GraphType& graph, std::size_t num_mt)
 {
@@ -106,6 +123,50 @@ void microtubule_scatter(GraphType& graph, std::size_t num_mt)
 }
 
 
+//Simple first attempt a polymerizing
+template <typename GraphType>
+std::vector<key_type> test_rewrite(GraphType& graph, std::vector<key_type>& match)
+{
+    //if(match.size() != 2) return;
+    auto i = match[0]; auto j = match[1];
+    
+    //TODO: need a unique key generator
+    typename GraphType::key_type key = graph.numNodes()+1;
+    
+    while(graph.findNode(key) != graph.node_list_end()) key++; //TODO: fix, very greedy
+    double x3[3];
+
+    auto& x1 = graph.findNode(i)->second.getData().position;
+    auto& x2 = graph.findNode(j)->second.getData().position;
+    auto& u1 = graph.findNode(i)->second.getData().unit_vec;
+    auto gamma = 0.75;
+    for(auto iter = 0; iter < 3; iter++)
+    {
+        x3[iter] = x2[iter] - ((x2[iter]-x1[iter]) * gamma); 
+    }
+    std::random_device random_device; std::mt19937 random_engine(random_device());
+    std::uniform_real_distribution<double> distribution_angle(-3.14/8.0, 3.14/8.0); 
+    double theta = distribution_angle(random_engine);
+    auto u10_rot = u1[0]*cos(theta) + u1[1]*sin(theta);
+    auto u11_rot = -u1[0]*sin(theta) +u1[1]*cos(theta);
+    u1[0] = u10_rot; u1[1] = u11_rot;
+
+    graph.addNode({key, 
+            {{x3[0], x3[1], x3[2]}, 
+            {0, 0, 0}, 
+            Cajete::Plant::mt_type::intermediate, 
+            {0, 0, 0}, 
+            {u1[0], u1[1], u1[2]}}});
+
+    graph.removeEdge(i, j);
+    graph.addEdge(i, key);
+    graph.addEdge(j, key);
+
+    return std::vector<key_type>{i, j, key}; //matches to invalidate
+}
+
+
+
 TEST_CASE("Incremental Update Test", "[update-test]")
 {
     graph_type graph;
@@ -118,8 +179,74 @@ TEST_CASE("Incremental Update Test", "[update-test]")
     for(const auto& [key, value] : graph.getNodeSetRef())
         bucket.push_back(key);
     
+    // compute all the matches
     auto matches = Cajete::Plant::microtubule_growing_end_matcher(graph, bucket);
-    print_matches(matches);
+    //print_matches(matches);
     REQUIRE(matches.size() == n);
+
+    //randomly select a rewrite to occur 
+    std::random_device random_device;
+    std::mt19937 random_engine(random_device());
     
+    std::uniform_int_distribution<std::size_t> rand_rewrite(0, n-1);
+
+    auto selected = rand_rewrite(random_engine);
+    std::cout << "Rule selected to rewrite: " << selected << "\n";
+    
+        //bad matches need to be invalidated 
+    std::unordered_map<std::size_t, std::vector<key_type>> gi_map;
+    for(std::size_t i = 0; i < matches.size(); i++)
+    {
+        gi_map.insert({i, matches[i]});
+    }
+    print_matches(gi_map); 
+    //each node needs to know what match it belongs to 
+    std::unordered_map<key_type, std::vector<std::size_t>> gi_inverse;
+    for(const auto& key : bucket)
+       gi_inverse.insert({key, {}}); 
+    
+    for(const auto& [key, match] : gi_map)
+    {
+        for(const auto& item : match)
+        {
+            auto search = gi_inverse.find(item);
+            if(search != gi_inverse.end())
+            {
+                search->second.push_back(key);
+            }
+        }
+    }
+
+    REQUIRE(gi_map.size() == n);
+    
+    //for(const auto& [key, value] : gi_inverse)
+    //{
+    //    std::cout << "Node " << key << ": {";
+    //    for(const auto& node : value)
+    //        std::cout << " " << node << " ";
+    //    std::cout << "}\n";
+    //}
+    
+    // rewrite the graph and gather the nodes the rule invalidates
+    auto invalidations = test_rewrite(graph, matches[selected]);
+    
+    // get all nodes one hop away and add those to invalidations
+    for(const auto& i : invalidations)
+    {
+        const auto& rules = gi_inverse.find(i);
+        if(rules != gi_inverse.end())
+        {
+            for(const auto& j : rules->second)
+            {
+                gi_map.erase(j);
+            }
+        }
+    }
+    print_matches(gi_map);
+    // no new mt's are added 
+    REQUIRE(YAGL::connected_components(graph) == n);
+    // only a single new unique node is added 
+    REQUIRE(graph.numNodes() == n*3+1);
+    
+
 }
