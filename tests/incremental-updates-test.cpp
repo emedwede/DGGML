@@ -12,6 +12,7 @@
 #include <unordered_map> 
 #include <set>
 #include <algorithm> 
+#include <utility> 
 
 using key_type = Cajete::Plant::mt_key_type; 
 using node_type = Cajete::Plant::MT_NodeData;
@@ -125,7 +126,7 @@ void microtubule_scatter(GraphType& graph, std::size_t num_mt)
 
 //Simple first attempt a polymerizing
 template <typename GraphType>
-std::vector<key_type> test_rewrite(GraphType& graph, std::vector<key_type>& match)
+std::pair<std::set<key_type>, std::set<key_type>> test_rewrite(GraphType& graph, std::vector<key_type>& match)
 {
     //if(match.size() != 2) return;
     auto i = match[0]; auto j = match[1];
@@ -161,8 +162,8 @@ std::vector<key_type> test_rewrite(GraphType& graph, std::vector<key_type>& matc
     graph.removeEdge(i, j);
     graph.addEdge(i, key);
     graph.addEdge(j, key);
-
-    return std::vector<key_type>{i, j, key}; //matches to invalidate
+    
+    return std::pair<std::set<key_type>, std::set<key_type>>{{i, j}, {i, j, key}}; //matches to invalidate and induce
 }
 
 
@@ -193,7 +194,6 @@ TEST_CASE("Incremental Update Test", "[update-test]")
     auto selected = rand_rewrite(random_engine);
     std::cout << "Rule selected to rewrite: " << selected << "\n";
     
-        //bad matches need to be invalidated 
     std::unordered_map<std::size_t, std::vector<key_type>> gi_map;
     for(std::size_t i = 0; i < matches.size(); i++)
     {
@@ -219,34 +219,89 @@ TEST_CASE("Incremental Update Test", "[update-test]")
 
     REQUIRE(gi_map.size() == n);
     
-    //for(const auto& [key, value] : gi_inverse)
-    //{
-    //    std::cout << "Node " << key << ": {";
-    //    for(const auto& node : value)
-    //        std::cout << " " << node << " ";
-    //    std::cout << "}\n";
-    //}
-    
+    auto lambda_print = [](std::unordered_map<key_type, std::vector<std::size_t>>& gi_inverse)
+    {
+        for(const auto& [key, value] : gi_inverse)
+        {
+            std::cout << "Node " << key << ": {";
+            for(const auto& node : value)
+                std::cout << " " << node << " ";
+            std::cout << "}\n";
+        }
+    };
+    lambda_print(gi_inverse);
     // rewrite the graph and gather the nodes the rule invalidates
-    auto invalidations = test_rewrite(graph, matches[selected]);
+    auto [invalidations, inducers] = test_rewrite(graph, matches[selected]);
     
-    // get all nodes one hop away and add those to invalidations
+    //first test the graph was rewritten
+    REQUIRE(YAGL::connected_components(graph) == n);
+    // only a single new unique node is added 
+    REQUIRE(graph.numNodes() == n*3+1);
+    
+    REQUIRE(invalidations.size() == 2);
+
+    //invalidate old matches
     for(const auto& i : invalidations)
     {
         const auto& rules = gi_inverse.find(i);
         if(rules != gi_inverse.end())
         {
+            //TODO: need to remove matches from inverse map in a less destructive way 
             for(const auto& j : rules->second)
             {
                 gi_map.erase(j);
             }
+            gi_inverse.erase(i);
         }
     }
-    print_matches(gi_map);
-    // no new mt's are added 
-    REQUIRE(YAGL::connected_components(graph) == n);
-    // only a single new unique node is added 
-    REQUIRE(graph.numNodes() == n*3+1);
     
+    REQUIRE(gi_map.size() == n - 1);
+    print_matches(gi_map);
 
+    auto temp = inducers;
+    // get all nodes one hop away and add those to inducers
+    for(const auto& i : temp)
+    {
+        auto res = YAGL::recursive_dfs(graph, i, 2);
+        for(auto& j : res)
+            inducers.insert(j);
+    }
+    REQUIRE(inducers.size() == 4);
+    
+    //induce a subgraph to search for new matches
+    auto subgraph = YAGL::induced_subgraph(graph, inducers);
+
+    REQUIRE(subgraph.numNodes() == 4);
+    
+    std::vector<Cajete::Plant::mt_key_type> sub_bucket;
+    
+    for(const auto& [key, value] : subgraph.getNodeSetRef())
+        sub_bucket.push_back(key);
+    
+    // compute all the matches
+    auto incremental_matches = Cajete::Plant::microtubule_growing_end_matcher(graph, sub_bucket);
+    //print_matches(matches);
+    REQUIRE(incremental_matches.size() == 1);
+    for(auto& key : sub_bucket)
+    {
+        if(gi_inverse.find(key) == gi_inverse.end())
+            gi_inverse.insert({key, {}});
+    }
+    int iii = 1;
+    for(const auto& match : incremental_matches)
+    {
+        auto key = n + iii;
+        gi_map.insert({key, match}); iii++;
+        for(const auto& item : match)
+        {
+            auto search = gi_inverse.find(item);
+            if(search != gi_inverse.end())
+            {
+                search->second.push_back(key);
+            }
+        }
+    }
+    REQUIRE(gi_map.size() == n);
+    print_matches(gi_map);
+    lambda_print(gi_inverse);
 }
