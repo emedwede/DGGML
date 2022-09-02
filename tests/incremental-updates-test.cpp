@@ -14,6 +14,8 @@
 #include <algorithm> 
 #include <utility> 
 
+#include "RuleSystem.hpp"
+
 using key_type = Cajete::Plant::mt_key_type; 
 using node_type = Cajete::Plant::MT_NodeData;
 
@@ -166,7 +168,18 @@ std::pair<std::set<key_type>, std::set<key_type>> test_rewrite(GraphType& graph,
     return std::pair<std::set<key_type>, std::set<key_type>>{{i, j}, {i, j, key}}; //matches to invalidate and induce
 }
 
+auto random_rewrite(std::size_t n)
+{
+    //randomly select a rewrite to occur 
+    std::random_device random_device;
+    std::mt19937 random_engine(random_device());
+    
+    std::uniform_int_distribution<std::size_t> rand_rewrite(0, n-1);
 
+    auto selected = rand_rewrite(random_engine);
+    std::cout << "Rule selected to rewrite: " << selected << "\n";
+    return selected;
+}
 
 TEST_CASE("Incremental Update Test", "[update-test]")
 {
@@ -186,12 +199,8 @@ TEST_CASE("Incremental Update Test", "[update-test]")
     REQUIRE(matches.size() == n);
 
     //randomly select a rewrite to occur 
-    std::random_device random_device;
-    std::mt19937 random_engine(random_device());
-    
-    std::uniform_int_distribution<std::size_t> rand_rewrite(0, n-1);
+    auto selected = random_rewrite(n);
 
-    auto selected = rand_rewrite(random_engine);
     std::cout << "Rule selected to rewrite: " << selected << "\n";
     
     std::unordered_map<std::size_t, std::vector<key_type>> gi_map;
@@ -212,6 +221,7 @@ TEST_CASE("Incremental Update Test", "[update-test]")
             auto search = gi_inverse.find(item);
             if(search != gi_inverse.end())
             {
+                //shoud probably insert key into set not vector
                 search->second.push_back(key);
             }
         }
@@ -304,4 +314,131 @@ TEST_CASE("Incremental Update Test", "[update-test]")
     REQUIRE(gi_map.size() == n);
     print_matches(gi_map);
     lambda_print(gi_inverse);
+}
+
+TEST_CASE("RuleSystem Test", "[rule-system-test]")
+{
+    graph_type graph;
+   
+    std::size_t n = 10; // num mt
+    microtubule_scatter(graph, n);
+
+    std::vector<Cajete::Plant::mt_key_type> bucket;
+    
+    for(const auto& [key, value] : graph.getNodeSetRef())
+        bucket.push_back(key);
+    
+    // compute all the matches
+    auto matches = Cajete::Plant::microtubule_growing_end_matcher(graph, bucket);
+    //print_matches(matches);
+    REQUIRE(matches.size() == n);
+
+    Cajete::RuleSystem<std::size_t> rule_system;
+    REQUIRE(rule_system.size() == 0);
+    
+    for(auto& item : matches)
+        rule_system.push_back({std::move(item), Cajete::Rule::G});
+    REQUIRE(rule_system.size() == matches.size());
+
+    matches = Cajete::Plant::microtubule_retraction_end_matcher(graph, bucket);
+    REQUIRE(matches.size() == n);
+
+    for(auto& item : matches) 
+        rule_system.push_back({std::move(item), Cajete::Rule::R});
+
+    REQUIRE(rule_system.size() == 2*n);
+
+    rule_system.print_index();
+    
+    auto grow = std::count_if(rule_system.begin(), rule_system.end(), 
+            [](const auto& item) {
+        if(item.first.type == Cajete::Rule::R)
+            return true;
+        else return false;
+    });
+
+    REQUIRE(grow == n);
+    
+    REQUIRE(rule_system.inverse_index.size() == 30);
+
+    auto selected = random_rewrite(n);
+    
+    auto lambda_print = [](typename Cajete::RuleSystem<std::size_t>::inverse_type& gi_inverse)
+    {
+        for(const auto& [key, value] : gi_inverse)
+        {
+            std::cout << "Node " << key << ": {";
+            for(const auto& node : value)
+                std::cout << " " << node << " ";
+            std::cout << "}\n";
+        }
+    };
+    lambda_print(rule_system.inverse_index);
+    
+    REQUIRE(rule_system[0].type == Cajete::Rule::G);
+    
+    // rewrite the graph and gather the nodes the rule invalidates
+    auto [invalidations, inducers] = test_rewrite(graph, rule_system[selected].match);
+    
+    //first test the graph was rewritten
+    REQUIRE(YAGL::connected_components(graph) == n);
+    // only a single new unique node is added 
+    REQUIRE(graph.numNodes() == n*3+1);
+    
+    REQUIRE(invalidations.size() == 2);
+    
+    rule_system.print_index();
+    //invalidate old matches
+    for(const auto& i : invalidations)
+        rule_system.invalidate(i);
+
+    REQUIRE(rule_system.size() == 2*n - 2);
+    
+    rule_system.print_index();
+
+    
+    auto temp = inducers;// get all nodes one hop away and add those to inducers
+    for(const auto& i : temp)
+    {
+        auto res = YAGL::recursive_dfs(graph, i, 2);
+        for(auto& j : res)
+            inducers.insert(j);
+    }
+    REQUIRE(inducers.size() == 4);
+    
+    //induce a subgraph to search for new matches
+    auto subgraph = YAGL::induced_subgraph(graph, inducers);
+
+    REQUIRE(subgraph.numNodes() == 4);
+    
+    std::vector<Cajete::Plant::mt_key_type> sub_bucket;
+    
+    for(const auto& [key, value] : subgraph.getNodeSetRef())
+        sub_bucket.push_back(key);
+    
+    // compute all the matches
+    auto incremental_matches = Cajete::Plant::microtubule_growing_end_matcher(graph, sub_bucket);
+    REQUIRE(incremental_matches.size() == 1);
+
+    for(auto& item : incremental_matches)
+        rule_system.push_back({std::move(item), Cajete::Rule::G});
+    
+    incremental_matches = Cajete::Plant::microtubule_retraction_end_matcher(graph, sub_bucket);
+    REQUIRE(incremental_matches.size() == 1);
+
+    for(auto& item : incremental_matches)
+        rule_system.push_back({std::move(item), Cajete::Rule::R});
+
+    REQUIRE(rule_system.size() == 2*n);
+    
+    lambda_print(rule_system.inverse_index);
+
+    rule_system.print_index();
+
+    auto num_grow = rule_system.count(Cajete::Rule::G);
+    REQUIRE(num_grow == n);
+
+    auto num_retract = rule_system.count(Cajete::Rule::R);
+    REQUIRE(num_retract == n);
+
 }
