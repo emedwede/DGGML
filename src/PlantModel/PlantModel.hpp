@@ -20,6 +20,8 @@
 
 #include "CartesianHashFunctions.hpp"
 
+#include "RuleSystem.hpp"
+
 #include <map>
 #include <random>
 #include <chrono>
@@ -200,81 +202,104 @@ namespace Cajete
             std::string title = results_dir_name+"/simulation_step_";
             std::cout << "Saving the initial state of the system graph\n";
             vtk_writer.save(system_graph, title+std::to_string(0));
-
+            
+            //precompute all of the single component matches 
+            Cajete::RuleSystem<Cajete::Plant::mt_key_type> rule_system;
+           
+            //TODO: we should fold the below code into some interface function to apply
+            //the rule set
+            //bucket to temporarily interfact the matcher rule
+            std::vector<Cajete::Plant::mt_key_type> node_set;
+            for(const auto& [key, value] : system_graph.getNodeSetRef())
+                node_set.push_back(key);
+            
+            auto matches = Cajete::Plant::microtubule_growing_end_matcher(system_graph, node_set);
+            for(auto& item : matches)
+                rule_system.push_back({std::move(item), Cajete::Rule::G});
+            
+            matches = Cajete::Plant::microtubule_retraction_end_matcher(system_graph, node_set);
+            
+            for(auto& item : matches)
+                rule_system.push_back({std::move(item), Cajete::Rule::R});
+            
+            std::cout << "matches: " << rule_system.size() << "\n";
+            //
             //TODO: move the simulation algorithm to its own class
             //is this where we run the simulation?
             for(auto i = 1; i <= settings.NUM_STEPS; i++)
             {
                 std::cout << "Running step " << i << std::endl;
+                 
+                // I think I only need to sort nodes by the highest dimensional cell to then
+                // map rules to the approrpiate cell? 
+                using cplex_key_t = typename Cajete::CartesianComplex2D<>::graph_type::key_type;
+                std::vector<cplex_key_t> bucket2d;
+                for(auto& [key, value] : geoplex2D.graph.getNodeSetRef())
+                    if(value.getData().type == 0)
+                        bucket2d.push_back(key);
+                std::cout << "Bucket: " << bucket2d.size() << "\n";
+                std::unordered_map<key_type, gplex_key_type> cell_list;
                 
-                //TODO: single component matching should be hoisted to be performed only once 
-                // at the beginning of the simulation. Afterwards, matches should be incrementally 
-                // updated 
-                std::vector<Plant::mt_key_type> node_keys;
                 for(auto& [key, value] : system_graph.getNodeSetRef())
-                    node_keys.push_back(key);
-                
-                //TODO: rule system needs to be organized into a class grow intermediate
-                auto gi_matches = Plant::microtubule_growing_end_matcher(system_graph, node_keys); 
-                //first test for incremental should be to find all occurrences of one single component 
-                //match and then perform a RHS rewrite/match invalidation and a localized recompute
-                std::unordered_map<std::size_t, std::vector<key_type>> gi_map;
-                for(std::size_t i = 0; i < gi_matches.size(); i++)
                 {
-                    gi_map.insert({i, gi_matches[i]});
+                    auto& node_data = value.getData();
+                    double xp = node_data.position[0];
+                    double yp = node_data.position[1];
+                    int ic, jc;
+
+                    geoplex2D.coarse_grid.locatePoint(xp, yp, ic, jc);
+                    geoplex2D.coarse_cell_to_fine_lattice(ic, jc); 
+                    auto cardinal = geoplex2D.fine_grid.cardinalLatticeIndex(ic, jc);
+                    cell_list.insert({key, cardinal}); 
                 }
-                //each node needs to know what match it belongs to 
-                std::unordered_map<key_type, std::vector<std::size_t>> gi_inverse;
-                for(const auto& key : node_keys)
-                   gi_inverse.insert({key, {}}); 
-                for(const auto& [key, match] : gi_map)
+                
+                auto bucket_sum = 0;
+                for(auto& c : bucket2d)
+                {  
+                    auto total = 
+                        std::count_if(cell_list.begin(), 
+                                cell_list.end(), 
+                                [&c](auto& item) {
+                        if(item.second == c)
+                            return true;
+                        else return false;
+                    });
+                    bucket_sum += total;
+                    std::cout << c << ": " << total << "\n";
+                }
+                std::cout << bucket_sum << " nodes sorted\n"; 
+
+                using rule_key_t = std::size_t;
+                std::map<cplex_key_t, std::vector<rule_key_t>> rule_map;
+                for(const auto& item : bucket2d)
+                    rule_map.insert({item, {}});
+
+                for(const auto& match : rule_system)
                 {
-                    for(const auto& item : match)
+                    auto& instance = match.first.match;
+                    for(auto& l : instance)
+                        std::cout << cell_list.find(l)->second << " ";
+                    std::cout << "\n";
+                    auto it =
+                    std::adjacent_find(instance.begin(), 
+                            instance.end(), 
+                            [&cell_list](auto& lhs, auto& rhs){
+                                if(cell_list.find(rhs)->second != cell_list.find(lhs)->second)
+                                    return true;
+                                else 
+                                    return false;
+                            });
+
+                    if(it == instance.end())
                     {
-                        auto search = gi_inverse.find(item);
-                        if(search != gi_inverse.end())
-                        {
-                            search->second.push_back(key);
-                        }
+                        std::cout << "maps to highest dim cell\n";
+                        auto cell_id = cell_list.find(instance.front())->second;
+                        rule_map[cell_id].push_back(match.second);
                     }
+                    else 
+                        std::cout << "maps to lower dim cell\n";
                 }
-                std::cout << "GI_MAP Size: " << gi_map.size() << "\n";
-                for(const auto& [key, value] : gi_inverse)
-                {
-                    std::cout << "Node " << key << ": {";
-                    for(const auto& node : value)
-                        std::cout << " " << node << " ";
-                    std::cout << "}\n";
 
-                }
-                //retraction intermediate 
-                auto ri_matches = Plant::microtubule_retraction_end_matcher(system_graph, node_keys);
-                //retraction intermediate intermediate 
-                auto rii_matches = 
-                    Plant::microtubule_retraction_end_two_intermediate_matcher(system_graph, node_keys);
-                //intermediate intermediate intermediate 
-                auto iii_matches = Plant::three_intermediate_matcher(system_graph, node_keys);
-                //do we even need to sort nodes by geocell? or is it just 
-                //LHS matches that need to be sorted?
-                std::cout << "\nSingle Component System Matches\n";
-                std::cout << "GI  Matches: " <<  gi_matches.size() << "\n";
-                std::cout << "RI  Matches: " <<  ri_matches.size() << "\n";
-                std::cout << "RII Matches: " << rii_matches.size() << "\n";
-                std::cout << "III Matches: " << iii_matches.size() << "\n";
-                
-
-                //after finding matches, the matches need to be assigned to a dimensional geocell
-
-                //for muliticomponent rules some assignment has to be made that ultimately breaks 
-                //causality
-                //Q: is it possible that many simulations of a stochastic process with out of order
-                //causality would lead to the same average in the ensemble?
-                
-                //TODO: muliticomponent matches within a reaction radius should be computed at every
-                //larger time step i.e. the iterations in this loop  
-                //
-                // implement a neighbor list but with graphs!
-                //
                 std::map<gplex_key_type, std::vector<key_type>> bucketsND[3];
                 std::size_t complementND[3] = {0, 0, 0};
                 
@@ -301,7 +326,7 @@ namespace Cajete
                         sum += bucket.size();
                     std::cout << "Dim " << i << " size: " << sum << "\n";
                 }
-                break;
+                
                 //TODO: hoist the initial system pattern matcher code outside of the ssa phase 
                 //      since we only want to smartly recomputed rule updates 
                 auto stop = std::chrono::high_resolution_clock::now();
@@ -316,7 +341,8 @@ namespace Cajete
                    if(geoplex2D.getGraph().findNode(k)->second.getData().interior)
                    {
                         auto start = std::chrono::high_resolution_clock::now();
-                        plant_model_ssa(bucket, geoplex2D, system_graph, settings);
+                        plant_model_ssa_new(rule_system, k, rule_map, cell_list, geoplex2D, system_graph, settings);
+                        //plant_model_ssa(bucket, geoplex2D, system_graph, settings);
                         auto stop = std::chrono::high_resolution_clock::now();
                         auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(stop-start);
                         std::cout << "Cell " << k << " took " << duration.count() << " milliseconds\n";
@@ -326,7 +352,7 @@ namespace Cajete
                 
                 tot_time += dim_time;
                 std::cout << "2D took " << dim_time << " milliseconds\n";
-
+                return; 
                 //TODO: remove, right now connected_components should remain constant with only 
                 //growth rules
                 //std::cout << "----------------\n";
@@ -334,6 +360,7 @@ namespace Cajete
                 //std::cout << "\n---------------\n";
                                 
                 std::cout << "Synchronizing work\n";
+                /*
                 //TODO: this is where a barrier would be for a parallel code
                 for(auto& item : bucketsND) item.clear();
                
@@ -400,6 +427,9 @@ namespace Cajete
                 std::cout << "0D took " << dim_time << " milliseconds\n";
         
                 std::cout << "Synchronizing work\n";
+                
+                */
+
                 //TODO: this is where a barrier would be for a parallel code
                 for(auto item : bucketsND) item.clear();
         

@@ -1,4 +1,5 @@
 #ifndef RULE_SYSTEM_HPP
+#define RULE_SYSTEM_HPP
 
 #include <vector> 
 #include <algorithm> 
@@ -9,6 +10,17 @@ namespace Cajete
 {
     //TODO: Perhaps make this class a member of the rule system 
     enum class Rule {G, R, I};
+
+    std::ostream& operator << (std::ostream& os, const Rule& r)
+    {
+        if(Rule::G == r)
+            os << "Growing";
+        else if(Rule::R == r)
+            os << "Retraction";
+        else
+            os << "Intermediate";
+        return os;
+    }
 
     //We need matching rewrite functions for every enum class member
 
@@ -70,6 +82,7 @@ namespace Cajete
         using container_type = std::vector<std::pair<data_type, key_type>>;
         using index_type = std::unordered_map<key_type, std::size_t>;  
         using inverse_type = std::unordered_map<key_type, std::vector<key_type>>;
+        using cell_list_type = std::unordered_map<key_type, key_type>;
         using iterator = typename container_type::iterator;    
 
         //containes the matches and rule id bundled as a pair
@@ -140,7 +153,8 @@ namespace Cajete
         iterator end() { return matches.end(); }
 
         auto size() { return matches.size(); }
-
+        
+        //TODO could be a template?
         auto count(enum Rule r)
         {
             auto total = 0;

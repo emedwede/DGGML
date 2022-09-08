@@ -9,6 +9,8 @@
 
 #include "SundialsUtils.hpp"
 
+#include "RuleSystem.hpp"
+
 #include <chrono>
 #include <random>
 #include <algorithm>
@@ -80,6 +82,7 @@ void filter_matches(MatchSetType* unfiltered, MatchSetType* filtered, std::size_
 
 int rhs_func(realtype t, N_Vector y, N_Vector ydot, void* user_data) 
 {
+    
     return 0;
 }
 
@@ -87,6 +90,123 @@ int root_func(realtype t, N_Vector y, realtype* gout, void* user_data)
 {
     return 0;
 }
+
+using RuleSystemType = Cajete::RuleSystem<Plant::mt_key_type>;
+template <typename B, typename T, typename U, typename GeoplexType, typename GraphType, typename ParamType>
+void plant_model_ssa_new(RuleSystemType& rule_system, B& k, T& rule_map, U& cell_list, GeoplexType& geoplex2D, GraphType& system_graph, ParamType& settings)
+{
+    std::cout << "Cell " << k << " has " << rule_map[k].size() << " rules\n";
+
+    double delta_t, exp_sample, tau, geocell_propensity;
+    std::size_t events, steps; 
+    delta_t = 0.0; events = 0; steps = 0; geocell_propensity = 0.0;
+
+    /* Begin the generic sundials skeleton */ 
+    
+    /* Step 1: initalize the parallel env */
+    
+    // For now, serial, so skip
+    
+    /* Step 2: Create the sun context */
+    
+    int flag; //generic reusable flag 
+
+    //Create the suncontext 
+    SUNContext ctx;
+    flag = SUNContext_Create(NULL, &ctx);
+    if(!Cajete::SundialsUtils::check_flag(&flag, "SUNContext_Create", 1))
+        std::cout << "Passed the error check, suncontext created\n";
+    
+    /* Step 3: set the problem dimensions */
+    realtype t_start, t_final, t, tout;
+    sunindextype num_eq = 0;
+    
+    /* Step 4: set the vector of initial values */ 
+    N_Vector y = NULL; 
+    y = N_VNew_Serial(num_eq, ctx);
+
+    /* Step 5: create the explicit stepper object */ 
+    void* arkode_mem = NULL;
+    arkode_mem = ERKStepCreate(rhs_func, t_start, y, ctx); 
+
+    /* Step 6: specify the integration tolerances */ 
+    realtype reltol = 1.0e-6;
+    realtype abstol = 1.0e-10;
+    flag = ERKStepSStolerances(arkode_mem, reltol, abstol);
+
+    /* Step 7: set any optional inputs */
+    //flag = ERKStepSetUserData(arkode_mem, user_data); 
+    
+    /* Step 8: specify an optional root finding problem to solve */ 
+    int num_roots = 1;
+    int roots_found[num_roots];
+    int root_flag;
+    // specify the root finding function having num_roots  
+    flag = ERKStepRootInit(arkode_mem, num_roots, root_func); 
+
+    /* Step 9: advance the solution in time */ 
+
+    /* Step 10: get optional outputs */ 
+    
+    /* Step 11: deallocate memory for solution vector */
+    N_VDestroy(y);
+
+    /* Step 12: free the solver memory and the context if not reused */ 
+    ERKStepFree(&arkode_mem); //free the solver memory
+    SUNContext_Free(&ctx); //always call prior to MPI_Finalize
+    std::cout << "Freeing the suncontext\n";
+    
+    /* Step 13: Finalilze MPI, if used */ 
+
+    /* End the generic sundials skeleton */
+
+    while(delta_t < settings.DELTA) 
+    {
+        //reset tau
+        tau = 0.0;
+
+        double uniform_sample = RandomRealsBetween(0.0, 1.0)();
+        
+        //sample the exponential variable
+        exp_sample = -log(1-uniform_sample);
+        
+        //the sums of the particular rules propensities
+            
+        //the propensities calculated for a particular rule
+        
+        while(delta_t < settings.DELTA && tau < exp_sample)
+        {
+                    
+            // STEP(1) : sum all of the rule propensities
+            //zero the geocell_propensity
+            geocell_propensity = 0.0;
+            
+           
+            //the step adapts based on propensity or systems fastest dynamic
+            //settings.DELTA_T_MIN = 
+            //std::min(1.0/(10.0*geocell_propensity), settings.DELTA_DELTA_T);
+            
+            // STEP(2) : solve the system of ODES 
+
+            // STEP(3) : use forward euler to solve the TAU ODE
+            tau += geocell_propensity*settings.DELTA_T_MIN; 
+            
+            // STEP(4) : advance the loop timer
+            delta_t += settings.DELTA_T_MIN; //TODO: make delta_t adaptive
+
+            steps++;
+        }
+    
+
+        // if we get over our threshold an event can occur
+        if(tau > exp_sample) 
+        {
+            //determine which rule to file and fire it
+        }
+    }
+    std::cout << "Total steps taken: " << steps << "\n";
+}
+
 
 //template <typename BucketType>
 //void plant_model_ssa(

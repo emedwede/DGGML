@@ -10,6 +10,7 @@
 #include <vector> 
 #include <random> 
 #include <unordered_map> 
+#include <map>
 #include <set>
 #include <algorithm> 
 #include <utility> 
@@ -55,9 +56,9 @@ void microtubule_scatter(GraphType& graph, std::size_t num_mt)
     std::random_device random_device;
     std::mt19937 random_engine(random_device());
     
-    std::uniform_real_distribution<double> distribution_global_x(0, 10);
+    std::uniform_real_distribution<double> distribution_global_x(2, 10);
 
-    std::uniform_real_distribution<double> distribution_global_y(0, 10);
+    std::uniform_real_distribution<double> distribution_global_y(2, 10);
 
     std::uniform_real_distribution<double> distribution_local(epsilon_min, epsilon_max);
     
@@ -440,5 +441,106 @@ TEST_CASE("RuleSystem Test", "[rule-system-test]")
 
     auto num_retract = rule_system.count(Cajete::Rule::R);
     REQUIRE(num_retract == n);
+}
 
+#include "CartesianComplex2D.hpp"
+
+TEST_CASE("CellList Test", "[cell-list-test]")
+{
+    graph_type graph;
+   
+    std::size_t n = 10; // num mt
+    microtubule_scatter(graph, n);
+
+    Cajete::CartesianComplex2D cplex(2, 2, 6.0, 6.0);
+    using cplex_key_t = typename Cajete::CartesianComplex2D<>::graph_type::key_type;
+    using plant_key_t = Cajete::Plant::mt_key_type;
+    
+    std::vector<cplex_key_t> bucket2d;
+    for(auto& item : cplex.graph.getNodeSetRef())
+    {
+        if(item.second.getData().type == 0)
+            bucket2d.push_back(item.first);
+    }
+    for(auto& item : bucket2d) std::cout << item << " ";
+    std::cout << "\n";
+    REQUIRE(bucket2d.size() == cplex.get2dTotalCellCount());
+
+    std::unordered_map<plant_key_t, cplex_key_t> cell_list; 
+    
+    for(auto& [key, value] : graph.getNodeSetRef())
+    {
+        auto& node_data = value.getData();
+        double xp = node_data.position[0];
+        double yp = node_data.position[1];
+        int ic, jc;
+
+        cplex.coarse_grid.locatePoint(xp, yp, ic, jc);
+        cplex.coarse_cell_to_fine_lattice(ic, jc); 
+        auto cardinal = cplex.fine_grid.cardinalLatticeIndex(ic, jc);
+        std::cout << cardinal << " ";
+        cell_list.insert({key, cardinal}); 
+    }
+    std::cout << "\n";
+    REQUIRE(cell_list.size() == graph.numNodes());
+    
+    for(auto& c : bucket2d)
+    {  
+        auto total = std::count_if(cell_list.begin(), cell_list.end(), [&c](auto& item) {
+            if(item.second == c)
+                return true;
+            else return false;
+        });
+        std::cout << c << ": " << total << "\n";
+    }
+    
+    std::vector<Cajete::Plant::mt_key_type> bucket;
+    
+    for(const auto& [key, value] : graph.getNodeSetRef())
+        bucket.push_back(key);
+    
+    auto matches = Cajete::Plant::microtubule_growing_end_matcher(graph, bucket);
+    
+    Cajete::RuleSystem<std::size_t> rule_system;
+    
+    using rule_key_t = std::size_t;
+    std::map<cplex_key_t, std::vector<rule_key_t>> rule_map;
+    for(const auto& item : bucket2d)
+        rule_map.insert({item, {}});
+
+    for(auto& item : matches)
+        rule_system.push_back({std::move(item), Cajete::Rule::G});
+    
+    std::cout << "Num matches: " << rule_system.size() << "\n";
+    //map the rules to particular cell
+    for(const auto& match : rule_system)
+    {
+        auto& instance = match.first.match;
+        for(auto& l : instance)
+            std::cout << cell_list.find(l)->second << " ";
+        std::cout << "\n";
+        auto it =
+        std::adjacent_find(instance.begin(), instance.end(), [&cell_list](auto& lhs, auto& rhs){
+            if(cell_list.find(rhs)->second != cell_list.find(lhs)->second)
+                return true;
+            else 
+                return false;
+        });
+
+        if(it == instance.end())
+        {
+            std::cout << "maps to highest dim cell\n";
+            auto cell_id = cell_list.find(instance.front())->second;
+            rule_map[cell_id].push_back(match.second);
+        }
+        else 
+            std::cout << "maps to lower dim cell\n";
+    }
+    for(const auto& c : rule_map)
+    {
+        std::cout << "{ Cell ID: " << c.first << ", Rule IDs: { ";
+        for(auto& i : c.second)
+            std::cout << i << " ";
+        std::cout << "} }\n";    
+    }
 }
