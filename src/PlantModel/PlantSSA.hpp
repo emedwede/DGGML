@@ -91,6 +91,103 @@ int root_func(realtype t, N_Vector y, realtype* gout, void* user_data)
     return 0;
 }
 
+template <typename UserDataType>
+struct Solver 
+{
+    int flag; //generic reusable flag 
+    
+    //Create the suncontext 
+    SUNContext ctx;
+    void* arkode_mem;
+
+    realtype t_start, t_final, t, tout, dt_out;
+     
+    realtype reltol;
+    realtype abstol;
+    
+    static constexpr int num_roots = 1;
+    int roots_found[num_roots];
+    int root_flag;
+
+    sunindextype num_eq;
+    
+    N_Vector y;
+   
+    //TODO: should this be a pointer?
+    UserDataType user_data;
+    
+    Solver(UserDataType _user_data, sunindextype _num_eq = 0) 
+        : user_data(_user_data)
+        , num_eq(_num_eq)
+        , t_start(RCONST(0.0))
+        , t(t_start)
+        , dt_out(RCONST(0.05))
+        , tout(t_start+dt_out)
+    {
+        flag = SUNContext_Create(NULL, &ctx);
+        if(!Cajete::SundialsUtils::check_flag(&flag, "SUNContext_Create", 1))
+            std::cout << "Passed the error check, suncontext created\n";
+    
+        y = NULL; 
+        y = N_VNew_Serial(num_eq, ctx);
+        for(int i = 0; i < num_eq; i++)
+            NV_Ith_S(y, i) = 0.0;
+
+        arkode_mem = ERKStepCreate(my_func, t_start, y, ctx); 
+
+        reltol = 1.0e-6;
+        abstol = 1.0e-10;
+
+        flag = ERKStepSStolerances(arkode_mem, reltol, abstol);
+        
+        //set optional inputs
+        flag = ERKStepSetUserData(arkode_mem, &user_data); 
+    
+        // specify the root finding function having num_roots  
+        flag = ERKStepRootInit(arkode_mem, num_roots, root_func); 
+        
+        ERKStepSetMaxStep(arkode_mem, dt_out/10.0);
+    }
+    
+    void solve()
+    {
+        flag = ERKStepEvolve(arkode_mem, tout, y, &t, ARK_ONE_STEP);
+
+        if(flag == ARK_ROOT_RETURN)
+        {
+            root_flag = ERKStepGetRootInfo(arkode_mem, roots_found);
+            std::cout << "A root has been found\n";
+        }
+        
+        //successful solve
+        if(flag >= 0)
+        {
+            tout += dt_out;
+        }
+    }
+    
+    static int my_func(realtype t, N_Vector y, N_Vector ydot, void* user_data) 
+    {
+        UserDataType* local_ptr = (UserDataType *)user_data;
+        
+        std::cout << "In my function, rule size: " << local_ptr->size() << "\n"; 
+        
+        local_ptr = nullptr;
+        return 0;
+    }
+
+
+    ~Solver()
+    {
+        N_VDestroy(y);
+        ERKStepFree(&arkode_mem); //free the solver memory
+        SUNContext_Free(&ctx); //always call prior to MPI_Finalize
+        std::cout << "Destroyed the solver\n";
+    
+        /* Step 13: Finalilze MPI, if used */ 
+    }
+};
+
 using RuleSystemType = Cajete::RuleSystem<Plant::mt_key_type>;
 template <typename B, typename T, typename U, typename GeoplexType, typename GraphType, typename ParamType>
 void plant_model_ssa_new(RuleSystemType& rule_system, B& k, T& rule_map, U& cell_list, GeoplexType& geoplex2D, GraphType& system_graph, ParamType& settings)
@@ -101,64 +198,10 @@ void plant_model_ssa_new(RuleSystemType& rule_system, B& k, T& rule_map, U& cell
     std::size_t events, steps; 
     delta_t = 0.0; events = 0; steps = 0; geocell_propensity = 0.0;
 
-    /* Begin the generic sundials skeleton */ 
     
-    /* Step 1: initalize the parallel env */
-    
-    // For now, serial, so skip
-    
-    /* Step 2: Create the sun context */
-    
-    int flag; //generic reusable flag 
+    Solver ode_system(rule_system, 2);
 
-    //Create the suncontext 
-    SUNContext ctx;
-    flag = SUNContext_Create(NULL, &ctx);
-    if(!Cajete::SundialsUtils::check_flag(&flag, "SUNContext_Create", 1))
-        std::cout << "Passed the error check, suncontext created\n";
-    
-    /* Step 3: set the problem dimensions */
-    realtype t_start, t_final, t, tout;
-    sunindextype num_eq = 0;
-    
-    /* Step 4: set the vector of initial values */ 
-    N_Vector y = NULL; 
-    y = N_VNew_Serial(num_eq, ctx);
-
-    /* Step 5: create the explicit stepper object */ 
-    void* arkode_mem = NULL;
-    arkode_mem = ERKStepCreate(rhs_func, t_start, y, ctx); 
-
-    /* Step 6: specify the integration tolerances */ 
-    realtype reltol = 1.0e-6;
-    realtype abstol = 1.0e-10;
-    flag = ERKStepSStolerances(arkode_mem, reltol, abstol);
-
-    /* Step 7: set any optional inputs */
-    //flag = ERKStepSetUserData(arkode_mem, user_data); 
-    
-    /* Step 8: specify an optional root finding problem to solve */ 
-    int num_roots = 1;
-    int roots_found[num_roots];
-    int root_flag;
-    // specify the root finding function having num_roots  
-    flag = ERKStepRootInit(arkode_mem, num_roots, root_func); 
-
-    /* Step 9: advance the solution in time */ 
-
-    /* Step 10: get optional outputs */ 
-    
-    /* Step 11: deallocate memory for solution vector */
-    N_VDestroy(y);
-
-    /* Step 12: free the solver memory and the context if not reused */ 
-    ERKStepFree(&arkode_mem); //free the solver memory
-    SUNContext_Free(&ctx); //always call prior to MPI_Finalize
-    std::cout << "Freeing the suncontext\n";
-    
-    /* Step 13: Finalilze MPI, if used */ 
-
-    /* End the generic sundials skeleton */
+    ode_system.solve();
 
     while(delta_t < settings.DELTA) 
     {
