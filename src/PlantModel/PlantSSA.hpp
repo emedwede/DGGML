@@ -24,6 +24,15 @@
 #include <sundials/sundials_types.h> 
 #include <sundials/sundials_math.h>
 
+#if defined(SUNDIALS_EXTENDED_PRECISION)
+#define GSYM "Lg"
+#define ESYM "Le"
+#define FSYM "Lf"
+#else
+#define GSYM "g"
+#define ESYM "e"
+#define FSYM "f"
+#endif
 namespace Cajete 
 {
 namespace Plant 
@@ -118,12 +127,13 @@ struct Solver
     
     Solver(UserDataType _user_data, sunindextype _num_eq = 0) 
         : user_data(_user_data)
-        , num_eq(_num_eq)
-        , t_start(RCONST(0.0))
-        , t(t_start)
-        , dt_out(RCONST(user_data.settings.DELTA_T_MIN))
-        , tout(t_start+dt_out)
     {
+        num_eq = _num_eq;
+        t_start = RCONST(0.0);
+        dt_out = RCONST(user_data.settings.DELTA_T_MIN);
+        t = t_start;
+        tout = t_start + dt_out;
+
         flag = SUNContext_Create(NULL, &ctx);
         if(!Cajete::SundialsUtils::check_flag(&flag, "SUNContext_Create", 1))
             std::cout << "Passed the error check, suncontext created\n";
@@ -134,10 +144,11 @@ struct Solver
             num_eq += 2*DIM3D*user_data.rule_system[r].size();
         }
         
+        //num_eq = 2;
         std::cout << "*****NumEQ="<<num_eq<<"*****\n";
-
         y = NULL; 
         y = N_VNew_Serial(num_eq, ctx);
+        
         auto j = 0;
         for(const auto& r : user_data.rule_map[user_data.k])
         {
@@ -145,13 +156,18 @@ struct Solver
             {
                 auto& node_data = user_data.system_graph.findNode(m)->second.getData();
                 for(int i = 0; i < DIM3D; i++)
-                    NV_Ith_S(y, j++) = 0.0;//node_data.velocity[i];
+                    NV_Ith_S(y, j++) = node_data.velocity[i];
                 for(int i = 0; i < DIM3D; i++)
-                    NV_Ith_S(y, j++) = 0.0;//node_data.position[i];
+                    NV_Ith_S(y, j++) = node_data.position[i];
             } 
         }
+        //NV_Ith_S(y, 0) = 50.0;
+        //NV_Ith_S(y, 1) = 0.0;
 
+        //std::cout << "J: " << j << "\n";
         arkode_mem = ERKStepCreate(my_func, t_start, y, ctx); 
+        //if (!Cajete::SundialsUtils::check_flag((void *)arkode_mem, "ERKStepCreate", 1))
+        //    std::cout << "Passed the error check, stepper initialized\n";
 
         reltol = 1.0e-6;
         abstol = 1.0e-10;
@@ -162,17 +178,16 @@ struct Solver
         flag = ERKStepSetUserData(arkode_mem, &user_data); 
     
         // specify the root finding function having num_roots  
-        flag = ERKStepRootInit(arkode_mem, num_roots, root_func); 
+        //flag = ERKStepRootInit(arkode_mem, num_roots, root_func); 
         
-        ERKStepSetMinStep(arkode_mem, user_data.settings.DELTA_T_MIN);
-        ERKStepSetMaxStep(arkode_mem, user_data.settings.DELTA_T_MIN);//dt_out/10.0);
+        //ERKStepSetMinStep(arkode_mem, user_data.settings.DELTA_T_MIN/10.0);
+        ERKStepSetMaxStep(arkode_mem, dt_out);//dt_out/10.0);
     }
     
     void step()
     {
         if(num_eq == 0) return;
-        flag = ERKStepEvolve(arkode_mem, tout, y, &t, ARK_ONE_STEP);
-
+        flag = ERKStepEvolve(arkode_mem, tout, y, &t, ARK_NORMAL);
         if(flag == ARK_ROOT_RETURN)
         {
             root_flag = ERKStepGetRootInfo(arkode_mem, roots_found);
@@ -192,6 +207,11 @@ struct Solver
         auto k = local_ptr->k;
         auto i = 0;
         auto v_plus = local_ptr->settings.V_PLUS;
+        auto d_l = local_ptr->settings.DIV_LENGTH;
+
+        //NV_Ith_S(ydot, 0) = NV_Ith_S(y, 1);
+        //NV_Ith_S(ydot, 1) = -9.8;
+
         for(const auto& r : local_ptr->rule_map[k])
         {
             auto& instance = local_ptr->rule_system[r];
@@ -199,13 +219,25 @@ struct Solver
             {
                 auto id = instance[0];
                 auto& node_i_data = local_ptr->system_graph.findNode(id)->second.getData();
+                double l = 0.0;
+                for(auto j = 0; j < 3; j++)
+                {
+                    double diff = NV_Ith_S(y, i+j+3) - node_i_data.position[j];
+                    l += diff*diff;
+                }
+                l = sqrt(l);
+                double length_limiter = (1.0 - (l/d_l));
+                std::cout << d_l << " " << length_limiter << "\n";
                 //std::cout << Rule::G << "\n";
-                NV_Ith_S(ydot, i) = 1;//v_plus*node_i_data.unit_vec[0];
-                NV_Ith_S(ydot, i+1) = 1;//v_plus*node_i_data.unit_vec[1];
-                NV_Ith_S(ydot, i+2) = 1;//v_plus*node_i_data.unit_vec[2];
-                NV_Ith_S(ydot, i+3) = 1;//NV_Ith_S(y, i);
-                NV_Ith_S(ydot, i+4) = 1;//NV_Ith_S(y, i+1);
-                NV_Ith_S(ydot, i+5) = 1;//NV_Ith_S(y, i+2);
+                NV_Ith_S(ydot, i) = v_plus*node_i_data.unit_vec[0]*length_limiter;
+                NV_Ith_S(ydot, i+1) = v_plus*node_i_data.unit_vec[1]*length_limiter;
+                NV_Ith_S(ydot, i+2) = v_plus*node_i_data.unit_vec[2]*length_limiter;
+                NV_Ith_S(ydot, i+3) = v_plus*node_i_data.unit_vec[0]*length_limiter;
+                NV_Ith_S(ydot, i+4) = v_plus*node_i_data.unit_vec[1]*length_limiter;
+                NV_Ith_S(ydot, i+5) = v_plus*node_i_data.unit_vec[2]*length_limiter;
+                //NV_Ith_S(ydot, i+3) = NV_Ith_S(y, i);
+                //NV_Ith_S(ydot, i+4) = NV_Ith_S(y, i+1);
+                //NV_Ith_S(ydot, i+5) = NV_Ith_S(y, i+2);
                 for(int j = i+6; j < i+12; j++)
                     NV_Ith_S(ydot, j) = 0.0;
             }
@@ -222,7 +254,23 @@ struct Solver
         local_ptr = nullptr;
         return 0;
     }
+    
+    void copy_back()
+    {
+        auto j = 0;
+        for(const auto& r : user_data.rule_map[user_data.k])
+        {
+            for(const auto& m : user_data.rule_system[r])
+            {
+                auto& node_data = user_data.system_graph.findNode(m)->second.getData();
+                for(int i = 0; i < DIM3D; i++)
+                    node_data.velocity[i] = NV_Ith_S(y, j++);
+                for(int i = 0; i < DIM3D; i++)
+                    node_data.position[i] = NV_Ith_S(y, j++);
+            } 
+        }
 
+    }
     void print_stats()
     {
         long int nst, nst_a, nfe, netf;
@@ -306,7 +354,7 @@ void plant_model_ssa_new(RuleSystemType& rule_system, B& k, T& rule_map, U& cell
             // STEP(4) : advance the loop timer
             delta_t += settings.DELTA_T_MIN; //TODO: make delta_t adaptive
             
-            std::cout << "tout: " << ode_system.t << " , DT: " << delta_t << "\n";
+            //std::cout << "tout: " << ode_system.t << " , DT: " << delta_t << "\n";
             
             steps++;
         }
@@ -319,6 +367,7 @@ void plant_model_ssa_new(RuleSystemType& rule_system, B& k, T& rule_map, U& cell
         }
     }
     std::cout << "Total steps taken: " << steps << "\n";
+    ode_system.copy_back();
     ode_system.print_stats();
 }
 

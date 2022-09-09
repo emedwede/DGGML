@@ -352,7 +352,7 @@ namespace Cajete
                 
                 tot_time += dim_time;
                 std::cout << "2D took " << dim_time << " milliseconds\n";
-                return; 
+                //return; 
                 //TODO: remove, right now connected_components should remain constant with only 
                 //growth rules
                 //std::cout << "----------------\n";
