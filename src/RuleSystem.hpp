@@ -152,7 +152,7 @@ namespace Cajete
         iterator begin() { return matches.begin(); }
         iterator end() { return matches.end(); }
 
-        auto size() { return matches.size(); }
+        const auto size() const { return matches.size(); }
         
         //TODO could be a template?
         auto count(enum Rule r)

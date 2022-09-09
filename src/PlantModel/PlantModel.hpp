@@ -102,7 +102,7 @@ namespace Cajete
         
         //Simulate until the specified unit time
         settings.TOTAL_TIME = double(interface["SETTINGS"]["TOTAL_TIME"]);
-        settings.NUM_INTERNAL_STEPS = 1000;
+        settings.NUM_INTERNAL_STEPS = 5;
         //Delta should be big, but not to big. In this case, the maximum amount of time it would
         //take one MT to grow a single unit of MT
         settings.DELTA = 

@@ -121,17 +121,35 @@ struct Solver
         , num_eq(_num_eq)
         , t_start(RCONST(0.0))
         , t(t_start)
-        , dt_out(RCONST(0.05))
+        , dt_out(RCONST(user_data.settings.DELTA_T_MIN))
         , tout(t_start+dt_out)
     {
         flag = SUNContext_Create(NULL, &ctx);
         if(!Cajete::SundialsUtils::check_flag(&flag, "SUNContext_Create", 1))
             std::cout << "Passed the error check, suncontext created\n";
-    
+        
+        num_eq = 0;
+        for(const auto& r : user_data.rule_map[user_data.k])
+        {
+            num_eq += 2*DIM3D*user_data.rule_system[r].size();
+        }
+        
+        std::cout << "*****NumEQ="<<num_eq<<"*****\n";
+
         y = NULL; 
         y = N_VNew_Serial(num_eq, ctx);
-        for(int i = 0; i < num_eq; i++)
-            NV_Ith_S(y, i) = 0.0;
+        auto j = 0;
+        for(const auto& r : user_data.rule_map[user_data.k])
+        {
+            for(const auto& m : user_data.rule_system[r])
+            {
+                auto& node_data = user_data.system_graph.findNode(m)->second.getData();
+                for(int i = 0; i < DIM3D; i++)
+                    NV_Ith_S(y, j++) = 0.0;//node_data.velocity[i];
+                for(int i = 0; i < DIM3D; i++)
+                    NV_Ith_S(y, j++) = 0.0;//node_data.position[i];
+            } 
+        }
 
         arkode_mem = ERKStepCreate(my_func, t_start, y, ctx); 
 
@@ -146,11 +164,13 @@ struct Solver
         // specify the root finding function having num_roots  
         flag = ERKStepRootInit(arkode_mem, num_roots, root_func); 
         
-        ERKStepSetMaxStep(arkode_mem, dt_out/10.0);
+        ERKStepSetMinStep(arkode_mem, user_data.settings.DELTA_T_MIN);
+        ERKStepSetMaxStep(arkode_mem, user_data.settings.DELTA_T_MIN);//dt_out/10.0);
     }
     
-    void solve()
+    void step()
     {
+        if(num_eq == 0) return;
         flag = ERKStepEvolve(arkode_mem, tout, y, &t, ARK_ONE_STEP);
 
         if(flag == ARK_ROOT_RETURN)
@@ -169,14 +189,54 @@ struct Solver
     static int my_func(realtype t, N_Vector y, N_Vector ydot, void* user_data) 
     {
         UserDataType* local_ptr = (UserDataType *)user_data;
-        
-        std::cout << "In my function, rule size: " << local_ptr->size() << "\n"; 
-        
+        auto k = local_ptr->k;
+        auto i = 0;
+        auto v_plus = local_ptr->settings.V_PLUS;
+        for(const auto& r : local_ptr->rule_map[k])
+        {
+            auto& instance = local_ptr->rule_system[r];
+            if(instance.type == Rule::G)
+            {
+                auto id = instance[0];
+                auto& node_i_data = local_ptr->system_graph.findNode(id)->second.getData();
+                //std::cout << Rule::G << "\n";
+                NV_Ith_S(ydot, i) = 1;//v_plus*node_i_data.unit_vec[0];
+                NV_Ith_S(ydot, i+1) = 1;//v_plus*node_i_data.unit_vec[1];
+                NV_Ith_S(ydot, i+2) = 1;//v_plus*node_i_data.unit_vec[2];
+                NV_Ith_S(ydot, i+3) = 1;//NV_Ith_S(y, i);
+                NV_Ith_S(ydot, i+4) = 1;//NV_Ith_S(y, i+1);
+                NV_Ith_S(ydot, i+5) = 1;//NV_Ith_S(y, i+2);
+                for(int j = i+6; j < i+12; j++)
+                    NV_Ith_S(ydot, j) = 0.0;
+            }
+            if(local_ptr->rule_system[r].type == Rule::R)
+            {
+                for(int j = i; j < i+12; j++)
+                    NV_Ith_S(ydot, j) = 0.0;
+                //std::cout << Rule::R << "\n";
+            }
+            i += 12;
+        }
+        //std::cout << "In my function for cell " << k 
+        //    << ", local rule size: " << local_ptr->rule_map[k].size() << "\n";  
         local_ptr = nullptr;
         return 0;
     }
 
+    void print_stats()
+    {
+        long int nst, nst_a, nfe, netf;
+        /* Print some final statistics */
+        flag = ERKStepGetNumSteps(arkode_mem, &nst);
+        flag = ERKStepGetNumStepAttempts(arkode_mem, &nst_a);
+        flag = ERKStepGetNumRhsEvals(arkode_mem, &nfe);
+        flag = ERKStepGetNumErrTestFails(arkode_mem, &netf);
 
+        printf("\nFinal Solver Statistics:\n");
+        printf("   Internal solver steps = %li (attempted = %li)\n", nst, nst_a);
+        printf("   Total RHS evals = %li\n", nfe);
+        printf("   Total number of error test failures = %li\n\n", netf);
+    }
     ~Solver()
     {
         N_VDestroy(y);
@@ -197,11 +257,19 @@ void plant_model_ssa_new(RuleSystemType& rule_system, B& k, T& rule_map, U& cell
     double delta_t, exp_sample, tau, geocell_propensity;
     std::size_t events, steps; 
     delta_t = 0.0; events = 0; steps = 0; geocell_propensity = 0.0;
-
     
-    Solver ode_system(rule_system, 2);
-
-    ode_system.solve();
+    //need an aggregation
+    typedef struct 
+    {
+        RuleSystemType& rule_system;
+        GraphType& system_graph;
+        B& k;
+        T& rule_map;
+        U& cell_list;
+        ParamType& settings;
+    } PackType;
+    
+    Solver ode_system(PackType{rule_system, system_graph, k, rule_map, cell_list, settings}, 2);
 
     while(delta_t < settings.DELTA) 
     {
@@ -230,13 +298,16 @@ void plant_model_ssa_new(RuleSystemType& rule_system, B& k, T& rule_map, U& cell
             //std::min(1.0/(10.0*geocell_propensity), settings.DELTA_DELTA_T);
             
             // STEP(2) : solve the system of ODES 
-
+            ode_system.step();
+            
             // STEP(3) : use forward euler to solve the TAU ODE
             tau += geocell_propensity*settings.DELTA_T_MIN; 
             
             // STEP(4) : advance the loop timer
             delta_t += settings.DELTA_T_MIN; //TODO: make delta_t adaptive
-
+            
+            std::cout << "tout: " << ode_system.t << " , DT: " << delta_t << "\n";
+            
             steps++;
         }
     
@@ -248,6 +319,7 @@ void plant_model_ssa_new(RuleSystemType& rule_system, B& k, T& rule_map, U& cell
         }
     }
     std::cout << "Total steps taken: " << steps << "\n";
+    ode_system.print_stats();
 }
 
 
