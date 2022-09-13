@@ -138,6 +138,8 @@ struct Solver
         if(!Cajete::SundialsUtils::check_flag(&flag, "SUNContext_Create", 1))
             std::cout << "Passed the error check, suncontext created\n";
         
+        // the number of equations is defined by the parameters of the nodes
+        // involved in all the ode rule types
         num_eq = 0;
         for(const auto& r : user_data.rule_map[user_data.k])
         {
@@ -217,7 +219,7 @@ struct Solver
             auto& instance = local_ptr->rule_system[r];
             if(instance.type == Rule::G)
             {
-                auto id = instance[0];
+                auto id = instance[1];
                 auto& node_i_data = local_ptr->system_graph.findNode(id)->second.getData();
                 double l = 0.0;
                 for(auto j = 0; j < 3; j++)
@@ -227,7 +229,7 @@ struct Solver
                 }
                 l = sqrt(l);
                 double length_limiter = (1.0 - (l/d_l));
-                std::cout << d_l << " " << length_limiter << "\n";
+                std::cout << d_l << " " << l << " " << length_limiter << "\n";
                 //std::cout << Rule::G << "\n";
                 NV_Ith_S(ydot, i) = v_plus*node_i_data.unit_vec[0]*length_limiter;
                 NV_Ith_S(ydot, i+1) = v_plus*node_i_data.unit_vec[1]*length_limiter;
@@ -317,6 +319,9 @@ void plant_model_ssa_new(RuleSystemType& rule_system, B& k, T& rule_map, U& cell
         ParamType& settings;
     } PackType;
     
+    //TODO: need a way to map the set of nodes and associated parameters 
+    //from the rules to be solved into a flattened nvector, this is important 
+    //for different rules that contribute to the same parameter 
     Solver ode_system(PackType{rule_system, system_graph, k, rule_map, cell_list, settings}, 2);
 
     while(delta_t < settings.DELTA) 
