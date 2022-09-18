@@ -143,7 +143,9 @@ struct Solver
         num_eq = 0;
         for(const auto& r : user_data.rule_map[user_data.k])
         {
-            num_eq += 2*DIM3D*user_data.rule_system[r].size();
+            const auto& inst = user_data.rule_system[r];
+            if(inst.type == Rule::G || inst.type == Rule::R)
+                num_eq += DIM3D;
         }
         
         //num_eq = 2;
@@ -156,12 +158,15 @@ struct Solver
         {
             for(const auto& m : user_data.rule_system[r])
             {
+                if(user_data.rule_system[r].type != Rule::G && user_data.rule_system[r].type != Rule::R)
+                    continue;
                 auto& node_data = user_data.system_graph.findNode(m)->second.getData();
-                for(int i = 0; i < DIM3D; i++)
-                    NV_Ith_S(y, j++) = node_data.velocity[i];
-                for(int i = 0; i < DIM3D; i++)
-                    NV_Ith_S(y, j++) = node_data.position[i];
-            } 
+                if(node_data.type == positive || node_data.type == negative)
+                {
+                    for(int i = 0; i < DIM3D; i++)
+                        NV_Ith_S(y, j++) = node_data.position[i];
+                } 
+            }
         }
         //NV_Ith_S(y, 0) = 50.0;
         //NV_Ith_S(y, 1) = 0.0;
@@ -208,8 +213,14 @@ struct Solver
         UserDataType* local_ptr = (UserDataType *)user_data;
         auto k = local_ptr->k;
         auto i = 0;
+        //growth rule params
         auto v_plus = local_ptr->settings.V_PLUS;
         auto d_l = local_ptr->settings.DIV_LENGTH;
+        
+        //retraction rule params 
+        auto l_d_f = local_ptr->settings.LENGTH_DIV_FACTOR;
+        auto d_l_r = local_ptr->settings.DIV_LENGTH_RETRACT;
+        auto v_minus = local_ptr->settings.V_MINUS;
 
         //NV_Ith_S(ydot, 0) = NV_Ith_S(y, 1);
         //NV_Ith_S(ydot, 1) = -9.8;
@@ -224,32 +235,35 @@ struct Solver
                 double l = 0.0;
                 for(auto j = 0; j < 3; j++)
                 {
-                    double diff = NV_Ith_S(y, i+j+3) - node_i_data.position[j];
+                    double diff = NV_Ith_S(y, i+j) - node_i_data.position[j];
                     l += diff*diff;
                 }
                 l = sqrt(l);
                 double length_limiter = (1.0 - (l/d_l));
-                std::cout << d_l << " " << l << " " << length_limiter << "\n";
-                //std::cout << Rule::G << "\n";
                 NV_Ith_S(ydot, i) = v_plus*node_i_data.unit_vec[0]*length_limiter;
                 NV_Ith_S(ydot, i+1) = v_plus*node_i_data.unit_vec[1]*length_limiter;
                 NV_Ith_S(ydot, i+2) = v_plus*node_i_data.unit_vec[2]*length_limiter;
-                NV_Ith_S(ydot, i+3) = v_plus*node_i_data.unit_vec[0]*length_limiter;
-                NV_Ith_S(ydot, i+4) = v_plus*node_i_data.unit_vec[1]*length_limiter;
-                NV_Ith_S(ydot, i+5) = v_plus*node_i_data.unit_vec[2]*length_limiter;
-                //NV_Ith_S(ydot, i+3) = NV_Ith_S(y, i);
-                //NV_Ith_S(ydot, i+4) = NV_Ith_S(y, i+1);
-                //NV_Ith_S(ydot, i+5) = NV_Ith_S(y, i+2);
-                for(int j = i+6; j < i+12; j++)
-                    NV_Ith_S(ydot, j) = 0.0;
             }
             if(local_ptr->rule_system[r].type == Rule::R)
             {
-                for(int j = i; j < i+12; j++)
-                    NV_Ith_S(ydot, j) = 0.0;
+                auto id = instance[1];
+                auto& node_i_data = local_ptr->system_graph.findNode(id)->second.getData();
+                double l = 0.0;
+                for(auto j = 0; j < 3; j++)
+                {
+                    double diff = NV_Ith_S(y, i+j) - node_i_data.position[j];
+                    l += diff*diff;
+                }
+                l = sqrt(l);
+                
+                double length_limiter = l/d_l;
+                if(length_limiter <= d_l_r) length_limiter = 0.0;
+
+                for(int j = i; j < i+3; j++)
+                    NV_Ith_S(ydot, j) = v_minus*node_i_data.unit_vec[j-i]*length_limiter;
                 //std::cout << Rule::R << "\n";
             }
-            i += 12;
+            i += 3;
         }
         //std::cout << "In my function for cell " << k 
         //    << ", local rule size: " << local_ptr->rule_map[k].size() << "\n";  
@@ -264,9 +278,12 @@ struct Solver
         {
             for(const auto& m : user_data.rule_system[r])
             {
+                if(user_data.rule_system[r].type != Rule::G && user_data.rule_system[r].type != Rule::R)
+                    continue;
                 auto& node_data = user_data.system_graph.findNode(m)->second.getData();
-                for(int i = 0; i < DIM3D; i++)
-                    node_data.velocity[i] = NV_Ith_S(y, j++);
+                if(node_data.type != positive && node_data.type != negative)
+                    continue;
+                //TODO: update the current velocity here?
                 for(int i = 0; i < DIM3D; i++)
                     node_data.position[i] = NV_Ith_S(y, j++);
             } 
