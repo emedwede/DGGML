@@ -147,8 +147,8 @@ struct Solver
             if(inst.type == Rule::G || inst.type == Rule::R)
                 num_eq += DIM3D;
         }
-        
-        //num_eq = 2;
+        num_eq++; //one extra equation for tau 
+
         std::cout << "*****NumEQ="<<num_eq<<"*****\n";
         y = NULL; 
         y = N_VNew_Serial(num_eq, ctx);
@@ -168,6 +168,8 @@ struct Solver
                 } 
             }
         }
+        NV_Ith_S(y, j) = user_data.tau;
+
         //NV_Ith_S(y, 0) = 50.0;
         //NV_Ith_S(y, 1) = 0.0;
 
@@ -224,7 +226,8 @@ struct Solver
 
         //NV_Ith_S(ydot, 0) = NV_Ith_S(y, 1);
         //NV_Ith_S(ydot, 1) = -9.8;
-
+        
+        //TODO: move the rules to their separate functions
         for(const auto& r : local_ptr->rule_map[k])
         {
             auto& instance = local_ptr->rule_system[r];
@@ -265,6 +268,9 @@ struct Solver
             }
             i += 3;
         }
+        
+        NV_Ith_S(ydot, i) = local_ptr->geocell_propensity;
+
         //std::cout << "In my function for cell " << k 
         //    << ", local rule size: " << local_ptr->rule_map[k].size() << "\n";  
         local_ptr = nullptr;
@@ -288,8 +294,18 @@ struct Solver
                     node_data.position[i] = NV_Ith_S(y, j++);
             } 
         }
-
+        user_data.tau = NV_Ith_S(y, j);
     }
+
+    //TODO: make this function reset the whole y vector
+    //since it may change in size
+    void reinit()
+    {
+        user_data.tau = 0.0;
+        NV_Ith_S(y, num_eq-1) = 0.0;
+        ERKStepReInit(arkode_mem, my_func, t, y);
+    }
+
     void print_stats()
     {
         long int nst, nst_a, nfe, netf;
@@ -317,13 +333,15 @@ struct Solver
 
 using RuleSystemType = Cajete::RuleSystem<Plant::mt_key_type>;
 template <typename B, typename T, typename U, typename GeoplexType, typename GraphType, typename ParamType>
-void plant_model_ssa_new(RuleSystemType& rule_system, B& k, T& rule_map, U& cell_list, GeoplexType& geoplex2D, GraphType& system_graph, ParamType& settings)
+double plant_model_ssa_new(RuleSystemType& rule_system, B& k, T& rule_map, U& cell_list, 
+        GeoplexType& geoplex2D, GraphType& system_graph, ParamType& settings, double geocell_tau)
 {
     std::cout << "Cell " << k << " has " << rule_map[k].size() << " rules\n";
 
     double delta_t, exp_sample, tau, geocell_propensity;
     std::size_t events, steps; 
-    delta_t = 0.0; events = 0; steps = 0; geocell_propensity = 0.0;
+    delta_t = 0.0; events = 0; steps = 0, geocell_propensity = 0.0;
+    tau = geocell_tau;
     
     //need an aggregation
     typedef struct 
@@ -334,23 +352,22 @@ void plant_model_ssa_new(RuleSystemType& rule_system, B& k, T& rule_map, U& cell
         T& rule_map;
         U& cell_list;
         ParamType& settings;
+        double& geocell_propensity;
+        double& tau;
     } PackType;
     
     //TODO: need a way to map the set of nodes and associated parameters 
     //from the rules to be solved into a flattened nvector, this is important 
     //for different rules that contribute to the same parameter 
-    Solver ode_system(PackType{rule_system, system_graph, k, rule_map, cell_list, settings}, 2);
+    Solver ode_system(PackType{rule_system, system_graph, k, rule_map, cell_list, settings, geocell_propensity, tau}, 2);
 
     while(delta_t < settings.DELTA) 
     {
-        //reset tau
-        tau = 0.0;
-
         double uniform_sample = RandomRealsBetween(0.0, 1.0)();
         
         //sample the exponential variable
         exp_sample = -log(1-uniform_sample);
-        
+        std::cout << "Warped wating time: " << exp_sample << "\n"; 
         //the sums of the particular rules propensities
             
         //the propensities calculated for a particular rule
@@ -359,19 +376,28 @@ void plant_model_ssa_new(RuleSystemType& rule_system, B& k, T& rule_map, U& cell
         {
                     
             // STEP(1) : sum all of the rule propensities
-            //zero the geocell_propensity
-            geocell_propensity = 0.0;
-            
-           
+            //geocell_propensity = RandomRealsBetween(0.0, 0.01)(); 
+            auto rho = 0.0;
+            for(const auto& r : rule_map[k])
+            {
+                auto& instance = rule_system[r];
+                if(instance.type == Rule::G)
+                {
+                    rho += 
+                    microtubule_growing_end_polymerize_propensity(system_graph, 
+                                instance.match, settings);
+                }
+            }
+            geocell_propensity = rho;
             //the step adapts based on propensity or systems fastest dynamic
             //settings.DELTA_T_MIN = 
             //std::min(1.0/(10.0*geocell_propensity), settings.DELTA_DELTA_T);
             
             // STEP(2) : solve the system of ODES 
             ode_system.step();
-            
+            ode_system.copy_back(); 
             // STEP(3) : use forward euler to solve the TAU ODE
-            tau += geocell_propensity*settings.DELTA_T_MIN; 
+            //tau += geocell_propensity*settings.DELTA_T_MIN; 
             
             // STEP(4) : advance the loop timer
             delta_t += settings.DELTA_T_MIN; //TODO: make delta_t adaptive
@@ -385,12 +411,15 @@ void plant_model_ssa_new(RuleSystemType& rule_system, B& k, T& rule_map, U& cell
         // if we get over our threshold an event can occur
         if(tau > exp_sample) 
         {
+            //zero out tau since a rule has fired 
+            //tau = 0.0;
+            ode_system.reinit();
             //determine which rule to file and fire it
         }
     }
     std::cout << "Total steps taken: " << steps << "\n";
-    ode_system.copy_back();
     ode_system.print_stats();
+    return tau;
 }
 
 
