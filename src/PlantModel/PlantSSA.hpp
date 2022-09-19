@@ -6,6 +6,7 @@
 
 #include "ExpandedComplex2D.hpp"
 #include "YAGL_Graph.hpp"
+#include "YAGL_Algorithms.hpp"
 
 #include "SundialsUtils.hpp"
 
@@ -314,6 +315,38 @@ struct Solver
     //since it may change in size
     void reinit()
     {
+        auto pre_eq = num_eq;
+        auto num_eq = 0;
+
+        for(const auto& r : user_data.rule_map[user_data.k])
+        {
+            const auto& inst = user_data.rule_system[r];
+            if(inst.type == Rule::G || inst.type == Rule::R)
+                num_eq += DIM3D;
+        }
+        num_eq++; //one extra equation for tau 
+
+        std::cout << "*****NumEQ="<<num_eq<<"*****\n";
+        N_VDestroy(y); 
+        y = N_VNew_Serial(num_eq, ctx);
+        
+        auto j = 0;
+        for(const auto& r : user_data.rule_map[user_data.k])
+        {
+            for(const auto& m : user_data.rule_system[r])
+            {
+                if(user_data.rule_system[r].type != Rule::G && user_data.rule_system[r].type != Rule::R)
+                    continue;
+                auto& node_data = user_data.system_graph.findNode(m)->second.getData();
+                if(node_data.type == positive || node_data.type == negative)
+                {
+                    for(int i = 0; i < DIM3D; i++)
+                        NV_Ith_S(y, j++) = node_data.position[i];
+                } 
+            }
+        }
+        
+        std::cout << num_eq << " " << pre_eq << "\n"; std::cin.get();
         user_data.tau = 0.0;
         NV_Ith_S(y, num_eq-1) = 0.0;
         ERKStepReInit(arkode_mem, rhs, t, y);
@@ -382,13 +415,14 @@ std::pair<double, double> plant_model_ssa_new(RuleSystemType& rule_system, B& k,
     //from the rules to be solved into a flattened nvector, this is important 
     //for different rules that contribute to the same parameter 
     Solver ode_system(PackType{rule_system, system_graph, k, rule_map, cell_list, settings, geocell_propensity, tau, exp_sample}, 2);
+    
+    std::vector<double> propensity_space;
 
     while(delta_t < settings.DELTA) 
     {
-        //the sums of the particular rules propensities
-            
         //the propensities calculated for a particular rule
-        
+        std::vector<std::pair<std::size_t, double>> propensity_space;
+            
         //while(delta_t < settings.DELTA && tau < exp_sample)
         if(tau < exp_sample)
         {
@@ -401,9 +435,11 @@ std::pair<double, double> plant_model_ssa_new(RuleSystemType& rule_system, B& k,
                 auto& instance = rule_system[r];
                 if(instance.type == Rule::G)
                 {
-                    rho += 
-                    microtubule_growing_end_polymerize_propensity(system_graph, 
-                                instance.match, settings);
+                    propensity_space.push_back({ r,
+                        microtubule_growing_end_polymerize_propensity(system_graph, 
+                            instance.match, settings)}
+                    );
+                    rho += propensity_space.back().second;
                 }
             }
             geocell_propensity = rho;
@@ -430,6 +466,92 @@ std::pair<double, double> plant_model_ssa_new(RuleSystemType& rule_system, B& k,
         // if we get over our threshold an event can occur
         if(tau >= exp_sample) 
         {
+            //determine which rule to file and fire it
+            std::cout << "Size of sample space: " << propensity_space.size() << "\n"; 
+            
+            auto local_sample = RandomRealsBetween(0.0, 1.0)();
+            
+            auto eventFired = 0;
+            
+            auto local_progress = local_sample*geocell_propensity - propensity_space[0].second;
+            while(local_progress > 0.0) 
+            {
+                eventFired++;
+                local_progress -= propensity_space[eventFired].second;
+            }
+            
+            auto fired_id = propensity_space[eventFired].first;
+            std::cout << "Selected rule id: " << fired_id << "\n";
+            
+            //need to update the cell list and the rule_map as well 
+            
+            ///*
+            auto [invalidations, inducers] = 
+                test_rewrite(system_graph, rule_system[fired_id].match);
+            std::cout << "Before Invalidations:\n";
+            std::cout << rule_map[k].size() << " " << cell_list.size() << "\n";
+            for(const auto& i : invalidations)
+            {
+                const auto& rules = rule_system.inverse_index.find(i);
+                if(rules != rule_system.inverse_index.end())
+                {
+                    for(const auto& item : rules->second)
+                    {
+                        auto loc = std::find(rule_map[k].begin(), rule_map[k].end(), item);
+                        if(loc != rule_map[k].end())
+                        {
+                            rule_map[k].erase(loc);
+                        }
+                    }
+                }
+                rule_system.invalidate(i);
+                cell_list.erase(i);
+            }
+            std::cout << "After invalidations:\n";
+            std::cout << rule_map[k].size() << " " << cell_list.size() << "\n";
+            
+            std::cout << "Find: ";
+            for(const auto& i : inducers)
+            {
+                std::cout << i << " "; 
+                cell_list.insert({i, k});
+            }
+            auto temp = inducers;
+            for(const auto& i : temp)
+            {
+                auto res = YAGL::recursive_dfs(system_graph, i, 2);
+                for(auto& j : res)
+                    inducers.insert(j);
+            }
+
+            auto subgraph = YAGL::induced_subgraph(system_graph, inducers);
+            std::vector<Cajete::Plant::mt_key_type> sub_bucket;
+
+            for(const auto& [key, value] : subgraph.getNodeSetRef())
+                sub_bucket.push_back(key);
+
+            auto incremental_matches = 
+                Cajete::Plant::microtubule_growing_end_matcher(system_graph, sub_bucket);
+
+            for(auto& item : incremental_matches)
+            {
+                rule_system.push_back({std::move(item), Cajete::Rule::G});
+                rule_map[k].push_back(rule_system.key_gen.current_key-1);
+            }
+
+            incremental_matches = 
+                Cajete::Plant::microtubule_retraction_end_matcher(system_graph, sub_bucket);
+
+            for(auto& item : incremental_matches)
+            {
+                rule_system.push_back({std::move(item), Cajete::Rule::R});
+                rule_map[k].push_back(rule_system.key_gen.current_key-1); 
+            }
+            std::cout << "After Reinsertion:\n";
+            std::cout << rule_map[k].size() << " " << cell_list.size() << "\n";
+
+
+            //*/
             //zero out tau since a rule has fired 
             tau = 0.0;
             //reset the exp waiting_time sample 
@@ -441,8 +563,6 @@ std::pair<double, double> plant_model_ssa_new(RuleSystemType& rule_system, B& k,
             
             ode_system.print_stats();
             ode_system.reinit();
-            //determine which rule to file and fire it
-            //std::cin.get();
         }
     }
     std::cout << "Total steps taken: " << steps << "\n";

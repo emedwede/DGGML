@@ -250,7 +250,7 @@ namespace Cajete
                     double xp = node_data.position[0];
                     double yp = node_data.position[1];
                     int ic, jc;
-
+                    
                     geoplex2D.coarse_grid.locatePoint(xp, yp, ic, jc);
                     geoplex2D.coarse_cell_to_fine_lattice(ic, jc); 
                     auto cardinal = geoplex2D.fine_grid.cardinalLatticeIndex(ic, jc);
@@ -258,6 +258,7 @@ namespace Cajete
                 }
                 
                 auto bucket_sum = 0;
+                //TODO: this is very slow, needs to be optimized
                 for(auto& c : bucket2d)
                 {  
                     auto total = 
@@ -269,7 +270,7 @@ namespace Cajete
                         else return false;
                     });
                     bucket_sum += total;
-                    std::cout << c << ": " << total << "\n";
+                    //std::cout << c << ": " << total << "\n";
                 }
                 std::cout << bucket_sum << " nodes sorted\n"; 
 

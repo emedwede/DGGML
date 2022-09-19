@@ -257,6 +257,49 @@ void microtubule_growing_end_polymerize_rewrite(GraphType& graph, std::vector<mt
     graph.addEdge(j, key);
 }
 
+//Simple first attempt a polymerizing
+template <typename GraphType>
+std::pair<std::set<mt_key_type>, std::set<mt_key_type>> test_rewrite(GraphType& graph, std::vector<mt_key_type>& match)
+{
+    //if(match.size() != 2) return;
+    auto i = match[0]; auto j = match[1];
+    
+    //TODO: need a unique key generator
+    typename GraphType::key_type key = graph.numNodes()+1;
+    
+    while(graph.findNode(key) != graph.node_list_end()) key++; //TODO: fix, very greedy
+    double x3[3];
+
+    auto& x1 = graph.findNode(i)->second.getData().position;
+    auto& x2 = graph.findNode(j)->second.getData().position;
+    auto& u1 = graph.findNode(i)->second.getData().unit_vec;
+    auto gamma = 0.75;
+    for(auto iter = 0; iter < 3; iter++)
+    {
+        x3[iter] = x2[iter] - ((x2[iter]-x1[iter]) * gamma); 
+    }
+    std::random_device random_device; std::mt19937 random_engine(random_device());
+    std::uniform_real_distribution<double> distribution_angle(-3.14/8.0, 3.14/8.0); 
+    double theta = distribution_angle(random_engine);
+    auto u10_rot = u1[0]*cos(theta) + u1[1]*sin(theta);
+    auto u11_rot = -u1[0]*sin(theta) +u1[1]*cos(theta);
+    u1[0] = u10_rot; u1[1] = u11_rot;
+
+    graph.addNode({key, 
+            {{x3[0], x3[1], x3[2]}, 
+            {0, 0, 0}, 
+            Cajete::Plant::mt_type::intermediate, 
+            {0, 0, 0}, 
+            {u1[0], u1[1], u1[2]}}});
+
+    graph.removeEdge(i, j);
+    graph.addEdge(i, key);
+    graph.addEdge(j, key);
+    
+    return std::pair<std::set<mt_key_type>, std::set<mt_key_type>>{{i, j}, {i, j, key}}; //matches to invalidate and induce
+}
+
+
 
 //Simple first attempt a polymerizing
 template <typename GraphType, typename BucketType>
