@@ -133,6 +133,7 @@ struct Solver
         dt_out = RCONST(user_data.settings.DELTA_T_MIN);
         t = t_start;
         tout = t_start + dt_out;
+        t_final = RCONST(user_data.settings.DELTA);
 
         flag = SUNContext_Create(NULL, &ctx);
         if(!Cajete::SundialsUtils::check_flag(&flag, "SUNContext_Create", 1))
@@ -174,12 +175,12 @@ struct Solver
         //NV_Ith_S(y, 1) = 0.0;
 
         //std::cout << "J: " << j << "\n";
-        arkode_mem = ERKStepCreate(my_func, t_start, y, ctx); 
+        arkode_mem = ERKStepCreate(rhs, t_start, y, ctx); 
         //if (!Cajete::SundialsUtils::check_flag((void *)arkode_mem, "ERKStepCreate", 1))
         //    std::cout << "Passed the error check, stepper initialized\n";
 
-        reltol = 1.0e-6;
-        abstol = 1.0e-10;
+        reltol = 1.0e-4;//1.0e-6;
+        abstol = 1.0e-8;//1.0e-10;
 
         flag = ERKStepSStolerances(arkode_mem, reltol, abstol);
         
@@ -187,7 +188,7 @@ struct Solver
         flag = ERKStepSetUserData(arkode_mem, &user_data); 
     
         // specify the root finding function having num_roots  
-        //flag = ERKStepRootInit(arkode_mem, num_roots, root_func); 
+        flag = ERKStepRootInit(arkode_mem, num_roots, root_func); 
         
         //ERKStepSetMinStep(arkode_mem, user_data.settings.DELTA_T_MIN/10.0);
         ERKStepSetMaxStep(arkode_mem, dt_out);//dt_out/10.0);
@@ -197,20 +198,32 @@ struct Solver
     {
         if(num_eq == 0) return;
         flag = ERKStepEvolve(arkode_mem, tout, y, &t, ARK_NORMAL);
+        std::cout << "t: " << t << ", tout: " << tout << "\n";
         if(flag == ARK_ROOT_RETURN)
         {
             root_flag = ERKStepGetRootInfo(arkode_mem, roots_found);
             std::cout << "A root has been found\n";
-        }
-        
+        } 
         //successful solve
-        if(flag >= 0)
+        else if(flag >= 0)
         {
             tout += dt_out;
+            tout = (tout > t_final) ? t_final : tout;
         }
     }
     
-    static int my_func(realtype t, N_Vector y, N_Vector ydot, void* user_data) 
+    static int root_func(realtype t, N_Vector y, realtype* gout, void* user_data)
+    {
+        UserDataType* local_ptr = (UserDataType *)user_data;
+        auto last = N_VGetLength(y) - 1;
+        
+        //check for when the tau equation crosses the sample 
+        gout[0] = NV_Ith_S(y, last) - local_ptr->waiting_time;
+        
+        return 0;
+    }
+
+    static int rhs(realtype t, N_Vector y, N_Vector ydot, void* user_data) 
     {
         UserDataType* local_ptr = (UserDataType *)user_data;
         auto k = local_ptr->k;
@@ -303,7 +316,7 @@ struct Solver
     {
         user_data.tau = 0.0;
         NV_Ith_S(y, num_eq-1) = 0.0;
-        ERKStepReInit(arkode_mem, my_func, t, y);
+        ERKStepReInit(arkode_mem, rhs, t, y);
     }
 
     void print_stats()
@@ -333,16 +346,24 @@ struct Solver
 
 using RuleSystemType = Cajete::RuleSystem<Plant::mt_key_type>;
 template <typename B, typename T, typename U, typename GeoplexType, typename GraphType, typename ParamType>
-double plant_model_ssa_new(RuleSystemType& rule_system, B& k, T& rule_map, U& cell_list, 
-        GeoplexType& geoplex2D, GraphType& system_graph, ParamType& settings, double geocell_tau)
+std::pair<double, double> plant_model_ssa_new(RuleSystemType& rule_system, B& k, T& rule_map, 
+        U& cell_list, GeoplexType& geoplex2D, GraphType& system_graph, 
+        ParamType& settings, std::pair<double, double> geocell_progress)
 {
     std::cout << "Cell " << k << " has " << rule_map[k].size() << " rules\n";
 
-    double delta_t, exp_sample, tau, geocell_propensity;
+    double delta_t, geocell_propensity;
     std::size_t events, steps; 
     delta_t = 0.0; events = 0; steps = 0, geocell_propensity = 0.0;
-    tau = geocell_tau;
-    
+    double tau = geocell_progress.first;
+    double exp_sample = geocell_progress.second;
+    if(exp_sample <= 0.0)
+    {
+        double uniform_sample = RandomRealsBetween(0.0, 1.0)();
+        exp_sample = -log(1-uniform_sample);
+        std::cout << "Warped wating time: " << exp_sample << "\n"; 
+    }
+
     //need an aggregation
     typedef struct 
     {
@@ -354,25 +375,22 @@ double plant_model_ssa_new(RuleSystemType& rule_system, B& k, T& rule_map, U& ce
         ParamType& settings;
         double& geocell_propensity;
         double& tau;
+        double waiting_time;
     } PackType;
     
     //TODO: need a way to map the set of nodes and associated parameters 
     //from the rules to be solved into a flattened nvector, this is important 
     //for different rules that contribute to the same parameter 
-    Solver ode_system(PackType{rule_system, system_graph, k, rule_map, cell_list, settings, geocell_propensity, tau}, 2);
+    Solver ode_system(PackType{rule_system, system_graph, k, rule_map, cell_list, settings, geocell_propensity, tau, exp_sample}, 2);
 
     while(delta_t < settings.DELTA) 
     {
-        double uniform_sample = RandomRealsBetween(0.0, 1.0)();
-        
-        //sample the exponential variable
-        exp_sample = -log(1-uniform_sample);
-        std::cout << "Warped wating time: " << exp_sample << "\n"; 
         //the sums of the particular rules propensities
             
         //the propensities calculated for a particular rule
         
-        while(delta_t < settings.DELTA && tau < exp_sample)
+        //while(delta_t < settings.DELTA && tau < exp_sample)
+        if(tau < exp_sample)
         {
                     
             // STEP(1) : sum all of the rule propensities
@@ -400,7 +418,8 @@ double plant_model_ssa_new(RuleSystemType& rule_system, B& k, T& rule_map, U& ce
             //tau += geocell_propensity*settings.DELTA_T_MIN; 
             
             // STEP(4) : advance the loop timer
-            delta_t += settings.DELTA_T_MIN; //TODO: make delta_t adaptive
+            delta_t = ode_system.t;
+            //delta_t += settings.DELTA_T_MIN; //TODO: make delta_t adaptive
             
             //std::cout << "tout: " << ode_system.t << " , DT: " << delta_t << "\n";
             
@@ -409,17 +428,25 @@ double plant_model_ssa_new(RuleSystemType& rule_system, B& k, T& rule_map, U& ce
     
 
         // if we get over our threshold an event can occur
-        if(tau > exp_sample) 
+        if(tau >= exp_sample) 
         {
             //zero out tau since a rule has fired 
-            //tau = 0.0;
+            tau = 0.0;
+            //reset the exp waiting_time sample 
+            double uniform_sample = RandomRealsBetween(0.0, 1.0)();
+            //sample the exponential variable
+            exp_sample = -log(1-uniform_sample);
+            ode_system.user_data.waiting_time = exp_sample; 
+            std::cout << "Warped wating time: " << exp_sample << "\n"; 
+            
+            ode_system.print_stats();
             ode_system.reinit();
             //determine which rule to file and fire it
+            //std::cin.get();
         }
     }
     std::cout << "Total steps taken: " << steps << "\n";
-    ode_system.print_stats();
-    return tau;
+    return {tau, exp_sample};
 }
 
 

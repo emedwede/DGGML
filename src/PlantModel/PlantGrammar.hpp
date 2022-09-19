@@ -327,7 +327,7 @@ double microtubule_growing_end_polymerize_propensity(GraphType& graph, std::vect
     
     auto len = calculate_distance(node_i_data.position, node_j_data.position);
     //double propensity = heaviside(len, settings.DIV_LENGTH);
-    double propensity = sigmoid((len/settings.DIV_LENGTH) - 1.0, settings.SIGMOID_K);
+    double propensity = 10*sigmoid((len/settings.DIV_LENGTH) - 1.0, settings.SIGMOID_K);
     return propensity;
 }
 

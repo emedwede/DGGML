@@ -148,11 +148,11 @@ namespace Cajete
                     settings.CELL_DX, 
                     settings.CELL_DY, 
                     settings.GHOSTED); //ghosted
-            std::cout << geoplex2D;
+            //std::cout << geoplex2D;
            
             std::cout << "Setting intial cell propensities to zero\n";
             for(auto& [key, value] : geoplex2D.graph.getNodeSetRef())
-                geocell_tau[key] = 0.0;
+                geocell_progress[key] = {0.0, 0.0};
 
             //Save expanded cell complex graph
             Cajete::VtkFileWriter<typename Cajete::ExpandedComplex2D<>::types::graph_type> writer;
@@ -309,7 +309,7 @@ namespace Cajete
                 
                 double dim_time = 0.0;
                 double tot_time = 0.0;
-                std::cout << "Binning the graph into 2D partitions\n";
+                //std::cout << "Binning the graph into 2D partitions\n";
                 
                 auto start = std::chrono::high_resolution_clock::now();
                 //TODO: make this better 
@@ -328,14 +328,14 @@ namespace Cajete
                     auto sum = 0;
                     for(auto& [key, bucket] : bucketsND[i])
                         sum += bucket.size();
-                    std::cout << "Dim " << i << " size: " << sum << "\n";
+                    //std::cout << "Dim " << i << " size: " << sum << "\n";
                 }
                 
                 //TODO: hoist the initial system pattern matcher code outside of the ssa phase 
                 //      since we only want to smartly recomputed rule updates 
                 auto stop = std::chrono::high_resolution_clock::now();
                 auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(stop-start);
-                std::cout << "Sorting took " << duration.count() << " milliseconds\n";
+                //std::cout << "Sorting took " << duration.count() << " milliseconds\n";
                 dim_time += duration.count();
                  
                 std::cout << "Running the Hybrid ODES/SSA inner loop 2D phase\n";
@@ -345,11 +345,13 @@ namespace Cajete
                    if(geoplex2D.getGraph().findNode(k)->second.getData().interior)
                    {
                         auto start = std::chrono::high_resolution_clock::now();
-                        geocell_tau[k] = plant_model_ssa_new(rule_system, k, rule_map, cell_list, geoplex2D, system_graph, settings, geocell_tau[k]);
+                        geocell_progress[k] = 
+                            plant_model_ssa_new(rule_system, k, rule_map, cell_list, 
+                                    geoplex2D, system_graph, settings, geocell_progress[k]);
                         //plant_model_ssa(bucket, geoplex2D, system_graph, settings);
                         auto stop = std::chrono::high_resolution_clock::now();
                         auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(stop-start);
-                        std::cout << "Cell " << k << " took " << duration.count() << " milliseconds and has a current tau " << geocell_tau[k] << "\n";
+                        std::cout << "Cell " << k << " took " << duration.count() << " milliseconds and has a current tau " << geocell_progress[k].first << "\n";
                         dim_time += duration.count();
                    }
                 }
@@ -476,6 +478,7 @@ namespace Cajete
             }
             std::cout << "-----------------------------------------------------------------------\n\n";
             
+            /*
             print_numpy_array_stats(con_com, "con_com");
             print_numpy_array_stats(type_counts[Plant::negative], "negative");
             print_numpy_array_stats(type_counts[Plant::positive], "positive");
@@ -484,11 +487,12 @@ namespace Cajete
             print_numpy_array_stats(type_counts[Plant::zipper], "zipper");
             print_numpy_array_stats(total_nodes, "total_nodes");
             print_numpy_array_stats(time_count, "time_count");
+            */
         }
 
 
     private:
-        std::map<gplex_key_type, double> geocell_tau;
+        std::map<gplex_key_type, std::pair<double, double>> geocell_progress;
         Parameters settings;
         CartesianComplex2D<> cplex2D;
         ExpandedComplex2D<> geoplex2D;
