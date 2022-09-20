@@ -346,7 +346,7 @@ struct Solver
             }
         }
         
-        std::cout << num_eq << " " << pre_eq << "\n"; std::cin.get();
+        //std::cout << num_eq << " " << pre_eq << "\n"; std::cin.get();
         user_data.tau = 0.0;
         NV_Ith_S(y, num_eq-1) = 0.0;
         ERKStepReInit(arkode_mem, rhs, t, y);
@@ -489,7 +489,8 @@ std::pair<double, double> plant_model_ssa_new(RuleSystemType& rule_system, B& k,
             auto [invalidations, inducers] = 
                 test_rewrite(system_graph, rule_system[fired_id].match);
             std::cout << "Before Invalidations:\n";
-            std::cout << rule_map[k].size() << " " << cell_list.size() << "\n";
+            std::cout << rule_map[k].size() << " " << cell_list.size() 
+                << " " << rule_system.size() << "\n";
             for(const auto& i : invalidations)
             {
                 const auto& rules = rule_system.inverse_index.find(i);
@@ -504,11 +505,13 @@ std::pair<double, double> plant_model_ssa_new(RuleSystemType& rule_system, B& k,
                         }
                     }
                 }
+
                 rule_system.invalidate(i);
                 cell_list.erase(i);
             }
             std::cout << "After invalidations:\n";
-            std::cout << rule_map[k].size() << " " << cell_list.size() << "\n";
+            std::cout << rule_map[k].size() << " " << cell_list.size() 
+                << " " << rule_system.size() << "\n";
             
             std::cout << "Find: ";
             for(const auto& i : inducers)
@@ -516,6 +519,8 @@ std::pair<double, double> plant_model_ssa_new(RuleSystemType& rule_system, B& k,
                 std::cout << i << " "; 
                 cell_list.insert({i, k});
             }
+            std::cout << "\n";
+
             auto temp = inducers;
             for(const auto& i : temp)
             {
@@ -524,12 +529,30 @@ std::pair<double, double> plant_model_ssa_new(RuleSystemType& rule_system, B& k,
                     inducers.insert(j);
             }
 
+            std::size_t s;
+            bool found = false;
+            for(auto& item : inducers)
+            {
+                std::cout << cell_list[item] << " ";
+                auto n_t = system_graph.findNode(item)->second.getData().type;
+                if(n_t == negative) {
+                    std::cout << "N\n"; s = item; found = true;}
+                  else if(n_t == positive)
+                      std::cout << "P\n";
+                  else if(n_t == intermediate)
+                      std::cout << "I\n";
+                  else std::cout << "O\n";
+            }
+            if(inducers.size() > 4 && found)
+                inducers.erase(inducers.find(s));
+
+            std::cout << "Inducers size: " << inducers.size() << "\n";
             auto subgraph = YAGL::induced_subgraph(system_graph, inducers);
             std::vector<Cajete::Plant::mt_key_type> sub_bucket;
 
             for(const auto& [key, value] : subgraph.getNodeSetRef())
                 sub_bucket.push_back(key);
-
+            std::cout << "SubBucket Size: " << sub_bucket.size() << "\n";
             auto incremental_matches = 
                 Cajete::Plant::microtubule_growing_end_matcher(system_graph, sub_bucket);
 
@@ -541,14 +564,14 @@ std::pair<double, double> plant_model_ssa_new(RuleSystemType& rule_system, B& k,
 
             incremental_matches = 
                 Cajete::Plant::microtubule_retraction_end_matcher(system_graph, sub_bucket);
-
             for(auto& item : incremental_matches)
             {
                 rule_system.push_back({std::move(item), Cajete::Rule::R});
                 rule_map[k].push_back(rule_system.key_gen.current_key-1); 
             }
             std::cout << "After Reinsertion:\n";
-            std::cout << rule_map[k].size() << " " << cell_list.size() << "\n";
+            std::cout << rule_map[k].size() << " " << cell_list.size() 
+                << " " << rule_system.size() << "\n";
 
 
             //*/
