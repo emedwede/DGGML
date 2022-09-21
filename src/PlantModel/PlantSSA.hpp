@@ -487,7 +487,7 @@ std::pair<double, double> plant_model_ssa_new(RuleSystemType& rule_system, B& k,
             
             ///*
             auto [invalidations, inducers] = 
-                test_rewrite(system_graph, rule_system[fired_id].match);
+                test_rewrite_growth(system_graph, rule_system[fired_id].match);
             std::cout << "Before Invalidations:\n";
             std::cout << rule_map[k].size() << " " << cell_list.size() 
                 << " " << rule_system.size() << "\n";
@@ -502,7 +502,9 @@ std::pair<double, double> plant_model_ssa_new(RuleSystemType& rule_system, B& k,
                         if(loc != rule_map[k].end())
                         {
                             rule_map[k].erase(loc);
+                            std::cout << "Deleting rule " << item << "\n";
                         }
+                        else std::cout << "Rule " << item << " not found\n";
                     }
                 }
 
@@ -525,6 +527,7 @@ std::pair<double, double> plant_model_ssa_new(RuleSystemType& rule_system, B& k,
             for(const auto& i : temp)
             {
                 auto res = YAGL::recursive_dfs(system_graph, i, 2);
+                std::cout << "Size at " << i << ": " << res.size() << "\n";
                 for(auto& j : res)
                     inducers.insert(j);
             }
@@ -543,8 +546,8 @@ std::pair<double, double> plant_model_ssa_new(RuleSystemType& rule_system, B& k,
                       std::cout << "I\n";
                   else std::cout << "O\n";
             }
-            if(inducers.size() > 4 && found)
-                inducers.erase(inducers.find(s));
+            //if(inducers.size() > 4 && found)
+                //inducers.erase(inducers.find(s));
 
             std::cout << "Inducers size: " << inducers.size() << "\n";
             auto subgraph = YAGL::induced_subgraph(system_graph, inducers);

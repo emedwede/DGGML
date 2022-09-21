@@ -259,7 +259,7 @@ void microtubule_growing_end_polymerize_rewrite(GraphType& graph, std::vector<mt
 
 //Simple first attempt a polymerizing
 template <typename GraphType>
-std::pair<std::set<mt_key_type>, std::set<mt_key_type>> test_rewrite(GraphType& graph, std::vector<mt_key_type>& match)
+std::pair<std::set<mt_key_type>, std::set<mt_key_type>> test_rewrite_growth(GraphType& graph, std::vector<mt_key_type>& match)
 {
     //if(match.size() != 2) return;
     auto i = match[0]; auto j = match[1];
