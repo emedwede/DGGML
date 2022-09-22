@@ -491,6 +491,9 @@ std::pair<double, double> plant_model_ssa_new(RuleSystemType& rule_system, B& k,
             std::cout << "Before Invalidations:\n";
             std::cout << rule_map[k].size() << " " << cell_list.size() 
                 << " " << rule_system.size() << "\n";
+
+            //TODO: create a list of future invalidations?
+            std::vector<std::size_t> invalid_rules;
             for(const auto& i : invalidations)
             {
                 const auto& rules = rule_system.inverse_index.find(i);
@@ -502,15 +505,24 @@ std::pair<double, double> plant_model_ssa_new(RuleSystemType& rule_system, B& k,
                         if(loc != rule_map[k].end())
                         {
                             rule_map[k].erase(loc);
+                            invalid_rules.push_back(item);
                             std::cout << "Deleting rule " << item << "\n";
                         }
+                        //this should mean a lower dim cell is responsible 
+                        //for the invalidation?
                         else std::cout << "Rule " << item << " not found\n";
                     }
                 }
 
-                rule_system.invalidate(i);
+                //rule_system.invalidate(i);
+                //only erase nodes the cell owns
                 cell_list.erase(i);
             }
+            
+            //only invalidate rules a cell owns
+            for(auto& item : invalid_rules)
+                rule_system.invalidate_rule(item);
+
             std::cout << "After invalidations:\n";
             std::cout << rule_map[k].size() << " " << cell_list.size() 
                 << " " << rule_system.size() << "\n";
@@ -527,6 +539,11 @@ std::pair<double, double> plant_model_ssa_new(RuleSystemType& rule_system, B& k,
             for(const auto& i : temp)
             {
                 auto res = YAGL::recursive_dfs(system_graph, i, 2);
+                auto n_t = system_graph.findNode(i)->second.getData().type;
+                if(n_t == negative) std::cout << "N ";
+                if(n_t == positive) std::cout << "P ";
+                if(n_t == intermediate) std::cout << "I ";
+
                 std::cout << "Size at " << i << ": " << res.size() << "\n";
                 for(auto& j : res)
                     inducers.insert(j);
@@ -561,6 +578,13 @@ std::pair<double, double> plant_model_ssa_new(RuleSystemType& rule_system, B& k,
 
             for(auto& item : incremental_matches)
             {
+                //only add back in matches the cell actually owns
+                //since the ones it didn't own weren't invalidated 
+                //--idea so far: widen local search and then a sieve--
+                bool valid = true;
+                for(auto& v : item)
+                    if(cell_list[v] != k) { valid = false; break; }
+                if(!valid) continue;
                 rule_system.push_back({std::move(item), Cajete::Rule::G});
                 rule_map[k].push_back(rule_system.key_gen.current_key-1);
             }
@@ -569,6 +593,11 @@ std::pair<double, double> plant_model_ssa_new(RuleSystemType& rule_system, B& k,
                 Cajete::Plant::microtubule_retraction_end_matcher(system_graph, sub_bucket);
             for(auto& item : incremental_matches)
             {
+                //only add back in matches the cell actually owns
+                bool valid = true;
+                for(auto& v : item)
+                    if(cell_list[v] != k) { valid = false; break; }
+                if(!valid) continue;
                 rule_system.push_back({std::move(item), Cajete::Rule::R});
                 rule_map[k].push_back(rule_system.key_gen.current_key-1); 
             }

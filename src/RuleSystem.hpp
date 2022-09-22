@@ -142,6 +142,51 @@ namespace Cajete
                 inverse_index.erase(k);
             }
         }
+        
+        
+        void invalidate_rule(key_type k)
+        {
+            auto match = matches[index[k]].first; 
+            for(auto& item : match)
+            {
+                auto& node_rules = inverse_index.find(item)->second;
+                for(auto i = 0; i < node_rules.size(); i++)
+                {
+                    if(node_rules[i] == k)
+                    {
+                        std::swap(node_rules[i], node_rules[node_rules.size()-1]);
+                        node_rules.pop_back();
+                        break;
+                    }
+                }
+            }
+            auto a = index[k];
+            auto b = matches.size()-1;
+            std::swap(matches[a], matches[b]);
+            std::swap(index[matches[a].second], index[matches[b].second]);
+            matches.pop_back();
+            index.erase(k);
+            return;
+            const auto& rules = inverse_index.find(k);
+            if(rules != inverse_index.end())
+            {
+                for(const auto& item : rules->second)
+                {
+                    if(index.find(item) != index.end())
+                    {
+                        //currently uses a back swap method for the matches,
+                        //but could be upgraded to allow key reclamation?
+                        auto a = index[item];
+                        auto b = matches.size()-1;
+                        std::swap(matches[a], matches[b]);  
+                        std::swap(index[matches[a].second], index[matches[b].second]);
+                        matches.pop_back();
+                        index.erase(item);
+                    }
+                }
+                inverse_index.erase(k);
+            }
+        }
 
         data_type& operator[](key_type k)
         {
