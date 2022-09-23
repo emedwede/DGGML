@@ -175,6 +175,7 @@ void expanded_cartesian_complex_sort_stl(BucketType& bucketsND, ComplementType& 
     {
         auto id = iter->first;
         auto itype = iter->second.getData().type;
+
         if(itype == 0) { 
             bucketsND[0].insert({id, {}});
         }
@@ -209,6 +210,32 @@ void expanded_cartesian_complex_sort_stl(BucketType& bucketsND, ComplementType& 
                 bucketsND[i].find(cardinal)->second.push_back(id);
             else
                 complementND[i]++;
+        }
+    }
+}
+
+template <typename BucketType, typename GeoplexType>
+void build_bucketsND(BucketType& bucketsND, GeoplexType& geoplex2D)
+{
+    auto& geoplex_graph = geoplex2D.getGraph();
+    
+    for(auto iter = geoplex_graph.node_list_begin(); 
+            iter != geoplex_graph.node_list_end(); iter++)
+    {
+        auto id = iter->first;
+        auto itype = iter->second.getData().type;
+        auto interior = iter->second.getData().interior;
+
+        if(itype == 0 && interior) { 
+            bucketsND[0].insert({id, {}});
+        }
+        if(itype == 1 && interior)
+        {
+            bucketsND[1].insert({id, {}});
+        }
+        if(itype == 2 && interior)
+        {
+            bucketsND[2].insert({id, {}});
         }
     }
 }
