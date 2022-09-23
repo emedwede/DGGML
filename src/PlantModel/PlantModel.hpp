@@ -237,11 +237,19 @@ namespace Cajete
                 // I think I only need to sort nodes by the highest dimensional cell to then
                 // map rules to the approrpiate cell? 
                 using cplex_key_t = typename Cajete::CartesianComplex2D<>::graph_type::key_type;
+                //bucket of dimensional keys
                 std::vector<cplex_key_t> bucket2d;
+                std::vector<cplex_key_t> bucket1d;
+
                 for(auto& [key, value] : geoplex2D.graph.getNodeSetRef())
+                {
                     if(value.getData().type == 0)
                         bucket2d.push_back(key);
-                std::cout << "Bucket: " << bucket2d.size() << "\n";
+                    else if(value.getData().type == 1)
+                        bucket1d.push_back(key);
+                }
+                std::cout << "Bucket2D: " << bucket2d.size() << "\n";
+                std::cout << "Bucket1D: " << bucket1d.size() << "\n";
                 std::unordered_map<key_type, gplex_key_type> cell_list;
                 
                 for(auto& [key, value] : system_graph.getNodeSetRef())
@@ -257,54 +265,108 @@ namespace Cajete
                     cell_list.insert({key, cardinal}); 
                 }
                 
-                auto bucket_sum = 0;
-                //TODO: this is very slow, needs to be optimized
-                for(auto& c : bucket2d)
-                {  
-                    auto total = 
-                        std::count_if(cell_list.begin(), 
-                                cell_list.end(), 
-                                [&c](auto& item) {
-                        if(item.second == c)
-                            return true;
-                        else return false;
-                    });
-                    bucket_sum += total;
-                    //std::cout << c << ": " << total << "\n";
-                }
-                std::cout << bucket_sum << " nodes sorted\n"; 
+                //scoped printing section for testing
+                {std::unordered_map<std::size_t, std::size_t> counts;
+                for(auto& c : bucket2d) counts.insert({c, 0});
+                for(auto& [key, value] : cell_list) counts[value]++;
+                auto fold_op = 
+                    [](auto val, auto& item){ return val+item.second; };
+                auto bucket_sum = 
+                    std::accumulate(counts.begin(), counts.end(), 0, fold_op);
+                std::cout << bucket_sum << " nodes sorted\n";}
 
                 using rule_key_t = std::size_t;
                 std::map<cplex_key_t, std::vector<rule_key_t>> rule_map;
                 for(const auto& item : bucket2d)
                     rule_map.insert({item, {}});
-
+                for(const auto& item : bucket1d)
+                    rule_map.insert({item, {}});
+                
                 for(const auto& match : rule_system)
                 {
                     auto& instance = match.first.match;
+                    //prints ids
+                    //for(auto& l : instance)
+                    //    std::cout << cell_list.find(l)->second << " ";
+                    //std::cout << "\n";
+                    std::set<Plant::mt_key_type> intersection;
                     for(auto& l : instance)
-                        std::cout << cell_list.find(l)->second << " ";
-                    std::cout << "\n";
-                    auto it =
-                    std::adjacent_find(instance.begin(), 
-                            instance.end(), 
-                            [&cell_list](auto& lhs, auto& rhs){
-                                if(cell_list.find(rhs)->second != cell_list.find(lhs)->second)
-                                    return true;
-                                else 
-                                    return false;
-                            });
-
-                    if(it == instance.end())
+                        intersection.insert(cell_list[l]);
+                    if(intersection.size() == 1)
                     {
+                        rule_map[*intersection.begin()].push_back(match.second);
                         std::cout << "maps to highest dim cell\n";
-                        auto cell_id = cell_list.find(instance.front())->second;
-                        rule_map[cell_id].push_back(match.second);
                     }
-                    else 
-                        std::cout << "maps to lower dim cell\n";
-                }
+                    else
+                    {
+                        std::cout << "intersection size: " 
+                            << intersection.size() << "\n";
+                        std::set<std::size_t> edge_set;
+                        std::set<std::size_t> vert_set;
+                        std::set<std::size_t> found_set;
+                        auto& geoplex_graph = geoplex2D.getGraph();
+                        for(auto& item : intersection)
+                        {
+                            for(auto iter = geoplex_graph.out_neighbors_begin(item);
+                                    iter != geoplex_graph.out_neighbors_end(item);
+                                    iter++)
+                            {
+                                auto id = *iter;
+                                auto inode = geoplex_graph.findNode(id)->second;
+                                auto inode_data = inode.getData();
+                                if(inode_data.type == 1 && inode_data.interior)
+                                {
+                                    auto search = found_set.find(id);
+                                    if(search != found_set.end())
+                                        edge_set.insert(id);
+                                    else 
+                                        found_set.insert(id);
 
+                                    for(auto jter = 
+                                            geoplex_graph.out_neighbors_begin(id);
+                                            jter != 
+                                            geoplex_graph.out_neighbors_end(id);
+                                            jter++)
+                                    {
+                                        auto jd = *jter;
+                                        auto jnode = 
+                                            geoplex_graph.findNode(jd)->second;
+                                        auto jnode_data = jnode.getData();
+                                        if(jnode_data.type == 2 && jnode_data.interior)
+                                        {
+                                            auto search = found_set.find(jd);
+                                            if(search != found_set.end())
+                                                vert_set.insert(jd);
+                                            else
+                                                found_set.insert(jd);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        if(edge_set.size() == 0 && vert_set.size() == 1)
+                        {
+                            std::cout << "maps to 0D cell\n";
+                            rule_map[*vert_set.begin()].push_back(match.second); 
+                        }
+                        else if(edge_set.size() == 1)
+                        {
+                            std::cout << "maps to 1D cell\n";
+                            rule_map[*edge_set.begin()].push_back(match.second);
+                        }
+                        else
+                            std::cout << "Currently undefined scenario\n";
+                        //else if(edge_set.size() > 1)
+                        //    std::cout << "maps to 0D cell\n";
+                        
+                    }
+                }
+                
+                //scoped block print, every rule should be assigned
+                {auto sum = 0;
+                for(auto& item : rule_map) sum += item.second.size();
+                std::cout << "Rules assigned: " << sum << "\n";
+                std::cout << "Rules existing: " << rule_system.size() << "\n";}
                 std::map<gplex_key_type, std::vector<key_type>> bucketsND[3];
                 std::size_t complementND[3] = {0, 0, 0};
                 
@@ -338,7 +400,8 @@ namespace Cajete
                 auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(stop-start);
                 //std::cout << "Sorting took " << duration.count() << " milliseconds\n";
                 dim_time += duration.count();
-                 
+                
+                if(i<5){
                 std::cout << "Running the Hybrid ODES/SSA inner loop 2D phase\n";
                 for(auto& bucket : bucketsND[0])
                 {
@@ -355,7 +418,7 @@ namespace Cajete
                         std::cout << "Cell " << k << " took " << duration.count() << " milliseconds and has a current tau " << geocell_progress[k].first << "\n";
                         dim_time += duration.count();
                    }
-                }
+                }}
                 
                 tot_time += dim_time;
                 std::cout << "2D took " << dim_time << " milliseconds\n";
@@ -367,7 +430,7 @@ namespace Cajete
                 //std::cout << "\n---------------\n";
                                 
                 std::cout << "Synchronizing work\n";
-                /*
+                
                 //TODO: this is where a barrier would be for a parallel code
                 for(auto& item : bucketsND) item.clear();
                
@@ -389,7 +452,11 @@ namespace Cajete
                    if(geoplex2D.getGraph().findNode(k)->second.getData().interior)
                    {
                         auto start = std::chrono::high_resolution_clock::now();
-                        plant_model_ssa(bucket, geoplex2D, system_graph, settings);
+                        geocell_progress[k] = 
+                            plant_model_ssa_new(rule_system, k, rule_map, cell_list, 
+                                geoplex2D, system_graph, settings, geocell_progress[k]);
+
+                        //plant_model_ssa(bucket, geoplex2D, system_graph, settings);
                         auto stop = std::chrono::high_resolution_clock::now();
                         auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(stop-start);
                         std::cout << "Cell " << k << " took " << duration.count() << " milliseconds\n";
@@ -403,7 +470,7 @@ namespace Cajete
                 std::cout << "Synchronizing work\n";
                 //TODO: this is where a barrier would be for a parallel code
                 for(auto& item : bucketsND) item.clear();
-            
+                
                 dim_time = 0.0;
 
                 std::cout << "Binning the graph into 0D partitions\n";
@@ -422,7 +489,10 @@ namespace Cajete
                    if(geoplex2D.getGraph().findNode(k)->second.getData().interior)
                    {
                         auto start = std::chrono::high_resolution_clock::now();
-                        plant_model_ssa(bucket, geoplex2D, system_graph, settings);
+                        geocell_progress[k] = 
+                            plant_model_ssa_new(rule_system, k, rule_map, cell_list, 
+                                geoplex2D, system_graph, settings, geocell_progress[k]);
+                        //plant_model_ssa(bucket, geoplex2D, system_graph, settings);
                         auto stop = std::chrono::high_resolution_clock::now();
                         auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(stop-start);
                         std::cout << "Cell " << k << " took " << duration.count() << " milliseconds\n";
@@ -435,7 +505,6 @@ namespace Cajete
         
                 std::cout << "Synchronizing work\n";
                 
-                */
 
                 //TODO: this is where a barrier would be for a parallel code
                 for(auto item : bucketsND) item.clear();
