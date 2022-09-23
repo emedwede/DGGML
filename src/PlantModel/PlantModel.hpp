@@ -163,7 +163,30 @@ namespace Cajete
             
             //std::cout << "Generating the grammar\n";
             //TODO: implement a grammar setup phase
-    
+            
+            //TODO: we should fold the below code into some interface 
+            //function to apply the rule set
+            
+            //precomputes all of the single component matches//
+            
+            //bucket to temporarily interfact the matcher rule
+            std::vector<Cajete::Plant::mt_key_type> node_set;
+            for(const auto& [key, value] : system_graph.getNodeSetRef())
+                node_set.push_back(key);
+            
+            auto matches = 
+                Cajete::Plant::microtubule_growing_end_matcher(system_graph, node_set);
+            
+            for(auto& item : matches)
+                rule_system.push_back({std::move(item), Cajete::Rule::G});
+            
+            matches = 
+                Cajete::Plant::microtubule_retraction_end_matcher(system_graph, node_set);
+            
+            for(auto& item : matches)
+                rule_system.push_back({std::move(item), Cajete::Rule::R});
+            
+            std::cout << "matches: " << rule_system.size() << "\n";
         }
 
         void run() override {
@@ -207,27 +230,6 @@ namespace Cajete
             std::cout << "Saving the initial state of the system graph\n";
             vtk_writer.save(system_graph, title+std::to_string(0));
             
-            //precompute all of the single component matches 
-            Cajete::RuleSystem<Cajete::Plant::mt_key_type> rule_system;
-           
-            //TODO: we should fold the below code into some interface function to apply
-            //the rule set
-            //bucket to temporarily interfact the matcher rule
-            std::vector<Cajete::Plant::mt_key_type> node_set;
-            for(const auto& [key, value] : system_graph.getNodeSetRef())
-                node_set.push_back(key);
-            
-            auto matches = Cajete::Plant::microtubule_growing_end_matcher(system_graph, node_set);
-            for(auto& item : matches)
-                rule_system.push_back({std::move(item), Cajete::Rule::G});
-            
-            matches = Cajete::Plant::microtubule_retraction_end_matcher(system_graph, node_set);
-            
-            for(auto& item : matches)
-                rule_system.push_back({std::move(item), Cajete::Rule::R});
-            
-            std::cout << "matches: " << rule_system.size() << "\n";
-            //
             //TODO: move the simulation algorithm to its own class
             //is this where we run the simulation?
             for(auto i = 1; i <= settings.NUM_STEPS; i++)
@@ -401,7 +403,6 @@ namespace Cajete
                 //std::cout << "Sorting took " << duration.count() << " milliseconds\n";
                 dim_time += duration.count();
                 
-                if(i<5){
                 std::cout << "Running the Hybrid ODES/SSA inner loop 2D phase\n";
                 for(auto& bucket : bucketsND[0])
                 {
@@ -418,7 +419,7 @@ namespace Cajete
                         std::cout << "Cell " << k << " took " << duration.count() << " milliseconds and has a current tau " << geocell_progress[k].first << "\n";
                         dim_time += duration.count();
                    }
-                }}
+                }
                 
                 tot_time += dim_time;
                 std::cout << "2D took " << dim_time << " milliseconds\n";
@@ -562,6 +563,7 @@ namespace Cajete
 
 
     private:
+        RuleSystem<Plant::mt_key_type> rule_system;
         std::map<gplex_key_type, std::pair<double, double>> geocell_progress;
         Parameters settings;
         CartesianComplex2D<> cplex2D;
