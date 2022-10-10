@@ -19,3 +19,4 @@ target_link_libraries(factory-test PRIVATE vtu11::vtu11 PUBLIC SUNDIALS::arkode 
 target_link_libraries(plant-matcher-test PRIVATE vtu11::vtu11 PUBLIC SUNDIALS::arkode SUNDIALS::nvecserial)
 target_link_libraries(binning-and-sort-test PRIVATE vtu11::vtu11 PUBLIC SUNDIALS::arkode SUNDIALS::nvecserial)
 target_link_libraries(sundials-test PUBLIC SUNDIALS::arkode SUNDIALS::nvecserial)
+target_link_libraries(grid-test PRIVATE vtu11::vtu11)

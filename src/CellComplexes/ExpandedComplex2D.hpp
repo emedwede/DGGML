@@ -12,6 +12,8 @@ namespace Cajete
             
             using types = CartesianComplex2D<GraphType>;
             
+            CartesianGrid2D reaction_grid;
+
            ExpandedComplex2D() = default; 
 
            ExpandedComplex2D(std::size_t n, std::size_t m, double d_x, double d_y, bool g_c = false) : CartesianComplex2D(n, m, d_x, d_y, g_c)
@@ -21,7 +23,21 @@ namespace Cajete
            void init(std::size_t n, std::size_t m, double d_x, double d_y, bool g_c = false)
            {
                 CartesianComplex2D<GraphType>::init(n, m, d_x, d_y, g_c);
-                epsilon = 0.05*dx; //currently default epsilon, make it a parameter related to reaction distance later
+                epsilon = 0.03*dx; //currently default epsilon, make it a parameter related to reaction distance later
+                
+                
+                if(g_c)
+                {
+                    n = n+2; //pad around boundary in dim  
+                    m = m+2; //pad around boundary in dim
+                } 
+                std::size_t n_r = std::floor( ( n * dx ) / epsilon );
+                std::size_t m_r = std::floor( ( m * dy ) / epsilon );
+
+                auto approx_epsilon = ( n * dx ) / n_r;
+                std::cout << approx_epsilon << " " << epsilon << "\n";
+                reaction_grid.init(0.0, 0.0, n*d_x, m*d_y, n_r, m_r);
+                
                 build();
            }
 

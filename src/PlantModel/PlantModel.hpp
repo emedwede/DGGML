@@ -297,7 +297,7 @@ namespace Cajete
                     if(intersection.size() == 1)
                     {
                         rule_map[*intersection.begin()].push_back(match.second);
-                        std::cout << "maps to highest dim cell\n";
+                        //std::cout << "maps to highest dim cell\n";
                     }
                     else
                     {
@@ -348,12 +348,12 @@ namespace Cajete
                         }
                         if(edge_set.size() == 0 && vert_set.size() == 1)
                         {
-                            std::cout << "maps to 0D cell\n";
+                            std::cout << match.second << " maps to 0D cell\n";
                             rule_map[*vert_set.begin()].push_back(match.second); 
                         }
                         else if(edge_set.size() == 1)
                         {
-                            std::cout << "maps to 1D cell\n";
+                            std::cout << match.second << " maps to 1D cell\n";
                             rule_map[*edge_set.begin()].push_back(match.second);
                         }
                         else
@@ -377,7 +377,7 @@ namespace Cajete
                 
                 Cajete::build_bucketsND(bucketsND, geoplex2D);
                 
-                std::cout << "Running the Hybrid ODES/SSA inner loop 2D phase\n";
+               /* std::cout << "Running the Hybrid ODES/SSA inner loop 2D phase\n";
                 for(auto& bucket : bucketsND[0])
                 {
                     
@@ -397,7 +397,7 @@ namespace Cajete
                 
                 tot_time += dim_time;
                 std::cout << "2D took " << dim_time << " milliseconds\n";
-                
+                */
                 //std::cout << "----------------\n";
                 //std::cout << "CC: " << YAGL::connected_components(system_graph); 
                 //std::cout << "\n---------------\n";
@@ -427,7 +427,7 @@ namespace Cajete
                 std::cout << "Synchronizing work\n";
                 //TODO: this is where a barrier would be for a parallel code
                 for(auto& item : bucketsND) item.clear();
-                
+                /*
                 dim_time = 0.0;
                 std::cout << "Running the Hybrid ODES/SSA inner loop 0D phase\n";
                 for(auto& bucket : bucketsND[2])
@@ -449,7 +449,7 @@ namespace Cajete
                 std::cout << "0D took " << dim_time << " milliseconds\n";
         
                 std::cout << "Synchronizing work\n";
-                
+                */
 
                 //TODO: this is where a barrier would be for a parallel code
                 std::cout << "Running the checkpointer\n";

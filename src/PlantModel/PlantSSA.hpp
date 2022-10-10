@@ -384,7 +384,10 @@ std::pair<double, double> plant_model_ssa_new(RuleSystemType& rule_system, B& k,
         ParamType& settings, std::pair<double, double> geocell_progress)
 {
     std::cout << "Cell " << k << " has " << rule_map[k].size() << " rules\n";
-
+    std::cout << "{ ";
+    for(auto& item : rule_map[k])
+        std::cout << item << " ";
+    std::cout << "}\n";
     double delta_t, geocell_propensity;
     std::size_t events, steps; 
     delta_t = 0.0; events = 0; steps = 0, geocell_propensity = 0.0;
@@ -436,7 +439,7 @@ std::pair<double, double> plant_model_ssa_new(RuleSystemType& rule_system, B& k,
                 if(instance.type == Rule::G)
                 {
                     propensity_space.push_back({ r,
-                        microtubule_growing_end_polymerize_propensity(system_graph, 
+                        100*microtubule_growing_end_polymerize_propensity(system_graph, 
                             instance.match, settings)}
                     );
                     rho += propensity_space.back().second;

@@ -223,5 +223,5 @@ TEST_CASE("Testing the expanded cell complex", "[cplex-test]")
                 << ", " << iter->second.getData().corners[i][1] << "} ";
         } std::cout << "}\n";
     }
-
+    std::cout << "Reaction Grid: \n" << cplex2D.reaction_grid;
 }

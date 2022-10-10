@@ -4,6 +4,7 @@
 
 #include "BrickGrid2D.hpp"
 #include "CartesianGrid2D.hpp"
+#include "VtkWriter.hpp"
 
 #include <iostream>
 
@@ -89,3 +90,19 @@ TEST_CASE("Running the Brick Grid 2D Test", "[grid test]")
 
     REQUIRE (cell_id == 0);
 }
+
+TEST_CASE("CartesianGrid2D Writer Test", "[grid writer test]")
+{    
+    std::cout << "Running the Cartesian 2D Grid Writer Test\n";
+
+    Cajete::CartesianGrid2D grid;
+    
+    double min_x = 0.0, min_y = 0.0, max_x = 16.0, max_y = 9.0;
+    std::size_t nx = 100, ny = 100;
+
+    grid.init(min_x, min_y, max_x, max_y, nx, ny);
+    std::cout << grid; 
+    Cajete::GridFileWriter writer;
+    writer.save(grid, "grid_viz");
+}
+ 
