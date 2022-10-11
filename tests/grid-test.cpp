@@ -103,6 +103,6 @@ TEST_CASE("CartesianGrid2D Writer Test", "[grid writer test]")
     grid.init(min_x, min_y, max_x, max_y, nx, ny);
     std::cout << grid; 
     Cajete::GridFileWriter writer;
-    writer.save(grid, "grid_viz");
+    writer.save({grid, {}}, "grid_viz");
 }
  

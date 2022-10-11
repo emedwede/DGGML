@@ -133,8 +133,8 @@ class VtkFileWriter : public FileWriter<DataType> {
 };
 
 //Overides the file_writer interface, but preserves the algorithm
-class GridFileWriter : public FileWriter<CartesianGrid2D> {
-    using data_type = typename FileWriter<CartesianGrid2D>::data_type;
+class GridFileWriter : public FileWriter<std::pair<CartesianGrid2D, std::vector<int>>> {
+    using data_type = typename FileWriter<std::pair<CartesianGrid2D, std::vector<int>>>::data_type;
     protected:
         void create_file() const override {
             std::cout << "File is created when written\n";
@@ -144,9 +144,10 @@ class GridFileWriter : public FileWriter<CartesianGrid2D> {
             std::cout << "Current file writing does not support appending\n";
         }
 
-        void format_data(data_type data) override {
+        void format_data(data_type _data) override {
             std::cout << "Formating the data to be vtk compatibile\n";
-            
+            auto data = _data.first;
+            auto labels = _data.second;
             auto n = data._nx;
             auto m = data._ny;
             auto dx = data._dx;
@@ -179,11 +180,14 @@ class GridFileWriter : public FileWriter<CartesianGrid2D> {
                 }
             }
 
-            for(auto i = 0; i <= data.totalNumCells(); i++)
+            for(auto i = 0; i < data.totalNumCells(); i++)
             {
-                offsets.push_back(i*4);
+                offsets.push_back((i+1)*4);
                 types.push_back(7);
-                cellData.push_back(1);
+                if(labels.size() == data.totalNumCells())
+                    cellData.push_back(labels[i]);
+                else
+                    cellData.push_back(1);
             }
         }
 
