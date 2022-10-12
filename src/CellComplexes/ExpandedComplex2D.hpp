@@ -17,15 +17,18 @@ namespace Cajete
 
            ExpandedComplex2D() = default; 
 
-           ExpandedComplex2D(std::size_t n, std::size_t m, double d_x, double d_y, bool g_c = false) : CartesianComplex2D(n, m, d_x, d_y, g_c)
+           ExpandedComplex2D(std::size_t n, std::size_t m, double d_x, double d_y, bool g_c = false, double _epsilon = 0.0) : CartesianComplex2D(n, m, d_x, d_y, g_c)
            {
-                init(n, m, d_x, d_y, g_c);                 
+                init(n, m, d_x, d_y, g_c, _epsilon);                 
            }     
-           void init(std::size_t n, std::size_t m, double d_x, double d_y, bool g_c = false)
+            
+           void init(std::size_t n, std::size_t m, double d_x, double d_y, bool g_c = false, double _epsilon = 0.0)
            {
                 CartesianComplex2D<GraphType>::init(n, m, d_x, d_y, g_c);
-                epsilon = 0.03*dx; //currently default epsilon, make it a parameter related to reaction distance later
-                
+                if(_epsilon == 0.0)
+                    epsilon = 0.03*dx; //currently default epsilon, make it a parameter related to reaction distance later
+                else
+                    epsilon = _epsilon;
                 
                 if(g_c)
                 {
@@ -45,7 +48,7 @@ namespace Cajete
                 std::fill(dim_label.begin(), dim_label.end(), 0);
                 build();
            }
-
+           
            //TODO: is this overload the right fix?
            CplexGraph2D_t& getGraph()
            {

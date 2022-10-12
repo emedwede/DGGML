@@ -146,8 +146,9 @@ namespace Cajete
             geoplex2D.init(settings.CELL_NX, 
                     settings.CELL_NY, 
                     settings.CELL_DX, 
-                    settings.CELL_DY, 
-                    settings.GHOSTED); //ghosted
+                    settings.CELL_DY,
+                    settings.GHOSTED,
+                    settings.MAXIMAL_REACTION_RADIUS); //ghosted
             //std::cout << geoplex2D;
            
             std::cout << "Setting intial cell propensities to zero\n";
@@ -157,7 +158,9 @@ namespace Cajete
             //Save expanded cell complex graph
             Cajete::VtkFileWriter<typename Cajete::ExpandedComplex2D<>::types::graph_type> writer;
             writer.save(geoplex2D.getGraph(), results_dir_name+"/factory_geoplex");
-            
+            Cajete::GridFileWriter grid_writer;
+            grid_writer.save({geoplex2D.reaction_grid, geoplex2D.dim_label}, results_dir_name+"/expanded_cell_complex");
+
             std::cout << "Initializing the system graph\n";
             Plant::microtubule_uniform_scatter(system_graph, geoplex2D, settings); 
             
@@ -265,6 +268,9 @@ namespace Cajete
                     geoplex2D.coarse_cell_to_fine_lattice(ic, jc); 
                     auto cardinal = geoplex2D.fine_grid.cardinalLatticeIndex(ic, jc);
                     cell_list.insert({key, cardinal}); 
+                    geoplex2D.reaction_grid.locatePoint(xp, yp, ic, jc);
+                    cardinal = geoplex2D.reaction_grid.cardinalCellIndex(ic, jc);
+                    std::cout << "Dimension: " << geoplex2D.dim_label[cardinal] << "\n";
                 }
                 
                 //scoped printing section for testing
@@ -377,7 +383,7 @@ namespace Cajete
                 
                 Cajete::build_bucketsND(bucketsND, geoplex2D);
                 
-               /* std::cout << "Running the Hybrid ODES/SSA inner loop 2D phase\n";
+               std::cout << "Running the Hybrid ODES/SSA inner loop 2D phase\n";
                 for(auto& bucket : bucketsND[0])
                 {
                     
@@ -397,7 +403,7 @@ namespace Cajete
                 
                 tot_time += dim_time;
                 std::cout << "2D took " << dim_time << " milliseconds\n";
-                */
+                
                 //std::cout << "----------------\n";
                 //std::cout << "CC: " << YAGL::connected_components(system_graph); 
                 //std::cout << "\n---------------\n";
@@ -427,7 +433,7 @@ namespace Cajete
                 std::cout << "Synchronizing work\n";
                 //TODO: this is where a barrier would be for a parallel code
                 for(auto& item : bucketsND) item.clear();
-                /*
+                
                 dim_time = 0.0;
                 std::cout << "Running the Hybrid ODES/SSA inner loop 0D phase\n";
                 for(auto& bucket : bucketsND[2])
@@ -449,7 +455,7 @@ namespace Cajete
                 std::cout << "0D took " << dim_time << " milliseconds\n";
         
                 std::cout << "Synchronizing work\n";
-                */
+            
 
                 //TODO: this is where a barrier would be for a parallel code
                 std::cout << "Running the checkpointer\n";
