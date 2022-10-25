@@ -14,7 +14,7 @@ namespace Cajete
             
             CartesianGrid2D reaction_grid;
             std::vector<int> dim_label;
-
+            std::vector<std::size_t> cell_label;
            ExpandedComplex2D() = default; 
 
            ExpandedComplex2D(std::size_t n, std::size_t m, double d_x, double d_y, bool g_c = false, double _epsilon = 0.0) : CartesianComplex2D(n, m, d_x, d_y, g_c)
@@ -45,6 +45,7 @@ namespace Cajete
                 std::cout << "approx_epsilon_x: " << approx_epsilon_x << ", approx_epsilon_y: " << approx_epsilon_y << ", epsilon: " << epsilon << "\n";
                 reaction_grid.init(0.0, 0.0, n*d_x, m*d_y, n_r, m_r);
                 dim_label.resize(reaction_grid.totalNumCells());
+                cell_label.resize(reaction_grid.totalNumCells());
                 std::fill(dim_label.begin(), dim_label.end(), 0);
                 build();
            }
@@ -63,6 +64,21 @@ namespace Cajete
                //we need to loop over every cell in the complex and expand
                //it based on it's classification and if the complex has been
                //ghosted
+               //do all 0D after
+                for(auto iter = graph.node_list_begin(); iter != graph.node_list_end(); iter++) 
+                {
+                    auto key = iter->first;
+                    auto& data = iter->second.getData();
+                    
+                    if( data.type == 0 && data.interior == true) //found an interior 2D cell 
+                    {
+                        //we only need to deal with expanding the interior 
+                        double cx = data.position[0];
+                        double cy = data.position[1];
+                        label(data.corners[lower_left][0], data.corners[lower_left][1],
+                            data.corners[upper_right][0], data.corners[upper_right][1], 0, key);
+                    }
+                }
                for(auto iter = graph.node_list_begin(); iter != graph.node_list_end(); iter++) 
                {
                     auto key = iter->first;
@@ -145,7 +161,7 @@ namespace Cajete
                             }
                             std::cout << "{ min_x: " << min_x << ", min_y: " << min_y << ", max_x: " << max_x << ", max_y: " << max_y << " }\n";
                             //TODO: need to fix, works temporarily to map the cells to the right cell
-                            label(min_x+0.1*epsilon, min_y+0.1*epsilon, max_x-0.1*epsilon, max_y-0.1*epsilon, 1);
+                            label(min_x+0.1*epsilon, min_y+0.1*epsilon, max_x-0.1*epsilon, max_y-0.1*epsilon, 1, key);
                         }else {
                             
                         }
@@ -164,7 +180,7 @@ namespace Cajete
                         double cx = data.position[0];
                         double cy = data.position[1];
                         label(data.corners[lower_left][0], data.corners[lower_left][1],
-                            data.corners[upper_right][0], data.corners[upper_right][1], 3);
+                            data.corners[upper_right][0], data.corners[upper_right][1], 3, key);
                     } 
                     if( data.type == 2 && data.interior == true) //found a 0D cell 
                     {
@@ -181,13 +197,13 @@ namespace Cajete
                         data.corners[upper_right][0] = cx + gamma_epsilon;
                         data.corners[upper_right][1] = cy + gamma_epsilon;
                         label(data.corners[lower_left][0], data.corners[lower_left][1],
-                            data.corners[upper_right][0], data.corners[upper_right][1], 2);
+                            data.corners[upper_right][0], data.corners[upper_right][1], 2, key);
                     } 
                 }
            }
             
 
-           void label(double ll_x, double ll_y, double ur_x, double ur_y, int d) 
+           void label(double ll_x, double ll_y, double ur_x, double ur_y, int d, std::size_t key) 
            {
                 int min_i, min_j, max_i, max_j;
                 reaction_grid.locatePoint(ll_x, ll_y, min_i, min_j);
@@ -201,6 +217,7 @@ namespace Cajete
                     {
                         auto cardinal = reaction_grid.cardinalCellIndex(i, j);
                         dim_label[cardinal] = d;
+                        cell_label[cardinal] = key;
                     }
                 }
                 std::cout << "pass\n";

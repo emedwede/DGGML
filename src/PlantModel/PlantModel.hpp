@@ -256,7 +256,10 @@ namespace Cajete
                 std::cout << "Bucket2D: " << bucket2d.size() << "\n";
                 std::cout << "Bucket1D: " << bucket1d.size() << "\n";
                 std::unordered_map<key_type, gplex_key_type> cell_list;
-                
+
+                //dimensionally aware, expanded_cell_complex cell list
+                std::unordered_map<key_type, gplex_key_type> dim_cell_list;  
+                std::unordered_map<key_type, gplex_key_type> node_cell_map;
                 for(auto& [key, value] : system_graph.getNodeSetRef())
                 {
                     auto& node_data = value.getData();
@@ -270,9 +273,59 @@ namespace Cajete
                     cell_list.insert({key, cardinal}); 
                     geoplex2D.reaction_grid.locatePoint(xp, yp, ic, jc);
                     cardinal = geoplex2D.reaction_grid.cardinalCellIndex(ic, jc);
-                    std::cout << "Dimension: " << geoplex2D.dim_label[cardinal] << "\n";
+                    dim_cell_list.insert({key, geoplex2D.dim_label[cardinal]});
+                    node_cell_map.insert({key, geoplex2D.cell_label[cardinal]});
                 }
-                
+              
+                //first attempt at a dimensional mapping function
+                std::vector<std::size_t> map_count = {0, 0, 0, 0};
+                for(const auto& match : rule_system)
+                {
+                    auto& instance = match.first.match;
+                    int local_max = dim_cell_list.find(instance[0])->second;
+                    std::size_t local_label = node_cell_map.find(instance[0])->second; 
+                    std::cout << "R: { ";
+                    for(auto& l : instance)
+                    {
+                        int d = dim_cell_list.find(l)->second;
+                        if(d > local_max)
+                        {
+                            local_max = d;
+                            local_label = node_cell_map.find(l)->second;
+                        }
+
+                        std::cout << l << " : { ";
+                        auto& participation = rule_system.inverse_index.find(l)->second;
+                        for(auto& p : participation)
+                        {
+                            //if(p == match.second)
+                            //    continue;
+                            std::cout << p << " : { ";
+                            auto& p_match = rule_system[p];
+                            for(auto& m : p_match)
+                            {
+                                std::cout << m << " ";
+                                int _m = dim_cell_list.find(m)->second;
+                                if(_m > local_max)
+                                {
+                                    local_max = d;
+                                    local_label = node_cell_map.find(_m)->second;
+                                }
+                            }
+                            std::cout << "} ";
+                        }
+                        std::cout << "} ";
+                    } std::cout << "-- maps to --> dim: " << local_max << ", cell: " << local_label << "\n";
+                    map_count[local_max]++;
+                }
+                auto dim_tot = 0;
+                for(auto i = 0; i < map_count.size(); i++) 
+                {
+                    std::cout << "Dim " << i << ": " << map_count[i] << "\n";
+                    dim_tot += map_count[i];
+                }
+                std::cout << "Total: " << dim_tot << "\n";
+                break;
                 //scoped printing section for testing
                 {std::unordered_map<std::size_t, std::size_t> counts;
                 for(auto& c : bucket2d) counts.insert({c, 0});
