@@ -369,87 +369,41 @@ namespace Cajete
                 std::map<gplex_key_type, std::vector<key_type>> bucketsND[3];
                 std::size_t complementND[3] = {0, 0, 0};
                 
-                double dim_time = 0.0;
-                double tot_time = 0.0;
-                
                 Cajete::build_bucketsND(bucketsND, geoplex2D);
                 
-               std::cout << "Running the Hybrid ODES/SSA inner loop 2D phase\n";
-                for(auto& bucket : bucketsND[0])
-                {
-                    
-                    auto k = bucket.first; 
-                    auto start = std::chrono::high_resolution_clock::now();
-                    geocell_progress[k] = 
-                        plant_model_ssa_new(rule_system, k, rule_map, cell_list, 
-                                geoplex2D, system_graph, settings, geocell_progress[k]);
-                    auto stop = std::chrono::high_resolution_clock::now();
-                    auto duration = 
-                    std::chrono::duration_cast<std::chrono::milliseconds>(stop-start);
-                    std::cout << "Cell " << k << " took " << duration.count() 
-                        << " milliseconds and has a current tau " 
-                        << geocell_progress[k].first << "\n";
-                    dim_time += duration.count();
-                    //break;
-                }
-                
-                tot_time += dim_time;
-                std::cout << "2D took " << dim_time << " milliseconds\n";
-                
-                //break;
-                //std::cout << "----------------\n";
-                //std::cout << "CC: " << YAGL::connected_components(system_graph); 
-                //std::cout << "\n---------------\n";
-                                
-                std::cout << "Synchronizing work\n";
-                
-                /*
-                dim_time = 0.0;
-                std::cout << "Running the Hybrid ODES/SSA inner loop 1D phase\n";
-                for(auto& bucket : bucketsND[1])
-                {
-                    auto k = bucket.first;
-                    auto start = std::chrono::high_resolution_clock::now();
-                    geocell_progress[k] = 
-                        plant_model_ssa_new(rule_system, k, rule_map, cell_list, 
-                            geoplex2D, system_graph, settings, geocell_progress[k]);
-                    auto stop = std::chrono::high_resolution_clock::now();
-                    auto duration = 
-                    std::chrono::duration_cast<std::chrono::milliseconds>(stop-start);
-                    std::cout << "Cell " << k << " took " << 
-                        duration.count() << " milliseconds\n";
-                    dim_time += duration.count();
-                }
-                
-                tot_time += dim_time;
-                std::cout << "1D took " << dim_time << " milliseconds\n";
+                double tot_time = 0.0;
 
-                std::cout << "Synchronizing work\n";
-                //TODO: this is where a barrier would be for a parallel code
-                for(auto& item : bucketsND) item.clear();
-                
-                dim_time = 0.0;
-                std::cout << "Running the Hybrid ODES/SSA inner loop 0D phase\n";
-                for(auto& bucket : bucketsND[2])
+                for(int i = 0; i < 3; i++)
                 {
-                    auto k = bucket.first; 
-                    auto start = std::chrono::high_resolution_clock::now();
-                    geocell_progress[k] = 
-                        plant_model_ssa_new(rule_system, k, rule_map, cell_list, 
-                            geoplex2D, system_graph, settings, geocell_progress[k]);
-                    //plant_model_ssa(bucket, geoplex2D, system_graph, settings);
-                    auto stop = std::chrono::high_resolution_clock::now();
-                    auto duration = 
-                    std::chrono::duration_cast<std::chrono::milliseconds>(stop-start);
-                    std::cout << "Cell " << k << " took " 
-                        << duration.count() << " milliseconds\n";
-                    dim_time += duration.count();
+                    double dim_time = 0.0;
+                    
+                    //if(i == 0 || i == 1) continue;
+                    std::cout << "Running the Hybrid ODES/SSA inner loop " << (2 - i) << "D phase\n";
+                    for(auto& bucket : bucketsND[i])
+                    {
+                        auto k = bucket.first; 
+                        auto start = std::chrono::high_resolution_clock::now();
+                        geocell_progress[k] = 
+                            plant_model_ssa_new(rule_system, k, rule_map, node_cell_map, 
+                                    geoplex2D, system_graph, settings, geocell_progress[k]);
+                        auto stop = std::chrono::high_resolution_clock::now();
+                        auto duration = 
+                        std::chrono::duration_cast<std::chrono::milliseconds>(stop-start);
+                        std::cout << "Cell " << k << " took " << duration.count() 
+                            << " milliseconds and has a current tau " 
+                            << geocell_progress[k].first << "\n";
+                        dim_time += duration.count();
+                    }
+                
+                    tot_time += dim_time;
+                    std::cout << (2 - i) << "D took " << dim_time << " milliseconds\n";
+                
+                    //std::cout << "----------------\n";
+                    //std::cout << "CC: " << YAGL::connected_components(system_graph); 
+                    //std::cout << "\n---------------\n";
+                                
+                    std::cout << "Synchronizing work\n";
                 }
-                tot_time += dim_time;
-                std::cout << "0D took " << dim_time << " milliseconds\n";
-        
-                std::cout << "Synchronizing work\n";
-                */
 
                 //TODO: this is where a barrier would be for a parallel code
                 std::cout << "Running the checkpointer\n";

@@ -497,16 +497,24 @@ std::pair<double, double> plant_model_ssa_new(RuleSystemType& rule_system, B& k,
 
             //TODO: create a list of future invalidations?
             std::vector<std::size_t> invalid_rules;
+            
+            //for each invalidated node 
             for(const auto& i : invalidations)
             {
+                //find all the rules that node partcipates in
                 const auto& rules = rule_system.inverse_index.find(i);
+                //if the node participates in any rules
                 if(rules != rule_system.inverse_index.end())
                 {
+                    //for each of the rules a node participates in
                     for(const auto& item : rules->second)
                     {
+                        //search for the rule in the rule set for this cell
                         auto loc = std::find(rule_map[k].begin(), rule_map[k].end(), item);
+                        //if we find the rule in the rule set for this cell
                         if(loc != rule_map[k].end())
                         {
+                            //erase the rule from the set, and add it to the invalidation set
                             rule_map[k].erase(loc);
                             invalid_rules.push_back(item);
                             std::cout << "Deleting rule " << item << "\n";
@@ -571,6 +579,7 @@ std::pair<double, double> plant_model_ssa_new(RuleSystemType& rule_system, B& k,
 
             std::cout << "Inducers size: " << inducers.size() << "\n";
             auto subgraph = YAGL::induced_subgraph(system_graph, inducers);
+            std::cout << "Created induced subgraph\n";
             std::vector<Cajete::Plant::mt_key_type> sub_bucket;
 
             for(const auto& [key, value] : subgraph.getNodeSetRef())
@@ -586,7 +595,7 @@ std::pair<double, double> plant_model_ssa_new(RuleSystemType& rule_system, B& k,
                 //--idea so far: widen local search and then a sieve--
                 bool valid = true;
                 for(auto& v : item)
-                    if(cell_list[v] != k) { valid = false; break; }
+                    if(cell_list[v] != k) { valid = false; std::cout << "Assigned cell mismatch rule G\n"; break; }
                 if(!valid) continue;
                 rule_system.push_back({std::move(item), Cajete::Rule::G});
                 rule_map[k].push_back(rule_system.key_gen.current_key-1);
@@ -599,7 +608,7 @@ std::pair<double, double> plant_model_ssa_new(RuleSystemType& rule_system, B& k,
                 //only add back in matches the cell actually owns
                 bool valid = true;
                 for(auto& v : item)
-                    if(cell_list[v] != k) { valid = false; break; }
+                    if(cell_list[v] != k) { valid = false; std::cout << "Assigned cell mismatch rule R\n"; break; }
                 if(!valid) continue;
                 rule_system.push_back({std::move(item), Cajete::Rule::R});
                 rule_map[k].push_back(rule_system.key_gen.current_key-1); 
