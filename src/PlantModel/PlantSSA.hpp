@@ -368,8 +368,11 @@ struct Solver
     }
     ~Solver()
     {
+        std::cout << "Starting solver destruction\n";
         N_VDestroy(y);
+        std::cout << "Destroyed y vector\n";
         ERKStepFree(&arkode_mem); //free the solver memory
+        std::cout << "Destroyed arkode_mem\n";
         SUNContext_Free(&ctx); //always call prior to MPI_Finalize
         std::cout << "Destroyed the solver\n";
     
@@ -560,22 +563,18 @@ std::pair<double, double> plant_model_ssa_new(RuleSystemType& rule_system, B& k,
                     inducers.insert(j);
             }
 
-            std::size_t s;
-            bool found = false;
             for(auto& item : inducers)
             {
                 std::cout << cell_list[item] << " ";
                 auto n_t = system_graph.findNode(item)->second.getData().type;
-                if(n_t == negative) {
-                    std::cout << "N\n"; s = item; found = true;}
-                  else if(n_t == positive)
-                      std::cout << "P\n";
-                  else if(n_t == intermediate)
-                      std::cout << "I\n";
-                  else std::cout << "O\n";
+                if(n_t == negative)
+                    std::cout << "N\n";
+                else if(n_t == positive)
+                    std::cout << "P\n";
+                else if(n_t == intermediate)
+                    std::cout << "I\n";
+                else std::cout << "O\n";
             }
-            //if(inducers.size() > 4 && found)
-                //inducers.erase(inducers.find(s));
 
             std::cout << "Inducers size: " << inducers.size() << "\n";
             auto subgraph = YAGL::induced_subgraph(system_graph, inducers);

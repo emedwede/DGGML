@@ -263,8 +263,10 @@ namespace Cajete
                 std::unordered_map<key_type, gplex_key_type> cell_list;
 
                 //dimensionally aware, expanded_cell_complex cell list
-                std::unordered_map<key_type, gplex_key_type> dim_cell_list;  
-                std::unordered_map<key_type, gplex_key_type> node_cell_map;
+                std::unordered_map<key_type, gplex_key_type> node_to_dim;  
+                std::unordered_map<key_type, gplex_key_type> node_to_cell;
+
+                //for each node in the system graph, find the geocell/subcell it belongs to
                 for(auto& [key, value] : system_graph.getNodeSetRef())
                 {
                     auto& node_data = value.getData();
@@ -278,8 +280,8 @@ namespace Cajete
                     cell_list.insert({key, cardinal}); 
                     geoplex2D.reaction_grid.locatePoint(xp, yp, ic, jc);
                     cardinal = geoplex2D.reaction_grid.cardinalCellIndex(ic, jc);
-                    dim_cell_list.insert({key, geoplex2D.dim_label[cardinal]});
-                    node_cell_map.insert({key, geoplex2D.cell_label[cardinal]});
+                    node_to_dim.insert({key, geoplex2D.dim_label[cardinal]});
+                    node_to_cell.insert({key, geoplex2D.cell_label[cardinal]});
                 }
                 
                 using rule_key_t = std::size_t;             
@@ -296,16 +298,16 @@ namespace Cajete
                 for(const auto& match : rule_system)
                 {
                     auto& instance = match.first.match;
-                    int local_max = dim_cell_list.find(instance[0])->second;
-                    std::size_t local_label = node_cell_map.find(instance[0])->second; 
+                    int local_max = node_to_dim.find(instance[0])->second;
+                    std::size_t local_label = node_to_cell.find(instance[0])->second; 
                     std::cout << "R: { ";
                     for(auto& l : instance)
                     {
-                        int d = dim_cell_list.find(l)->second;
+                        int d = node_to_dim.find(l)->second;
                         if(d > local_max)
                         {
                             local_max = d;
-                            local_label = node_cell_map.find(l)->second;
+                            local_label = node_to_cell.find(l)->second;
                         }
 
                         std::cout << l << " : { ";
@@ -319,11 +321,11 @@ namespace Cajete
                             for(auto& m : p_match)
                             {
                                 std::cout << m << " ";
-                                int _m = dim_cell_list.find(m)->second;
+                                int _m = node_to_dim.find(m)->second;
                                 if(_m > local_max)
                                 {
                                     local_max = d;
-                                    local_label = node_cell_map.find(_m)->second;
+                                    local_label = node_to_cell.find(_m)->second;
                                 }
                             }
                             std::cout << "} ";
@@ -384,7 +386,7 @@ namespace Cajete
                         auto k = bucket.first; 
                         auto start = std::chrono::high_resolution_clock::now();
                         geocell_progress[k] = 
-                            plant_model_ssa_new(rule_system, k, rule_map, node_cell_map, 
+                            plant_model_ssa_new(rule_system, k, rule_map, node_to_cell, 
                                     geoplex2D, system_graph, settings, geocell_progress[k]);
                         auto stop = std::chrono::high_resolution_clock::now();
                         auto duration = 
