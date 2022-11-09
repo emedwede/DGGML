@@ -264,7 +264,7 @@ namespace Cajete
 
                 //dimensionally aware, expanded_cell_complex cell list
                 std::unordered_map<key_type, gplex_key_type> node_to_dim;  
-                std::unordered_map<key_type, gplex_key_type> node_to_cell;
+                std::unordered_map<key_type, gplex_key_type> node_to_geocell;
 
                 //for each node in the system graph, find the geocell/subcell it belongs to
                 for(auto& [key, value] : system_graph.getNodeSetRef())
@@ -281,7 +281,7 @@ namespace Cajete
                     geoplex2D.reaction_grid.locatePoint(xp, yp, ic, jc);
                     cardinal = geoplex2D.reaction_grid.cardinalCellIndex(ic, jc);
                     node_to_dim.insert({key, geoplex2D.dim_label[cardinal]});
-                    node_to_cell.insert({key, geoplex2D.cell_label[cardinal]});
+                    node_to_geocell.insert({key, geoplex2D.cell_label[cardinal]});
                 }
                 
                 using rule_key_t = std::size_t;             
@@ -293,13 +293,77 @@ namespace Cajete
                     rule_map.insert({item, {}});
                 for(const auto& item : bucket0d)
                     rule_map.insert({item, {}});
+                
+                
+                //reduces the potential multiset of anchor nodes into a set and
+                //maps anchors to geocells
+                std::unordered_map<key_type, cplex_key_t> anchor_list;
+                for(const auto& match : rule_system)
+                {
+                    auto& node_data = system_graph.findNode(match.first.anchor)->second.getData();
+
+                    double xp = node_data.position[0];
+                    double yp = node_data.position[1];
+                    int ic, jc;
+                    
+                    geoplex2D.reaction_grid.locatePoint(xp, yp, ic, jc);
+                    auto cardinal = geoplex2D.reaction_grid.cardinalCellIndex(ic, jc);
+
+                    anchor_list.insert({match.first.anchor, cardinal});
+                }
+                std::cout << "Size of anchor_list: " << anchor_list.size() << "\n";
+                
+                std::vector<std::size_t> anchored_phi_count = {0, 0, 0, 0};
+                for(const auto& match : rule_system)
+                {
+                    //current max not min, because dimensions are labeled as 2d -> 0 (TODO: fix)
+                    auto& instance = match.first.match;
+                    auto max_cardinal = anchor_list[match.first.anchor];
+                    auto max_dim = geoplex2D.dim_label[max_cardinal];
+                    auto max_cell = geoplex2D.cell_label[max_cardinal];
+                    for(auto& l : instance)
+                    {
+                        auto& participation = rule_system.inverse_index.find(l)->second;
+                        for(auto& p : participation)
+                        {
+                            auto cur_cardinal = anchor_list[rule_system[p].anchor];
+                            auto cur_dim = geoplex2D.dim_label[cur_cardinal];
+                            if(cur_dim > max_dim)
+                            {
+                                max_dim = cur_dim;
+                                max_cell = geoplex2D.cell_label[cur_cardinal];
+                            }
+                        }
+                    }
+                    rule_map[max_cell].push_back(match.second);
+                    anchored_phi_count[max_dim]++;
+                }
+
+                auto d_tot = 0;
+                for(auto i = 0; i < anchored_phi_count.size(); i++) 
+                {
+                    std::cout << "Dim " << i << ": " << anchored_phi_count[i] << "\n";
+                    d_tot += anchored_phi_count[i];
+                }
+                std::cout << "Total mapped: " << d_tot << "\n";
+
+                //rule map total 
+                auto r_tot = 0;
+                for(const auto& [k, v] : rule_map)
+                {
+                    r_tot += v.size();
+                    auto dim = geoplex2D.getGraph().findNode(k)->second.getData().type;
+                }
+                std::cout << "Total rules: " << r_tot << "\n";
+
+                break;
 
                 std::vector<std::size_t> map_count = {0, 0, 0, 0};
                 for(const auto& match : rule_system)
                 {
                     auto& instance = match.first.match;
                     int local_max = node_to_dim.find(instance[0])->second;
-                    std::size_t local_label = node_to_cell.find(instance[0])->second; 
+                    std::size_t local_label = node_to_geocell.find(instance[0])->second; 
                     std::cout << "R: { ";
                     for(auto& l : instance)
                     {
@@ -307,7 +371,7 @@ namespace Cajete
                         if(d > local_max)
                         {
                             local_max = d;
-                            local_label = node_to_cell.find(l)->second;
+                            local_label = node_to_geocell.find(l)->second;
                         }
 
                         std::cout << l << " : { ";
@@ -325,7 +389,7 @@ namespace Cajete
                                 if(_m > local_max)
                                 {
                                     local_max = d;
-                                    local_label = node_to_cell.find(_m)->second;
+                                    local_label = node_to_geocell.find(_m)->second;
                                 }
                             }
                             std::cout << "} ";
@@ -386,7 +450,7 @@ namespace Cajete
                         auto k = bucket.first; 
                         auto start = std::chrono::high_resolution_clock::now();
                         geocell_progress[k] = 
-                            plant_model_ssa_new(rule_system, k, rule_map, node_to_cell, 
+                            plant_model_ssa_new(rule_system, k, rule_map, node_to_geocell, 
                                     geoplex2D, system_graph, settings, geocell_progress[k]);
                         auto stop = std::chrono::high_resolution_clock::now();
                         auto duration = 

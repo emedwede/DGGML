@@ -44,7 +44,8 @@ namespace Cajete
         instance_type match;
         
         Rule type;
-        
+        key_type anchor;
+
         using iterator = typename std::vector<key_type>::iterator;
 
         Instance() {}
@@ -52,7 +53,7 @@ namespace Cajete
         Instance(instance_type _match, Rule _type) 
             : match(_match), type(_type) 
         {
-            
+            anchor = match[0];    
         }
 
         iterator begin() { return match.begin(); }
