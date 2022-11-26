@@ -356,9 +356,7 @@ namespace Cajete
                 }
                 std::cout << "Total rules: " << r_tot << "\n";
 
-                break;
-
-                std::vector<std::size_t> map_count = {0, 0, 0, 0};
+                /*std::vector<std::size_t> map_count = {0, 0, 0, 0};
                 for(const auto& match : rule_system)
                 {
                     auto& instance = match.first.match;
@@ -416,7 +414,8 @@ namespace Cajete
                     std::cout << dim << "d Cell " << k << " has " << v.size() << " rules\n";
                 }
                 std::cout << "Total rules: " << rule_tot << "\n";
-                //
+                */
+
                 //scoped printing section for testing
                 {std::unordered_map<std::size_t, std::size_t> counts;
                 for(auto& c : bucket2d) counts.insert({c, 0});
@@ -450,7 +449,7 @@ namespace Cajete
                         auto k = bucket.first; 
                         auto start = std::chrono::high_resolution_clock::now();
                         geocell_progress[k] = 
-                            plant_model_ssa_new(rule_system, k, rule_map, node_to_geocell, 
+                            plant_model_ssa_new(rule_system, k, rule_map, anchor_list, 
                                     geoplex2D, system_graph, settings, geocell_progress[k]);
                         auto stop = std::chrono::high_resolution_clock::now();
                         auto duration = 

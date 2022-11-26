@@ -383,7 +383,7 @@ struct Solver
 using RuleSystemType = Cajete::RuleSystem<Plant::mt_key_type>;
 template <typename B, typename T, typename U, typename GeoplexType, typename GraphType, typename ParamType>
 std::pair<double, double> plant_model_ssa_new(RuleSystemType& rule_system, B& k, T& rule_map, 
-        U& cell_list, GeoplexType& geoplex2D, GraphType& system_graph, 
+        U& anchor_list, GeoplexType& geoplex2D, GraphType& system_graph, 
         ParamType& settings, std::pair<double, double> geocell_progress)
 {
     std::cout << "Cell " << k << " has " << rule_map[k].size() << " rules\n";
@@ -410,7 +410,6 @@ std::pair<double, double> plant_model_ssa_new(RuleSystemType& rule_system, B& k,
         GraphType& system_graph;
         B& k;
         T& rule_map;
-        U& cell_list;
         ParamType& settings;
         double& geocell_propensity;
         double& tau;
@@ -420,7 +419,7 @@ std::pair<double, double> plant_model_ssa_new(RuleSystemType& rule_system, B& k,
     //TODO: need a way to map the set of nodes and associated parameters 
     //from the rules to be solved into a flattened nvector, this is important 
     //for different rules that contribute to the same parameter 
-    Solver ode_system(PackType{rule_system, system_graph, k, rule_map, cell_list, settings, geocell_propensity, tau, exp_sample}, 2);
+    Solver ode_system(PackType{rule_system, system_graph, k, rule_map, settings, geocell_propensity, tau, exp_sample}, 2);
     
     std::vector<double> propensity_space;
 
@@ -495,12 +494,12 @@ std::pair<double, double> plant_model_ssa_new(RuleSystemType& rule_system, B& k,
             auto [invalidations, inducers] = 
                 test_rewrite_growth(system_graph, rule_system[fired_id].match);
             std::cout << "Before Invalidations:\n";
-            std::cout << rule_map[k].size() << " " << cell_list.size() 
-                << " " << rule_system.size() << "\n";
+            std::cout << "{ Rule Map Size: " << rule_map[k].size() << " }, { Anchor list size: " << anchor_list.size() 
+                << " }, { Rule System Size: " << rule_system.size() << " }\n";
 
             //TODO: create a list of future invalidations?
-            std::vector<std::size_t> invalid_rules;
-            
+            std::set<std::size_t> invalid_rules; // a set since some rules may be repeated
+            std::set<std::size_t> future_invalidations; 
             //for each invalidated node 
             for(const auto& i : invalidations)
             {
@@ -517,35 +516,40 @@ std::pair<double, double> plant_model_ssa_new(RuleSystemType& rule_system, B& k,
                         //if we find the rule in the rule set for this cell
                         if(loc != rule_map[k].end())
                         {
-                            //erase the rule from the set, and add it to the invalidation set
-                            rule_map[k].erase(loc);
-                            invalid_rules.push_back(item);
-                            std::cout << "Deleting rule " << item << "\n";
+                            //add the rule to the invalidation set
+                            invalid_rules.insert(item);
+                            std::cout << "Adding rule " << item << " to invalidation set\n";
                         }
                         //this should mean a lower dim cell is responsible 
                         //for the invalidation?
-                        else std::cout << "Rule " << item << " not found\n";
+                        else
+                        {
+                            std::cout << "Rule " << item << " not found\n";
+                            future_invalidations.insert(item);    
+                        }
                     }
                 }
-
-                //rule_system.invalidate(i);
-                //only erase nodes the cell owns
-                cell_list.erase(i);
             }
-            
-            //only invalidate rules a cell owns
-            for(auto& item : invalid_rules)
-                rule_system.invalidate_rule(item);
+            std::cout << "Rules to invalidate now:   " << invalid_rules.size() << "\n";
+            std::cout << "Rules to invalidate later: " << future_invalidations.size() << "\n";
 
+            //only invalidate and erase rules a cell owns
+            for(auto& item : invalid_rules)
+            {
+                rule_map[k].erase(std::find(rule_map[k].begin(), rule_map[k].end(), item));
+                anchor_list.erase(rule_system[item].anchor);
+                rule_system.invalidate_rule(item);
+            }
             std::cout << "After invalidations:\n";
-            std::cout << rule_map[k].size() << " " << cell_list.size() 
-                << " " << rule_system.size() << "\n";
-            
+            std::cout << "{ Rule Map Size: " << rule_map[k].size() << " }, { Anchor list size: " << anchor_list.size() 
+                << " }, { Rule System Size: " << rule_system.size() << " }\n";
+
+
             std::cout << "Find: ";
             for(const auto& i : inducers)
             {
                 std::cout << i << " "; 
-                cell_list.insert({i, k});
+                anchor_list.insert({i, k});
             }
             std::cout << "\n";
 
@@ -565,7 +569,7 @@ std::pair<double, double> plant_model_ssa_new(RuleSystemType& rule_system, B& k,
 
             for(auto& item : inducers)
             {
-                std::cout << cell_list[item] << " ";
+                std::cout << anchor_list[item] << " ";
                 auto n_t = system_graph.findNode(item)->second.getData().type;
                 if(n_t == negative)
                     std::cout << "N\n";
@@ -594,7 +598,7 @@ std::pair<double, double> plant_model_ssa_new(RuleSystemType& rule_system, B& k,
                 //--idea so far: widen local search and then a sieve--
                 bool valid = true;
                 for(auto& v : item)
-                    if(cell_list[v] != k) { valid = false; std::cout << "Assigned cell mismatch rule G\n"; break; }
+                    if(anchor_list[v] != k) { valid = false; std::cout << "Assigned cell mismatch rule G\n"; break; }
                 if(!valid) continue;
                 rule_system.push_back({std::move(item), Cajete::Rule::G});
                 rule_map[k].push_back(rule_system.key_gen.current_key-1);
@@ -607,14 +611,15 @@ std::pair<double, double> plant_model_ssa_new(RuleSystemType& rule_system, B& k,
                 //only add back in matches the cell actually owns
                 bool valid = true;
                 for(auto& v : item)
-                    if(cell_list[v] != k) { valid = false; std::cout << "Assigned cell mismatch rule R\n"; break; }
+                    if(anchor_list[v] != k) { valid = false; std::cout << "Assigned cell mismatch rule R\n"; break; }
                 if(!valid) continue;
                 rule_system.push_back({std::move(item), Cajete::Rule::R});
                 rule_map[k].push_back(rule_system.key_gen.current_key-1); 
             }
             std::cout << "After Reinsertion:\n";
-            std::cout << rule_map[k].size() << " " << cell_list.size() 
-                << " " << rule_system.size() << "\n";
+            std::cout << "{ Rule Map Size: " << rule_map[k].size() << " }, { Anchor list size: " << anchor_list.size() 
+                << " }, { Rule System Size: " << rule_system.size() << " }\n";
+
 
 
             //*/
