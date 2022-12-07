@@ -10,6 +10,8 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_STANDARD 17) 
 
+add_compile_options(-O3)
+
 # Add the serial host mode by default
 # Currently turning it of would break the code
 option(ENABLE_SERIAL_HOST "Enable Serial Host Mode" ON)

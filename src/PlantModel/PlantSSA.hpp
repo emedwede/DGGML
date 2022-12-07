@@ -113,8 +113,8 @@ void plant_model_ssa(BucketType& bucket, GeoplexType& geoplex2D, GraphType& syst
     //Create the suncontext 
     SUNContext ctx;
     flag = SUNContext_Create(NULL, &ctx);
-    if(!Cajete::SundialsUtils::check_flag(&flag, "SUNContext_Create", 1))
-        std::cout << "Passed the error check, suncontext created\n";
+    //if(!Cajete::SundialsUtils::check_flag(&flag, "SUNContext_Create", 1))
+        //std::cout << "Passed the error check, suncontext created\n";
     
     /* Step 3: set the problem dimensions */
     realtype t_start, t_final, t, tout;
@@ -153,7 +153,7 @@ void plant_model_ssa(BucketType& bucket, GeoplexType& geoplex2D, GraphType& syst
     /* Step 12: free the solver memory and the context if not reused */ 
     ERKStepFree(&arkode_mem); //free the solver memory
     SUNContext_Free(&ctx); //always call prior to MPI_Finalize
-    std::cout << "Freeing the suncontext\n";
+    //std::cout << "Freeing the suncontext\n";
     
     /* Step 13: Finalilze MPI, if used */ 
 
@@ -269,13 +269,15 @@ void plant_model_ssa(BucketType& bucket, GeoplexType& geoplex2D, GraphType& syst
             }
             for(auto& match : rule_matches[4])
             {
-                auto rho = settings.RHO_TEST_RATE*microtubule_collision_crossover_propensity(system_graph, match, settings);
-                rule_propensities[2] += rho;
-                rule_propensities[5] += rho;
-                rule_propensities[6] += rho;
-                prop[2].push_back(rho);
-                prop[5].push_back(rho);
-                prop[6].push_back(rho);
+                auto rho1 = settings.RHO_TEST_RATE*microtubule_zippering_propensity(system_graph, match, settings);
+                auto rho2 = settings.RHO_TEST_RATE*microtubule_collision_crossover_propensity(system_graph, match, settings);
+                auto rho3 = settings.RHO_TEST_RATE*microtubule_catastrophe_propensity(system_graph, match, settings);
+                rule_propensities[2] += rho1;
+                rule_propensities[5] += rho2;
+                rule_propensities[6] += rho3;
+                prop[2].push_back(rho1);
+                prop[5].push_back(rho2);
+                prop[6].push_back(rho3);
 
             } 
             

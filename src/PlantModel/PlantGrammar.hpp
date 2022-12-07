@@ -560,28 +560,39 @@ double microtubule_collision_crossover_propensity(GraphType& graph, std::vector<
     double sol_r[2];
     double theta_l = unit_dot_product(u5, u2);
     double theta_r = unit_dot_product(u5, u3);
+    
 
     double propensity = 0.0;
 
     if(theta_l != 1.0 && theta_l != -1.0)
     {
+        double THETA_CRIT = (2.0*3.14)/9.0;
+        double critical_angle = cos(THETA_CRIT);
+        double crit_in_range = 0.0;
+        (abs(theta_l)/abs(critical_angle) < 1.0) ? crit_in_range = 1.0 : crit_in_range = 0.0;
+
         paramaterized_intersection(pos5, pos2, pos1, u5, sol_l);
         
         if(sol_l[0] > 0.0 && sol_l[1] >= 0.0 && sol_l[1] <= 1.0) 
         {
             propensity = 
-                exp(-pow(calculate_distance(pos1, pos5), 2.0) / pow(0.5*settings.DIV_LENGTH, 2.0)); 
+                crit_in_range*exp(-pow(calculate_distance(pos1, pos5), 2.0) / pow(0.5*settings.DIV_LENGTH, 2.0)); 
             return propensity;
         } 
     } 
     else if(theta_r != 1.0 && theta_r != -1.0)
     {
+        double THETA_CRIT = (2.0*3.14)/9.0;
+        double critical_angle = cos(THETA_CRIT);
+        double crit_in_range = 0.0;
+        (abs(theta_r)/abs(critical_angle) < 1.0) ? crit_in_range = 1.0 : crit_in_range = 0.0;
+
         paramaterized_intersection(pos5, pos3, pos1, u5, sol_r);
         
         if(sol_r[0] > 0.0 && sol_r[1] >= 0.0 && sol_r[1] <= 1.0) 
         {
             propensity = 
-                exp(-pow(calculate_distance(pos1, pos5), 2.0) / pow(0.5*settings.DIV_LENGTH, 2.0));
+                crit_in_range*(-pow(calculate_distance(pos1, pos5), 2.0) / pow(0.5*settings.DIV_LENGTH, 2.0));
             return propensity;
         }
     } 
@@ -590,7 +601,7 @@ double microtubule_collision_crossover_propensity(GraphType& graph, std::vector<
         propensity = 0.0;
         return propensity;
     }
-
+    
 
 
     //propensity = exp(-pow(calculate_distance(pos1, pos5), 2.0) / pow(0.5*settings.DIV_LENGTH, 2.0));
@@ -653,10 +664,220 @@ double microtubule_collision_crossover_propensity(GraphType& graph, std::vector<
         in_range = 1;
     }
 
-    propensity = e*in_range;//crit_out_range 
-    
-    return propensity;*/
+    propensity = e*in_range*crit_out_range; 
+    */
+    return propensity;
 }
+
+template <typename GraphType, typename ParamType>
+double microtubule_zippering_propensity(GraphType& graph, std::vector<mt_key_type>& match, ParamType& settings)
+{
+    auto x1 = match[2]; //intermediate wildcard rule
+    auto x2 = match[3]; //wildcard left relative to intermediate
+    auto x3 = match[4]; //wildcard right relative to intermediate
+    auto x4 = match[1]; //intermediate growing end
+    auto x5 = match[0]; //positive growing end
+   
+    //find all the node data
+    auto& dat1 = graph.findNode(x1)->second.getData();
+    auto& dat2 = graph.findNode(x2)->second.getData();
+    auto& dat3 = graph.findNode(x3)->second.getData();
+    auto& dat4 = graph.findNode(x4)->second.getData();
+    auto& dat5 = graph.findNode(x5)->second.getData();
+   
+    //get references to position vector
+    auto& pos1 = dat1.position;
+    auto& pos2 = dat2.position;
+    auto& pos3 = dat3.position;
+    auto& pos4 = dat4.position;
+    auto& pos5 = dat5.position;
+
+    //get references to unit vectors
+    auto& u1 = dat1.unit_vec;
+    auto& u2 = dat2.unit_vec;
+    auto& u3 = dat3.unit_vec;
+    auto& u4 = dat4.unit_vec;
+    auto& u5 = dat5.unit_vec;
+    
+    double sol_l[2];
+    double sol_r[2];
+    double theta_l = unit_dot_product(u5, u2);
+    double theta_r = unit_dot_product(u5, u3);
+
+    double propensity = 0.0;
+
+    if(theta_l != 1.0 && theta_l != -1.0)
+    {
+        double THETA_CRIT = (2.0*3.14)/9.0;
+        double critical_angle = cos(THETA_CRIT);
+        double crit_in_range = 0.0;
+        (abs(theta_l)/abs(critical_angle) > 1.0) ? crit_in_range = 1.0 : crit_in_range = 0.0;
+
+        paramaterized_intersection(pos5, pos2, pos1, u5, sol_l);
+        
+        if(sol_l[0] > 0.0 && sol_l[1] >= 0.0 && sol_l[1] <= 1.0) 
+        {
+            propensity = 
+                crit_in_range*exp(-pow(calculate_distance(pos1, pos5), 2.0) / pow(0.5*settings.DIV_LENGTH, 2.0)); 
+            return propensity;
+        } 
+    } 
+    else if(theta_r != 1.0 && theta_r != -1.0)
+    {
+        double THETA_CRIT = (2.0*3.14)/9.0;
+        double critical_angle = cos(THETA_CRIT);
+        double crit_in_range = 0.0;
+        (abs(theta_r)/abs(critical_angle) > 1.0) ? crit_in_range = 1.0 : crit_in_range = 0.0;
+
+        paramaterized_intersection(pos5, pos3, pos1, u5, sol_r);
+        
+        if(sol_r[0] > 0.0 && sol_r[1] >= 0.0 && sol_r[1] <= 1.0) 
+        {
+            propensity = 
+                crit_in_range*(-pow(calculate_distance(pos1, pos5), 2.0) / pow(0.5*settings.DIV_LENGTH, 2.0));
+            return propensity;
+        }
+    } 
+    else 
+    {
+        propensity = 0.0;
+        return propensity;
+    }
+
+    //propensity = exp(-pow(calculate_distance(pos1, pos5), 2.0) / pow(0.5*settings.DIV_LENGTH, 2.0));
+    
+    return propensity;
+    
+    /*double gamma_l = 
+        cross_product((pos1[0]-pos2[0]), (pos1[1]-pos2[1]), (pos2[0]-pos5[0]), (pos2[1]-pos5[1]))
+        /
+        cross_product((pos1[0]-pos2[0]), (pos1[1]-pos2[1]), u5[0], u5[1]);
+
+    double gamma_r = 
+        cross_product((pos3[0]-pos2[0]), (pos3[1]-pos2[1]), (pos2[0]-pos5[0]), (pos2[1]-pos5[1]))
+        /
+        cross_product((pos3[0]-pos2[0]), (pos3[1]-pos2[1]), u5[0], u5[1]);
+
+    double alpha_l = 
+        -cross_product((pos2[0]-pos5[0]), (pos2[1]-pos5[1]), u5[0], u5[1])
+        /
+        cross_product((pos1[0]-pos2[0]), (pos1[1]-pos2[1]), u5[0], u5[1]);
+    
+    double alpha_r = 
+        -cross_product((pos2[0]-pos5[0]), (pos2[1]-pos5[1]), u5[0], u5[1])
+        /
+        cross_product((pos3[0]-pos2[0]), (pos3[1]-pos2[1]), u5[0], u5[1]);
+    
+    double alpha_1 = calculate_alpha(pos2, pos1, pos5);
+    double alpha_2 = calculate_alpha(pos2, pos3, pos5);
+
+    double beta_1 = calculate_beta(pos2, pos1, pos5, alpha_1);
+    double beta_2 = calculate_beta(pos2, pos3, pos5, alpha_2);
+
+    double beta_max = std::min(beta_1, beta_2);
+    
+    //if(beta_max >= CYLINDRICAL_CUTOFF*V_PLUS) return 0.0;
+    
+    if(gamma_l <= 0.0 || gamma_r <= 0.0) return 0.0;
+
+    double incoming_angle = unit_dot_product(u4, u1);
+    
+    if(incoming_angle < 0.0) incoming_angle = -incoming_angle;
+
+    double THETA_CRIT = 0.5;
+
+    double critical_angle = cos(THETA_CRIT);
+
+    int crit_out_range = 0;
+    
+    if(incoming_angle < 1.0 && incoming_angle <= critical_angle) 
+    {
+        crit_out_range += 1;
+    }
+
+    double e = exp(-1.0*beta_max*beta_max/2.0);
+    
+    int in_range = 0;
+
+    double EPSILON = 0.2;
+    if((alpha_r >= EPSILON) && (alpha_r <= 1.0 - EPSILON)) 
+    {
+        in_range = 1;
+    }
+
+    propensity = e*in_range*crit_out_range; 
+    */
+    return propensity;
+}
+
+
+template <typename GraphType, typename ParamType>
+double microtubule_catastrophe_propensity(GraphType& graph, std::vector<mt_key_type>& match, ParamType& settings)
+{
+    auto x1 = match[2]; //intermediate wildcard rule
+    auto x2 = match[3]; //wildcard left relative to intermediate
+    auto x3 = match[4]; //wildcard right relative to intermediate
+    auto x4 = match[1]; //intermediate growing end
+    auto x5 = match[0]; //positive growing end
+   
+    //find all the node data
+    auto& dat1 = graph.findNode(x1)->second.getData();
+    auto& dat2 = graph.findNode(x2)->second.getData();
+    auto& dat3 = graph.findNode(x3)->second.getData();
+    auto& dat4 = graph.findNode(x4)->second.getData();
+    auto& dat5 = graph.findNode(x5)->second.getData();
+   
+    //get references to position vector
+    auto& pos1 = dat1.position;
+    auto& pos2 = dat2.position;
+    auto& pos3 = dat3.position;
+    auto& pos4 = dat4.position;
+    auto& pos5 = dat5.position;
+
+    //get references to unit vectors
+    auto& u1 = dat1.unit_vec;
+    auto& u2 = dat2.unit_vec;
+    auto& u3 = dat3.unit_vec;
+    auto& u4 = dat4.unit_vec;
+    auto& u5 = dat5.unit_vec;
+    
+    double sol_l[2];
+    double sol_r[2];
+    double theta_l = unit_dot_product(u5, u2);
+    double theta_r = unit_dot_product(u5, u3);
+
+    double propensity = 0.0;
+
+    if(theta_l != 1.0 && theta_l != -1.0)
+    {
+        paramaterized_intersection(pos5, pos2, pos1, u5, sol_l);
+        
+        if(sol_l[0] > 0.0 && sol_l[1] >= 0.0 && sol_l[1] <= 1.0) 
+        {
+            propensity = 
+                exp(-pow(calculate_distance(pos1, pos5), 2.0) / pow(0.5*settings.DIV_LENGTH, 2.0)); 
+            return propensity;
+        } 
+    } 
+    else if(theta_r != 1.0 && theta_r != -1.0)
+    {
+        paramaterized_intersection(pos5, pos3, pos1, u5, sol_r);
+        
+        if(sol_r[0] > 0.0 && sol_r[1] >= 0.0 && sol_r[1] <= 1.0) 
+        {
+            propensity = 
+                (-pow(calculate_distance(pos1, pos5), 2.0) / pow(0.5*settings.DIV_LENGTH, 2.0));
+            return propensity;
+        }
+    } 
+    else 
+    {
+        propensity = 0.0;
+        return propensity;
+    }
+
+    return propensity;
+} 
 
 template <typename GraphType, typename StateType, typename MatchType, typename ParamType>
 void microtubule_growing_end_polymerize_solve(GraphType& graph, StateType& prev_state, GraphType& graph_old, MatchType& match, ParamType& settings)
