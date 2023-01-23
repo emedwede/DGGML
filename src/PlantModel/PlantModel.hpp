@@ -259,7 +259,8 @@ namespace Cajete
                 std::cout << "Bucket2D: " << bucket2d.size() << "\n";
                 std::cout << "Bucket1D: " << bucket1d.size() << "\n";
                 std::cout << "Bucket0D: " << bucket0d.size() << "\n";
-
+                
+                //TODO: remove code starting here?
                 std::unordered_map<key_type, gplex_key_type> cell_list;
 
                 //dimensionally aware, expanded_cell_complex cell list
@@ -283,7 +284,8 @@ namespace Cajete
                     node_to_dim.insert({key, geoplex2D.dim_label[cardinal]});
                     node_to_geocell.insert({key, geoplex2D.cell_label[cardinal]});
                 }
-                
+                //TODO: end remove code ending here
+
                 using rule_key_t = std::size_t;             
                 //first attempt at a dimensional mapping function
                 std::map<cplex_key_t, std::vector<rule_key_t>> rule_map;
@@ -296,7 +298,7 @@ namespace Cajete
                 
                 
                 //reduces the potential multiset of anchor nodes into a set and
-                //maps anchors to geocells
+                //maps anchors to reaction subcells
                 std::unordered_map<key_type, cplex_key_t> anchor_list;
                 for(const auto& match : rule_system)
                 {
@@ -355,7 +357,8 @@ namespace Cajete
                     auto dim = geoplex2D.getGraph().findNode(k)->second.getData().type;
                 }
                 std::cout << "Total rules: " << r_tot << "\n";
-
+                
+                //TODO: remove old inspiration code starting here
                 /*std::vector<std::size_t> map_count = {0, 0, 0, 0};
                 for(const auto& match : rule_system)
                 {
@@ -415,8 +418,10 @@ namespace Cajete
                 }
                 std::cout << "Total rules: " << rule_tot << "\n";
                 */
+                //TODO: end remove old inspiration code 
 
                 //scoped printing section for testing
+                //TODO: make these scoped prints unit tests for phi mapping function
                 {std::unordered_map<std::size_t, std::size_t> counts;
                 for(auto& c : bucket2d) counts.insert({c, 0});
                 for(auto& [key, value] : cell_list) counts[value]++;
