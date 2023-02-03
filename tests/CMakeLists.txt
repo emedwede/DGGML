@@ -12,7 +12,7 @@ add_executable(binning-and-sort-test tests_main.cpp binning-and-sort-test.cpp)
 add_executable(math-test tests_main.cpp math-test.cpp)
 add_executable(sundials-test tests_main.cpp sundials-test.cpp)
 add_executable(incremental-updates-test incremental-updates-test.cpp tests_main.cpp)
-add_executable(neighbor-list-test neighbor-list-test.cpp tests_main.cpp)
+add_executable(cell-list-test cell-list-test.cpp tests_main.cpp)
 
 target_link_libraries(file-writer-test PRIVATE vtu11::vtu11 PUBLIC SUNDIALS::arkode SUNDIALS::nvecserial)
 target_link_libraries(cplex-test PRIVATE vtu11::vtu11 PUBLIC SUNDIALS::arkode SUNDIALS::nvecserial)

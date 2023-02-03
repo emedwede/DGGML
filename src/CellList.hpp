@@ -1,17 +1,17 @@
-#ifndef VERLET_LIST_HPP
-#define VERLET_LIST_HPP
+#ifndef CELL_LIST_HPP
+#define CELL_LIST_HPP
 
 #include <vector>
 
 namespace Cajete
 {
 
-//type for holding the VerletList Data in CSR format
+//type for holding the CellList Data in CSR format
 //could be customized for various key types
 using ViewType = std::vector<std::size_t>;
 
 //This is the CSR layout version
-struct VerletListData
+struct CellListData
 {
     //number of neighbors per object
     ViewType counts; 
@@ -25,12 +25,12 @@ struct VerletListData
     //TODO: maybe an addNeighbor function
 };
 
-struct VerletList
+struct CellList
 {
 
-    VerletListData data;
+    CellListData data;
 
-    VerletList() {}
+    CellList() {}
 
 };
 

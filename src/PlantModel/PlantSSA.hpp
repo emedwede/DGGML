@@ -471,7 +471,7 @@ std::pair<double, double> plant_model_ssa_new(RuleSystemType& rule_system, B& k,
         // if we get over our threshold an event can occur
         if(tau >= exp_sample) 
         {
-            //determine which rule to file and fire it
+            //determine which rule to fire and fire it
             std::cout << "Size of sample space: " << propensity_space.size() << "\n"; 
             
             auto local_sample = RandomRealsBetween(0.0, 1.0)();
@@ -486,8 +486,7 @@ std::pair<double, double> plant_model_ssa_new(RuleSystemType& rule_system, B& k,
             }
             
             auto fired_id = propensity_space[eventFired].first;
-            std::cout << "Selected rule id: " << fired_id << "\n";
-            
+            std::cout << "Selected rule id " << fired_id << " of type " << rule_system[fired_id].type << "\n"; 
             //need to update the cell list and the rule_map as well 
             
             ///*
@@ -580,7 +579,7 @@ std::pair<double, double> plant_model_ssa_new(RuleSystemType& rule_system, B& k,
                 else std::cout << "O\n";
             }
 
-            std::cout << "Inducers size: " << inducers.size() << "\n";
+            std::cout << "Number of Inducers: " << inducers.size() << "\n";
             auto subgraph = YAGL::induced_subgraph(system_graph, inducers);
             std::cout << "Created induced subgraph\n";
             std::vector<Cajete::Plant::mt_key_type> sub_bucket;
