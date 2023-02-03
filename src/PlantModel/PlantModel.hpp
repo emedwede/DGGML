@@ -296,7 +296,27 @@ namespace Cajete
                 for(const auto& item : bucket0d)
                     rule_map.insert({item, {}});
                 
-                
+                //create a cell list
+                std::vector<std::vector<typename RuleSystem<Plant::mt_key_type>::pair_type>> test_cell_list(geoplex2D.reaction_grid.totalNumCells());
+                std::cout << "The test_cell_list has " << test_cell_list.size() << " reaction cells\n";                
+                //for every match sort it into the cell it belongs
+                for(const auto& match : rule_system)
+                {
+                    auto& anchor_data = system_graph.findNode(match.first.anchor)->second.getData();
+                    double xp = anchor_data.position[0];
+                    double yp = anchor_data.position[1];
+                    auto key = match.second;
+                    int ic, jc;
+                    geoplex2D.reaction_grid.locatePoint(xp, yp, ic, jc);
+                    auto cardinal = geoplex2D.reaction_grid.cardinalCellIndex(ic, jc);
+                    test_cell_list[cardinal].push_back(match); 
+                }
+                auto sum = 0;
+                for(const auto& cell : test_cell_list)
+                    sum += cell.size();
+                std::cout << "Total matches mapped to cells is " << sum << "\n";
+                break;
+
                 //reduces the potential multiset of anchor nodes into a set and
                 //maps anchors to reaction subcells
                 std::unordered_map<key_type, cplex_key_t> anchor_list;

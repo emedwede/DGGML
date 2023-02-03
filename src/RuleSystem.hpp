@@ -79,6 +79,7 @@ namespace Cajete
     {
         using key_type = KeyType;
         using data_type = Instance<KeyType>;
+        using pair_type = std::pair<data_type, key_type>;
         using gen_type = KeyGenerator<KeyType>;
         using container_type = std::vector<std::pair<data_type, key_type>>;
         using index_type = std::unordered_map<key_type, std::size_t>;  
