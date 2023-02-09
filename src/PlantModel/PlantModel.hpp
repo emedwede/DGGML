@@ -22,6 +22,10 @@
 
 #include "RuleSystem.hpp"
 
+#include "MathUtils.hpp"
+
+#include "CellList.hpp"
+
 #include <map>
 #include <random>
 #include <chrono>
@@ -297,24 +301,39 @@ namespace Cajete
                     rule_map.insert({item, {}});
                 
                 //create a cell list
-                std::vector<std::vector<typename RuleSystem<Plant::mt_key_type>::pair_type>> test_cell_list(geoplex2D.reaction_grid.totalNumCells());
-                std::cout << "The test_cell_list has " << test_cell_list.size() << " reaction cells\n";                
-                //for every match sort it into the cell it belongs
-                for(const auto& match : rule_system)
+                CellList test_cell_list(geoplex2D.reaction_grid, system_graph, rule_system);
+                auto growing_matches = 0;
+                for(auto c = 0; c < test_cell_list.totalNumCells(); c++)
                 {
-                    auto& anchor_data = system_graph.findNode(match.first.anchor)->second.getData();
-                    double xp = anchor_data.position[0];
-                    double yp = anchor_data.position[1];
-                    auto key = match.second;
-                    int ic, jc;
-                    geoplex2D.reaction_grid.locatePoint(xp, yp, ic, jc);
-                    auto cardinal = geoplex2D.reaction_grid.cardinalCellIndex(ic, jc);
-                    test_cell_list[cardinal].push_back(match); 
+                    int imin, imax, jmin, jmax;
+                    test_cell_list.getCells(c, imin, imax, jmin, jmax); 
+                    for(auto i = imin; i < imax; i++)
+                    {
+                        for(auto j = jmin; j < jmax; j++)
+                        {
+                            auto nbr_idx = test_cell_list.cardinalCellIndex(i, j);
+                            for(const auto& match1 : test_cell_list.data[c])
+                            {
+                                for(const auto& match2 : test_cell_list.data[nbr_idx])
+                                {
+                                    if(match1.first.type == Rule::G && match2.first.type == Rule::G 
+                                            && match1.second != match2.second)
+                                    {
+                                        auto a1 = match1.first.anchor;
+                                        auto a2 = match2.first.anchor;
+                                        auto& p1 = system_graph.findNode(a1)->second.getData().position;
+                                        auto& p2 = system_graph.findNode(a2)->second.getData().position;
+                                        auto d = calculate_distance(p1, p2); 
+                                        //std::cout << "Distance: " << d << "\n";
+                                        if(d < test_cell_list.grid._dx)
+                                            growing_matches++;
+                                    }
+                                }
+                            }
+                        }
+                    }
                 }
-                auto sum = 0;
-                for(const auto& cell : test_cell_list)
-                    sum += cell.size();
-                std::cout << "Total matches mapped to cells is " << sum << "\n";
+                std::cout << "Growing Matches Found: " << growing_matches << "\n"; 
                 break;
 
                 //reduces the potential multiset of anchor nodes into a set and
