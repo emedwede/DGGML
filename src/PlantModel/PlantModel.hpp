@@ -333,7 +333,7 @@ namespace Cajete
                         }
                     }
                 }
-                std::cout << "Growing Matches Found: " << growing_matches << "\n"; 
+                std::cout << "Potential Growing End Collision Matches Found: " << growing_matches << "\n"; 
                 break;
 
                 //reduces the potential multiset of anchor nodes into a set and
