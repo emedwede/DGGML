@@ -77,14 +77,14 @@ namespace Cajete
         settings.EXPERIMENT_NAME = static_cast<std::string>(temp);
 
         std::cout << settings.EXPERIMENT_NAME << "+++\n";
-                settings.CELL_NX = std::size_t(interface["SETTINGS"]["CELL_NX"]); 
-        settings.CELL_NY = std::size_t(interface["SETTINGS"]["CELL_NY"]);
+                settings.CELL_NX = int64_t(interface["SETTINGS"]["CELL_NX"]);
+        settings.CELL_NY = int64_t(interface["SETTINGS"]["CELL_NY"]);
         
         settings.CELL_DX = double(interface["SETTINGS"]["CELL_DX"]);
         settings.CELL_DY = double(interface["SETTINGS"]["CELL_DY"]);
         settings.GHOSTED = bool(interface["SETTINGS"]["GHOSTED"]);
 
-        settings.NUM_MT = std::size_t(interface["SETTINGS"]["NUM_MT"]);
+        settings.NUM_MT = int64_t(interface["SETTINGS"]["NUM_MT"]);
         settings.MT_MIN_SEGMENT_INIT = double(interface["SETTINGS"]["MT_MIN_SEGMENT_INIT"]);
         settings.MT_MAX_SEGMENT_INIT = double(interface["SETTINGS"]["MT_MAX_SEGMENT_INIT"]);
 
