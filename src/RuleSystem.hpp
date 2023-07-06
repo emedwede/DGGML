@@ -4,7 +4,8 @@
 #include <vector> 
 #include <algorithm> 
 #include <utility>
-#include <iostream> 
+#include <iostream>
+#include <map>
 
 //TODO seperate rule system from plant grammar later 
 #include "PlantTypes.hpp"
