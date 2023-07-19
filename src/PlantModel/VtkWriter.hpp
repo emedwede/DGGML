@@ -6,6 +6,8 @@
 
 #include "FileWriter.hpp"
 
+#include "CartesianGrid2D.hpp"
+
 #include "vtu11/vtu11.hpp"
 
 #include <vector>
@@ -124,6 +126,99 @@ class VtkFileWriter : public FileWriter<DataType> {
         std::vector<double> keyData;
         std::vector<vtu11::VtkCellType> types;
         std::vector<double> comp_type;
+        std::vector<vtu11::VtkIndexType> offsets;
+        std::vector<vtu11::VtkIndexType> connectivity;
+        std::vector<double> cellData;
+        //std::vector<vtu11::DataSetInfo> dataSetInfo;
+};
+
+//Overides the file_writer interface, but preserves the algorithm
+class GridFileWriter : public FileWriter<std::pair<CartesianGrid2D, std::vector<int>>> {
+    using data_type = typename FileWriter<std::pair<CartesianGrid2D, std::vector<int>>>::data_type;
+    protected:
+        void create_file() const override {
+            std::cout << "File is created when written\n";
+        }
+
+        void open_file() const override {
+            std::cout << "Current file writing does not support appending\n";
+        }
+
+        void format_data(data_type _data) override {
+            std::cout << "Formating the data to be vtk compatibile\n";
+            auto data = _data.first;
+            auto labels = _data.second;
+            auto n = data._nx;
+            auto m = data._ny;
+            auto dx = data._dx;
+            auto dy = data._dy;
+            auto px = data._px;
+            auto py = data._py;
+ 
+            for(auto i = 0; i < data.totalNumPoints(); i++)
+            {
+                double xp, yp, zp = 0.0;
+                data.cardinalLatticeToPoint(xp, yp, i);
+                points.push_back(xp);
+                points.push_back(yp);
+                points.push_back(zp);    
+            }
+
+            for(auto i = 0; i < n; i++)
+            {
+                for(auto j = 0; j < m; j++)
+                {
+                    std::size_t cardinal;
+                    cardinal = data.cardinalLatticeIndex(i, j);
+                    connectivity.push_back(cardinal);
+                    cardinal = data.cardinalLatticeIndex(i+1, j);
+                    connectivity.push_back(cardinal);
+                    cardinal = data.cardinalLatticeIndex(i+1, j+1);
+                    connectivity.push_back(cardinal);
+                    cardinal = data.cardinalLatticeIndex(i, j+1);
+                    connectivity.push_back(cardinal);
+                }
+            }
+
+            for(auto i = 0; i < data.totalNumCells(); i++)
+            {
+                offsets.push_back((i+1)*4);
+                types.push_back(7);
+                if(labels.size() == data.totalNumCells())
+                    cellData.push_back(labels[i]);
+                else
+                    cellData.push_back(1);
+            }
+        }
+
+        void write_file(std::string name) override {
+            name += ".vtu";
+            std::cout << "Writing data to " << name << "\n";
+            
+            std::vector<vtu11::DataSetInfo> dataSetInfo
+            {
+                {"Geocell", vtu11::DataSetType::CellData, 1},
+            };
+            vtu11::Vtu11UnstructuredMesh mesh {points, connectivity, offsets, types};
+            vtu11::writeVtu(name, mesh, dataSetInfo, {cellData}, "Ascii");
+        }
+
+        void close_file() override {
+            std::cout << "Closing the file\n";
+            points.clear();
+            types.clear();
+            offsets.clear();
+            connectivity.clear();
+            cellData.clear();
+        }
+
+    private:
+        std::string filename;
+
+        VTK::MeshData meshData;
+        
+        std::vector<double> points;
+        std::vector<vtu11::VtkCellType> types;
         std::vector<vtu11::VtkIndexType> offsets;
         std::vector<vtu11::VtkIndexType> connectivity;
         std::vector<double> cellData;

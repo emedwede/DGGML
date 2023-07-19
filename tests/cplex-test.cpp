@@ -202,7 +202,7 @@ TEST_CASE("Any Cell Complex can have ghost cells", "[cplex-test]")
 
 TEST_CASE("Testing the expanded cell complex", "[cplex-test]") 
 {
-    Cajete::ExpandedComplex2D<> cplex2D(2, 2, 2.0, 2.0, true);
+    Cajete::ExpandedComplex2D<> cplex2D(2, 2, 3.0, 2.0, true);
     
     std::cout << cplex2D << std::endl;
     
@@ -223,5 +223,9 @@ TEST_CASE("Testing the expanded cell complex", "[cplex-test]")
                 << ", " << iter->second.getData().corners[i][1] << "} ";
         } std::cout << "}\n";
     }
-
+    std::cout << "Reaction Grid: \n" << cplex2D.reaction_grid;
+    Cajete::GridFileWriter writer;
+    writer.save({cplex2D.reaction_grid, cplex2D.dim_label}, "labeled_grid_viz");
+    Cajete::VtkFileWriter<typename Cajete::ExpandedComplex2D<>::types::graph_type> complex_writer;
+    complex_writer.save(cplex2D.getGraph(), "cplex_viz");
 }

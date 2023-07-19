@@ -6,8 +6,11 @@
 
 #include "ExpandedComplex2D.hpp"
 #include "YAGL_Graph.hpp"
+#include "YAGL_Algorithms.hpp"
 
 #include "SundialsUtils.hpp"
+
+#include "RuleSystem.hpp"
 
 #include <chrono>
 #include <random>
@@ -22,6 +25,15 @@
 #include <sundials/sundials_types.h> 
 #include <sundials/sundials_math.h>
 
+#if defined(SUNDIALS_EXTENDED_PRECISION)
+#define GSYM "Lg"
+#define ESYM "Le"
+#define FSYM "Lf"
+#else
+#define GSYM "g"
+#define ESYM "e"
+#define FSYM "f"
+#endif
 namespace Cajete 
 {
 namespace Plant 
@@ -80,6 +92,7 @@ void filter_matches(MatchSetType* unfiltered, MatchSetType* filtered, std::size_
 
 int rhs_func(realtype t, N_Vector y, N_Vector ydot, void* user_data) 
 {
+    
     return 0;
 }
 
@@ -87,6 +100,545 @@ int root_func(realtype t, N_Vector y, realtype* gout, void* user_data)
 {
     return 0;
 }
+
+template <typename UserDataType>
+struct Solver 
+{
+    int flag; //generic reusable flag 
+    
+    //Create the suncontext 
+    SUNContext ctx;
+    void* arkode_mem;
+
+    realtype t_start, t_final, t, tout, dt_out;
+     
+    realtype reltol;
+    realtype abstol;
+    
+    static constexpr int num_roots = 1;
+    int roots_found[num_roots];
+    int root_flag;
+
+    sunindextype num_eq;
+    
+    N_Vector y;
+   
+    //TODO: should this be a pointer?
+    UserDataType user_data;
+    
+    Solver(UserDataType _user_data, sunindextype _num_eq = 0) 
+        : user_data(_user_data)
+    {
+        num_eq = _num_eq;
+        t_start = RCONST(0.0);
+        dt_out = RCONST(user_data.settings.DELTA_T_MIN);
+        t = t_start;
+        tout = t_start + dt_out;
+        t_final = RCONST(user_data.settings.DELTA);
+
+        flag = SUNContext_Create(NULL, &ctx);
+        if(!Cajete::SundialsUtils::check_flag(&flag, "SUNContext_Create", 1))
+            std::cout << "Passed the error check, suncontext created\n";
+        
+        // the number of equations is defined by the parameters of the nodes
+        // involved in all the ode rule types
+        num_eq = 0;
+        for(const auto& r : user_data.rule_map[user_data.k])
+        {
+            const auto& inst = user_data.rule_system[r];
+            if(inst.type == Rule::G || inst.type == Rule::R)
+                num_eq += DIM3D;
+        }
+        num_eq++; //one extra equation for tau 
+
+        std::cout << "*****NumEQ="<<num_eq<<"*****\n";
+        y = NULL; 
+        y = N_VNew_Serial(num_eq, ctx);
+        
+        auto j = 0;
+        for(const auto& r : user_data.rule_map[user_data.k])
+        {
+            for(const auto& m : user_data.rule_system[r])
+            {
+                if(user_data.rule_system[r].type != Rule::G && user_data.rule_system[r].type != Rule::R)
+                    continue;
+                auto& node_data = user_data.system_graph.findNode(m)->second.getData();
+                if(node_data.type == positive || node_data.type == negative)
+                {
+                    for(int i = 0; i < DIM3D; i++)
+                        NV_Ith_S(y, j++) = node_data.position[i];
+                } 
+            }
+        }
+        NV_Ith_S(y, j) = user_data.tau;
+
+        //NV_Ith_S(y, 0) = 50.0;
+        //NV_Ith_S(y, 1) = 0.0;
+
+        //std::cout << "J: " << j << "\n";
+        arkode_mem = ERKStepCreate(rhs, t_start, y, ctx); 
+        //if (!Cajete::SundialsUtils::check_flag((void *)arkode_mem, "ERKStepCreate", 1))
+        //    std::cout << "Passed the error check, stepper initialized\n";
+
+        reltol = 1.0e-4;//1.0e-6;
+        abstol = 1.0e-8;//1.0e-10;
+
+        flag = ERKStepSStolerances(arkode_mem, reltol, abstol);
+        
+        //set optional inputs
+        flag = ERKStepSetUserData(arkode_mem, &user_data); 
+    
+        // specify the root finding function having num_roots  
+        flag = ERKStepRootInit(arkode_mem, num_roots, root_func); 
+        
+        //ERKStepSetMinStep(arkode_mem, user_data.settings.DELTA_T_MIN/10.0);
+        ERKStepSetMaxStep(arkode_mem, dt_out);//dt_out/10.0);
+    }
+    
+    void step()
+    {
+        if(num_eq == 0) return;
+        flag = ERKStepEvolve(arkode_mem, tout, y, &t, ARK_NORMAL);
+        std::cout << "t: " << t << ", tout: " << tout << "\n";
+        if(flag == ARK_ROOT_RETURN)
+        {
+            root_flag = ERKStepGetRootInfo(arkode_mem, roots_found);
+            std::cout << "A root has been found\n";
+        } 
+        //successful solve
+        else if(flag >= 0)
+        {
+            tout += dt_out;
+            tout = (tout > t_final) ? t_final : tout;
+        }
+    }
+    
+    static int root_func(realtype t, N_Vector y, realtype* gout, void* user_data)
+    {
+        UserDataType* local_ptr = (UserDataType *)user_data;
+        auto last = N_VGetLength(y) - 1;
+        
+        //check for when the tau equation crosses the sample 
+        gout[0] = NV_Ith_S(y, last) - local_ptr->waiting_time;
+        
+        return 0;
+    }
+
+    static int rhs(realtype t, N_Vector y, N_Vector ydot, void* user_data) 
+    {
+        UserDataType* local_ptr = (UserDataType *)user_data;
+        auto k = local_ptr->k;
+        auto i = 0;
+        //growth rule params
+        auto v_plus = local_ptr->settings.V_PLUS;
+        auto d_l = local_ptr->settings.DIV_LENGTH;
+        
+        //retraction rule params 
+        auto l_d_f = local_ptr->settings.LENGTH_DIV_FACTOR;
+        auto d_l_r = local_ptr->settings.DIV_LENGTH_RETRACT;
+        auto v_minus = local_ptr->settings.V_MINUS;
+
+        //NV_Ith_S(ydot, 0) = NV_Ith_S(y, 1);
+        //NV_Ith_S(ydot, 1) = -9.8;
+        
+        //TODO: move the rules to their separate functions
+        for(const auto& r : local_ptr->rule_map[k])
+        {
+            auto& instance = local_ptr->rule_system[r];
+            if(instance.type == Rule::G)
+            {
+                auto id = instance[1];
+                auto& node_i_data = local_ptr->system_graph.findNode(id)->second.getData();
+                double l = 0.0;
+                for(auto j = 0; j < 3; j++)
+                {
+                    double diff = NV_Ith_S(y, i+j) - node_i_data.position[j];
+                    l += diff*diff;
+                }
+                l = sqrt(l);
+                double length_limiter = (1.0 - (l/d_l));
+                NV_Ith_S(ydot, i) = v_plus*node_i_data.unit_vec[0]*length_limiter;
+                NV_Ith_S(ydot, i+1) = v_plus*node_i_data.unit_vec[1]*length_limiter;
+                NV_Ith_S(ydot, i+2) = v_plus*node_i_data.unit_vec[2]*length_limiter;
+            }
+            if(local_ptr->rule_system[r].type == Rule::R)
+            {
+                auto id = instance[1];
+                auto& node_i_data = local_ptr->system_graph.findNode(id)->second.getData();
+                double l = 0.0;
+                for(auto j = 0; j < 3; j++)
+                {
+                    double diff = NV_Ith_S(y, i+j) - node_i_data.position[j];
+                    l += diff*diff;
+                }
+                l = sqrt(l);
+                
+                double length_limiter = l/d_l;
+                if(length_limiter <= d_l_r) length_limiter = 0.0;
+
+                for(int j = i; j < i+3; j++)
+                    NV_Ith_S(ydot, j) = v_minus*node_i_data.unit_vec[j-i]*length_limiter;
+                //std::cout << Rule::R << "\n";
+            }
+            i += 3;
+        }
+        
+        NV_Ith_S(ydot, i) = local_ptr->geocell_propensity;
+
+        //std::cout << "In my function for cell " << k 
+        //    << ", local rule size: " << local_ptr->rule_map[k].size() << "\n";  
+        local_ptr = nullptr;
+        return 0;
+    }
+    
+    void copy_back()
+    {
+        auto j = 0;
+        for(const auto& r : user_data.rule_map[user_data.k])
+        {
+            for(const auto& m : user_data.rule_system[r])
+            {
+                if(user_data.rule_system[r].type != Rule::G && user_data.rule_system[r].type != Rule::R)
+                    continue;
+                auto& node_data = user_data.system_graph.findNode(m)->second.getData();
+                if(node_data.type != positive && node_data.type != negative)
+                    continue;
+                //TODO: update the current velocity here?
+                for(int i = 0; i < DIM3D; i++)
+                    node_data.position[i] = NV_Ith_S(y, j++);
+            } 
+        }
+        user_data.tau = NV_Ith_S(y, j);
+    }
+
+    //TODO: make this function reset the whole y vector
+    //since it may change in size
+    void reinit()
+    {
+        auto pre_eq = num_eq;
+        auto num_eq = 0;
+
+        for(const auto& r : user_data.rule_map[user_data.k])
+        {
+            const auto& inst = user_data.rule_system[r];
+            if(inst.type == Rule::G || inst.type == Rule::R)
+                num_eq += DIM3D;
+        }
+        num_eq++; //one extra equation for tau 
+
+        std::cout << "*****NumEQ="<<num_eq<<"*****\n";
+        N_VDestroy(y); 
+        y = N_VNew_Serial(num_eq, ctx);
+        
+        auto j = 0;
+        for(const auto& r : user_data.rule_map[user_data.k])
+        {
+            for(const auto& m : user_data.rule_system[r])
+            {
+                if(user_data.rule_system[r].type != Rule::G && user_data.rule_system[r].type != Rule::R)
+                    continue;
+                auto& node_data = user_data.system_graph.findNode(m)->second.getData();
+                if(node_data.type == positive || node_data.type == negative)
+                {
+                    for(int i = 0; i < DIM3D; i++)
+                        NV_Ith_S(y, j++) = node_data.position[i];
+                } 
+            }
+        }
+        
+        //std::cout << num_eq << " " << pre_eq << "\n"; std::cin.get();
+        user_data.tau = 0.0;
+        NV_Ith_S(y, num_eq-1) = 0.0;
+        ERKStepReInit(arkode_mem, rhs, t, y);
+    }
+
+    void print_stats()
+    {
+        long int nst, nst_a, nfe, netf;
+        /* Print some final statistics */
+        flag = ERKStepGetNumSteps(arkode_mem, &nst);
+        flag = ERKStepGetNumStepAttempts(arkode_mem, &nst_a);
+        flag = ERKStepGetNumRhsEvals(arkode_mem, &nfe);
+        flag = ERKStepGetNumErrTestFails(arkode_mem, &netf);
+
+        printf("\nFinal Solver Statistics:\n");
+        printf("   Internal solver steps = %li (attempted = %li)\n", nst, nst_a);
+        printf("   Total RHS evals = %li\n", nfe);
+        printf("   Total number of error test failures = %li\n\n", netf);
+    }
+    ~Solver()
+    {
+        std::cout << "Starting solver destruction\n";
+        N_VDestroy(y);
+        std::cout << "Destroyed y vector\n";
+        ERKStepFree(&arkode_mem); //free the solver memory
+        std::cout << "Destroyed arkode_mem\n";
+        SUNContext_Free(&ctx); //always call prior to MPI_Finalize
+        std::cout << "Destroyed the solver\n";
+    
+        /* Step 13: Finalilze MPI, if used */ 
+    }
+};
+
+using RuleSystemType = Cajete::RuleSystem<Plant::mt_key_type>;
+template <typename B, typename T, typename U, typename GeoplexType, typename GraphType, typename ParamType>
+std::pair<double, double> plant_model_ssa_new(RuleSystemType& rule_system, B& k, T& rule_map, 
+        U& anchor_list, GeoplexType& geoplex2D, GraphType& system_graph, 
+        ParamType& settings, std::pair<double, double> geocell_progress)
+{
+    std::cout << "Cell " << k << " has " << rule_map[k].size() << " rules\n";
+    std::cout << "{ ";
+    for(auto& item : rule_map[k])
+        std::cout << item << " ";
+    std::cout << "}\n";
+    double delta_t, geocell_propensity;
+    std::size_t events, steps; 
+    delta_t = 0.0; events = 0; steps = 0, geocell_propensity = 0.0;
+    double tau = geocell_progress.first;
+    double exp_sample = geocell_progress.second;
+    if(exp_sample <= 0.0)
+    {
+        double uniform_sample = RandomRealsBetween(0.0, 1.0)();
+        exp_sample = -log(1-uniform_sample);
+        std::cout << "Warped wating time: " << exp_sample << "\n"; 
+    }
+
+    //need an aggregation
+    typedef struct 
+    {
+        RuleSystemType& rule_system;
+        GraphType& system_graph;
+        B& k;
+        T& rule_map;
+        ParamType& settings;
+        double& geocell_propensity;
+        double& tau;
+        double waiting_time;
+    } PackType;
+    
+    //TODO: need a way to map the set of nodes and associated parameters 
+    //from the rules to be solved into a flattened nvector, this is important 
+    //for different rules that contribute to the same parameter 
+    Solver ode_system(PackType{rule_system, system_graph, k, rule_map, settings, geocell_propensity, tau, exp_sample}, 2);
+    
+    std::vector<double> propensity_space;
+
+    while(delta_t < settings.DELTA) 
+    {
+        //the propensities calculated for a particular rule
+        std::vector<std::pair<std::size_t, double>> propensity_space;
+            
+        //while(delta_t < settings.DELTA && tau < exp_sample)
+        if(tau < exp_sample)
+        {
+                    
+            // STEP(1) : sum all of the rule propensities
+            //geocell_propensity = RandomRealsBetween(0.0, 0.01)(); 
+            auto rho = 0.0;
+            for(const auto& r : rule_map[k])
+            {
+                auto& instance = rule_system[r];
+                if(instance.type == Rule::G)
+                {
+                    propensity_space.push_back({ r,
+                        100*microtubule_growing_end_polymerize_propensity(system_graph, 
+                            instance.match, settings)}
+                    );
+                    rho += propensity_space.back().second;
+                }
+            }
+            geocell_propensity = rho;
+            //the step adapts based on propensity or systems fastest dynamic
+            //settings.DELTA_T_MIN = 
+            //std::min(1.0/(10.0*geocell_propensity), settings.DELTA_DELTA_T);
+            
+            // STEP(2) : solve the system of ODES 
+            ode_system.step();
+            ode_system.copy_back(); 
+            // STEP(3) : use forward euler to solve the TAU ODE
+            //tau += geocell_propensity*settings.DELTA_T_MIN; 
+            
+            // STEP(4) : advance the loop timer
+            delta_t = ode_system.t;
+            //delta_t += settings.DELTA_T_MIN; //TODO: make delta_t adaptive
+            
+            //std::cout << "tout: " << ode_system.t << " , DT: " << delta_t << "\n";
+            
+            steps++;
+        }
+    
+
+        // if we get over our threshold an event can occur
+        if(tau >= exp_sample) 
+        {
+            //determine which rule to fire and fire it
+            std::cout << "Size of sample space: " << propensity_space.size() << "\n"; 
+            
+            auto local_sample = RandomRealsBetween(0.0, 1.0)();
+            
+            auto eventFired = 0;
+            
+            auto local_progress = local_sample*geocell_propensity - propensity_space[0].second;
+            while(local_progress > 0.0) 
+            {
+                eventFired++;
+                local_progress -= propensity_space[eventFired].second;
+            }
+            
+            auto fired_id = propensity_space[eventFired].first;
+            std::cout << "Selected rule id " << fired_id << " of type " << rule_system[fired_id].type << "\n"; 
+            //need to update the cell list and the rule_map as well 
+            
+            ///*
+            auto [invalidations, inducers] = 
+                test_rewrite_growth(system_graph, rule_system[fired_id].match);
+            std::cout << "Before Invalidations:\n";
+            std::cout << "{ Rule Map Size: " << rule_map[k].size() << " }, { Anchor list size: " << anchor_list.size() 
+                << " }, { Rule System Size: " << rule_system.size() << " }\n";
+
+            //TODO: create a list of future invalidations?
+            std::set<std::size_t> invalid_rules; // a set since some rules may be repeated
+            std::set<std::size_t> future_invalidations; 
+            //for each invalidated node 
+            for(const auto& i : invalidations)
+            {
+                //find all the rules that node partcipates in
+                const auto& rules = rule_system.inverse_index.find(i);
+                //if the node participates in any rules
+                if(rules != rule_system.inverse_index.end())
+                {
+                    //for each of the rules a node participates in
+                    for(const auto& item : rules->second)
+                    {
+                        //search for the rule in the rule set for this cell
+                        auto loc = std::find(rule_map[k].begin(), rule_map[k].end(), item);
+                        //if we find the rule in the rule set for this cell
+                        if(loc != rule_map[k].end())
+                        {
+                            //add the rule to the invalidation set
+                            invalid_rules.insert(item);
+                            std::cout << "Adding rule " << item << " to invalidation set\n";
+                        }
+                        //this should mean a lower dim cell is responsible 
+                        //for the invalidation?
+                        else
+                        {
+                            std::cout << "Rule " << item << " not found\n";
+                            future_invalidations.insert(item);    
+                        }
+                    }
+                }
+            }
+            std::cout << "Rules to invalidate now:   " << invalid_rules.size() << "\n";
+            std::cout << "Rules to invalidate later: " << future_invalidations.size() << "\n";
+
+            //only invalidate and erase rules a cell owns
+            for(auto& item : invalid_rules)
+            {
+                rule_map[k].erase(std::find(rule_map[k].begin(), rule_map[k].end(), item));
+                anchor_list.erase(rule_system[item].anchor);
+                rule_system.invalidate_rule(item);
+            }
+            std::cout << "After invalidations:\n";
+            std::cout << "{ Rule Map Size: " << rule_map[k].size() << " }, { Anchor list size: " << anchor_list.size() 
+                << " }, { Rule System Size: " << rule_system.size() << " }\n";
+
+
+            std::cout << "Find: ";
+            for(const auto& i : inducers)
+            {
+                std::cout << i << " "; 
+                anchor_list.insert({i, k});
+            }
+            std::cout << "\n";
+
+            auto temp = inducers;
+            for(const auto& i : temp)
+            {
+                auto res = YAGL::recursive_dfs(system_graph, i, 2);
+                auto n_t = system_graph.findNode(i)->second.getData().type;
+                if(n_t == negative) std::cout << "N ";
+                if(n_t == positive) std::cout << "P ";
+                if(n_t == intermediate) std::cout << "I ";
+
+                std::cout << "Size at " << i << ": " << res.size() << "\n";
+                for(auto& j : res)
+                    inducers.insert(j);
+            }
+
+            for(auto& item : inducers)
+            {
+                std::cout << anchor_list[item] << " ";
+                auto n_t = system_graph.findNode(item)->second.getData().type;
+                if(n_t == negative)
+                    std::cout << "N\n";
+                else if(n_t == positive)
+                    std::cout << "P\n";
+                else if(n_t == intermediate)
+                    std::cout << "I\n";
+                else std::cout << "O\n";
+            }
+
+            std::cout << "Number of Inducers: " << inducers.size() << "\n";
+            auto subgraph = YAGL::induced_subgraph(system_graph, inducers);
+            std::cout << "Created induced subgraph\n";
+            std::vector<Cajete::Plant::mt_key_type> sub_bucket;
+
+            for(const auto& [key, value] : subgraph.getNodeSetRef())
+                sub_bucket.push_back(key);
+            std::cout << "SubBucket Size: " << sub_bucket.size() << "\n";
+            auto incremental_matches = 
+                Cajete::Plant::microtubule_growing_end_matcher(system_graph, sub_bucket);
+
+            for(auto& item : incremental_matches)
+            {
+                //only add back in matches the cell actually owns
+                //since the ones it didn't own weren't invalidated 
+                //--idea so far: widen local search and then a sieve--
+                bool valid = true;
+                for(auto& v : item)
+                    if(anchor_list[v] != k) { valid = false; std::cout << "Assigned cell mismatch rule G\n"; break; }
+                if(!valid) continue;
+                rule_system.push_back({std::move(item), Cajete::Rule::G});
+                rule_map[k].push_back(rule_system.key_gen.current_key-1);
+            }
+
+            incremental_matches = 
+                Cajete::Plant::microtubule_retraction_end_matcher(system_graph, sub_bucket);
+            for(auto& item : incremental_matches)
+            {
+                //only add back in matches the cell actually owns
+                bool valid = true;
+                for(auto& v : item)
+                    if(anchor_list[v] != k) { valid = false; std::cout << "Assigned cell mismatch rule R\n"; break; }
+                if(!valid) continue;
+                rule_system.push_back({std::move(item), Cajete::Rule::R});
+                rule_map[k].push_back(rule_system.key_gen.current_key-1); 
+            }
+            std::cout << "After Reinsertion:\n";
+            std::cout << "{ Rule Map Size: " << rule_map[k].size() << " }, { Anchor list size: " << anchor_list.size() 
+                << " }, { Rule System Size: " << rule_system.size() << " }\n";
+
+
+
+            //*/
+            //zero out tau since a rule has fired 
+            tau = 0.0;
+            //reset the exp waiting_time sample 
+            double uniform_sample = RandomRealsBetween(0.0, 1.0)();
+            //sample the exponential variable
+            exp_sample = -log(1-uniform_sample);
+            ode_system.user_data.waiting_time = exp_sample; 
+            std::cout << "Warped wating time: " << exp_sample << "\n"; 
+            
+            ode_system.print_stats();
+            ode_system.reinit();
+        }
+    }
+    std::cout << "Total steps taken: " << steps << "\n";
+    return {tau, exp_sample};
+}
+
 
 //template <typename BucketType>
 //void plant_model_ssa(

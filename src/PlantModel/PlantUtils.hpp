@@ -147,12 +147,12 @@ namespace Plant
         }
         
         std::uniform_real_distribution<double> 
-            distribution_global_x(cplex.min_x+epsilon_max, 
-                    cplex.max_x-epsilon_max);
+            distribution_global_x(cplex.min_x+3*epsilon_max, 
+                    cplex.max_x-3*epsilon_max);
 
         std::uniform_real_distribution<double>
-            distribution_global_y(cplex.min_y+epsilon_max, 
-                    cplex.max_y-epsilon_max);
+            distribution_global_y(cplex.min_y+3*epsilon_max, 
+                    cplex.max_y-3*epsilon_max);
 
         std::uniform_real_distribution<double> 
             distribution_local(epsilon_min, epsilon_max);

@@ -7,15 +7,113 @@
 
 #include "MathUtils.hpp"
 
+#include "RuleSystem.hpp"
+
 #include <random>
 
 #include <vector>
+#include <set>
+#include <string>
 
 namespace Cajete
 {
 
 namespace Plant 
 {
+
+void define_model(Grammar& gamma) {
+    //graph for a growing MT LHS
+    graph_type g1;
+    g1.addNode({0, {{0, 0, 0}, {0, 0, 0}, Cajete::Plant::intermediate}});
+    g1.addNode({1, {{0, 0, 0}, {0, 0, 0}, Cajete::Plant::positive}});
+    g1.addEdge(0, 1);
+    
+    //graph for a growing MT RHS
+    graph_type g2;
+    g2.addNode({0, {{0, 0, 0}, {0, 0, 0}, Cajete::Plant::intermediate}});
+    g2.addNode({1, {{0, 0, 0}, {0, 0, 0}, Cajete::Plant::intermediate}});
+    g2.addNode({2, {{0, 0, 0}, {0, 0, 0}, Cajete::Plant::positive}});
+    g2.addEdge(0, 1);
+    g2.addEdge(1, 2);
+    
+    //create the grammar rule 
+    RuleType r1("growing", g1, g2);
+    
+    //graph for a catastrophe LHS
+    graph_type g3;
+    g3.addNode({0, {{0, 0, 0}, {0, 0, 0}, Cajete::Plant::intermediate}});
+    g3.addNode({1, {{0, 0, 0}, {0, 0, 0}, Cajete::Plant::intermediate}});
+    g3.addNode({2, {{0, 0, 0}, {0, 0, 0}, Cajete::Plant::intermediate}});
+    g3.addNode({3, {{0, 0, 0}, {0, 0, 0}, Cajete::Plant::intermediate}});
+    g3.addNode({4, {{0, 0, 0}, {0, 0, 0}, Cajete::Plant::positive}});
+    g3.addEdge(0, 1);
+    g3.addEdge(1, 2);
+    g3.addEdge(3, 4);
+
+    //graph for catastrophe RHS
+    graph_type g4;
+    g4.addNode({0, {{0, 0, 0}, {0, 0, 0}, Cajete::Plant::intermediate}});
+    g4.addNode({1, {{0, 0, 0}, {0, 0, 0}, Cajete::Plant::intermediate}});
+    g4.addNode({2, {{0, 0, 0}, {0, 0, 0}, Cajete::Plant::intermediate}});
+    g4.addNode({3, {{0, 0, 0}, {0, 0, 0}, Cajete::Plant::intermediate}});
+    g4.addNode({4, {{0, 0, 0}, {0, 0, 0}, Cajete::Plant::negative}});
+    g4.addEdge(0, 1);
+    g4.addEdge(1, 2);
+    g4.addEdge(3, 4);
+    
+    //create the grammar rule 
+    RuleType r2("catastrophe", g3, g4);
+    
+    //graph for a retraction MT LHS
+    graph_type g5;
+    g5.addNode({0, {{0, 0, 0}, {0, 0, 0}, Cajete::Plant::intermediate}});
+    g5.addNode({1, {{0, 0, 0}, {0, 0, 0}, Cajete::Plant::negative}});
+    g5.addEdge(0, 1);
+    
+    //graph for a retraction MT RHS
+    graph_type g6;
+    g6.addNode({0, {{0, 0, 0}, {0, 0, 0}, Cajete::Plant::intermediate}});
+    g6.addNode({1, {{0, 0, 0}, {0, 0, 0}, Cajete::Plant::intermediate}});
+    g6.addNode({2, {{0, 0, 0}, {0, 0, 0}, Cajete::Plant::negative}});
+    g6.addEdge(0, 1);
+    g6.addEdge(1, 2);
+    
+    //create the grammar rule 
+    RuleType r3("retraction", g5, g6);
+    
+    //graph for a zipper LHS
+    graph_type g7;
+    g7.addNode({0, {{0, 0, 0}, {0, 0, 0}, Cajete::Plant::intermediate}});
+    g7.addNode({1, {{0, 0, 0}, {0, 0, 0}, Cajete::Plant::intermediate}});
+    g7.addNode({2, {{0, 0, 0}, {0, 0, 0}, Cajete::Plant::intermediate}});
+    g7.addNode({3, {{0, 0, 0}, {0, 0, 0}, Cajete::Plant::intermediate}});
+    g7.addNode({4, {{0, 0, 0}, {0, 0, 0}, Cajete::Plant::positive}});
+    g7.addEdge(0, 1);
+    g7.addEdge(1, 2);
+    g7.addEdge(3, 4);
+
+    //graph for a zipper RHS
+    graph_type g8;
+    g8.addNode({0, {{0, 0, 0}, {0, 0, 0}, Cajete::Plant::intermediate}});
+    g8.addNode({1, {{0, 0, 0}, {0, 0, 0}, Cajete::Plant::zipper}});
+    g8.addNode({2, {{0, 0, 0}, {0, 0, 0}, Cajete::Plant::intermediate}});
+    g8.addNode({3, {{0, 0, 0}, {0, 0, 0}, Cajete::Plant::intermediate}});
+    g8.addEdge(0, 1);
+    g8.addEdge(1, 2);
+    g8.addEdge(3, 1);
+    
+    RuleType r4("zipper", g7, g8);
+
+    //build the Grammar 
+    gamma.addRule(r1);
+    gamma.addRule(r2);
+    gamma.addRule(r3);
+    gamma.addRule(r4);
+
+    //if runtime just run 
+    //else we need a two phase compile or some compile time way to generate optimized code?
+}
+
 
 // search for growing ends in a dimensional partition 
 template <typename GraphType, typename BucketType>
@@ -36,10 +134,7 @@ std::vector<std::vector<mt_key_type>> microtubule_growing_end_matcher(GraphType&
             auto jtype = graph.findNode(j)->second.getData().type;
             
             if(jtype != intermediate) continue;
-            std::vector<mt_key_type> temp;
-            temp.push_back(i);
-            temp.push_back(j);
-            matches.push_back(temp);
+            matches.push_back(std::vector<mt_key_type>{i, j});
         }
     }
 
@@ -65,10 +160,7 @@ std::vector<std::vector<mt_key_type>> microtubule_retraction_end_matcher(GraphTy
             auto jtype = graph.findNode(j)->second.getData().type;
             
             if(jtype != intermediate) continue;
-            std::vector<mt_key_type> temp;
-            temp.push_back(i);
-            temp.push_back(j);
-            matches.push_back(temp);
+            matches.push_back(std::vector<mt_key_type>{i,j});
         }
     }
 
@@ -81,6 +173,7 @@ std::vector<std::vector<mt_key_type>> microtubule_retraction_end_two_intermediat
 {
     //YAGL::Graph<mt_key_type, MT_NodeData> graph;    
     std::vector<std::vector<mt_key_type>> matches;
+    std::set<std::string> permutations;
     //iterate the whole graph 
     for(auto i : bucket) 
     {
@@ -101,11 +194,12 @@ std::vector<std::vector<mt_key_type>> microtubule_retraction_end_two_intermediat
                 auto ktype = graph.findNode(k)->second.getData().type;
 
                 if(ktype != intermediate) continue;
-                std::vector<mt_key_type> temp;
-                temp.push_back(i);
-                temp.push_back(j);
-                temp.push_back(k);
-                matches.push_back(temp); 
+                //check to see if it's already been found
+                mt_key_type a[3] = {i, j, k};
+                std::sort(a, a+3);
+                auto pattern = std::to_string(a[0]) + std::to_string(a[1]) + std::to_string(a[2]);
+                if(permutations.insert(pattern).second) 
+                    matches.push_back(std::vector<mt_key_type>{i,j,k}); 
             }
         }
     }
@@ -117,6 +211,7 @@ template <typename GraphType, typename BucketType>
 std::vector<std::vector<mt_key_type>> three_intermediate_matcher(GraphType& graph, BucketType& bucket)
 {
     std::vector<std::vector<mt_key_type>> matches;
+    std::set<std::string> permutations;
     for(auto& i : bucket)
     {
         auto& itype = graph.findNode(i)->second.getData().type;
@@ -140,7 +235,11 @@ std::vector<std::vector<mt_key_type>> three_intermediate_matcher(GraphType& grap
 
                 if(j != k) //as long as j and k are not the same, we have a match 
                 {
-                    matches.push_back({{i, j, k}});
+                    mt_key_type a[3] = {i, j, k};
+                    std::sort(a, a+3);
+                    auto pattern = std::to_string(a[0]) + std::to_string(a[1]) + std::to_string(a[2]);
+                    if(permutations.insert(pattern).second) 
+                        matches.push_back(std::vector<mt_key_type>{i, j, k});
                 }
             }
         }
@@ -254,6 +353,49 @@ void microtubule_growing_end_polymerize_rewrite(GraphType& graph, std::vector<mt
     graph.addEdge(j, key);
 }
 
+//Simple first attempt a polymerizing
+template <typename GraphType>
+std::pair<std::set<mt_key_type>, std::set<mt_key_type>> test_rewrite_growth(GraphType& graph, std::vector<mt_key_type>& match)
+{
+    //if(match.size() != 2) return;
+    auto i = match[0]; auto j = match[1];
+    
+    //TODO: need a unique key generator
+    typename GraphType::key_type key = graph.numNodes()+1;
+    
+    while(graph.findNode(key) != graph.node_list_end()) key++; //TODO: fix, very greedy
+    double x3[3];
+
+    auto& x1 = graph.findNode(i)->second.getData().position;
+    auto& x2 = graph.findNode(j)->second.getData().position;
+    auto& u1 = graph.findNode(i)->second.getData().unit_vec;
+    auto gamma = 0.75;
+    for(auto iter = 0; iter < 3; iter++)
+    {
+        x3[iter] = x2[iter] - ((x2[iter]-x1[iter]) * gamma); 
+    }
+    std::random_device random_device; std::mt19937 random_engine(random_device());
+    std::uniform_real_distribution<double> distribution_angle(-3.14/8.0, 3.14/8.0); 
+    double theta = distribution_angle(random_engine);
+    auto u10_rot = u1[0]*cos(theta) + u1[1]*sin(theta);
+    auto u11_rot = -u1[0]*sin(theta) +u1[1]*cos(theta);
+    u1[0] = u10_rot; u1[1] = u11_rot;
+
+    graph.addNode({key, 
+            {{x3[0], x3[1], x3[2]}, 
+            {0, 0, 0}, 
+            Cajete::Plant::mt_type::intermediate, 
+            {0, 0, 0}, 
+            {u1[0], u1[1], u1[2]}}});
+
+    graph.removeEdge(i, j);
+    graph.addEdge(i, key);
+    graph.addEdge(j, key);
+    
+    return std::pair<std::set<mt_key_type>, std::set<mt_key_type>>{{i, j}, {i, j, key}}; //matches to invalidate and induce
+}
+
+
 
 //Simple first attempt a polymerizing
 template <typename GraphType, typename BucketType>
@@ -324,7 +466,7 @@ double microtubule_growing_end_polymerize_propensity(GraphType& graph, std::vect
     
     auto len = calculate_distance(node_i_data.position, node_j_data.position);
     //double propensity = heaviside(len, settings.DIV_LENGTH);
-    double propensity = sigmoid((len/settings.DIV_LENGTH) - 1.0, settings.SIGMOID_K);
+    double propensity = 10*sigmoid((len/settings.DIV_LENGTH) - 1.0, settings.SIGMOID_K);
     return propensity;
 }
 
