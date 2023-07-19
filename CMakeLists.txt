@@ -34,11 +34,12 @@ endif()
 #find the sundials package for ODE solving 
 find_package(SUNDIALS REQUIRED)
 
+# TODO: see if there is a better way than include_directories command
 include_directories(dependencies/YAGL/include)
 include_directories(thirdparty/simdjson)
 include_directories(src)
-include_directories(examples/CMA/PlantModel)
 include_directories(src/Grids)
+include_directories(src/Utlities)
 include_directories(src/CellComplexes)
 include_directories(src/CellComplexes/Utils)
 include_directories(src/Solvers)
