@@ -15,10 +15,10 @@
 template <typename T>
 void print_corners(T& corners)
 {
-    std::cout << "{ " << corners[Cajete::lower_left][0] << ", " << corners[Cajete::lower_left][1] << "} ";
-    std::cout << "{ " << corners[Cajete::lower_right][0] << ", " << corners[Cajete::lower_right][1] << "} ";
-    std::cout << "{ " << corners[Cajete::upper_left][0] << ", " << corners[Cajete::upper_left][1] << "} ";
-    std::cout << "{ " << corners[Cajete::upper_right][0] << ", " << corners[Cajete::upper_right][1] << "} ";
+    std::cout << "{ " << corners[DGGML::lower_left][0] << ", " << corners[DGGML::lower_left][1] << "} ";
+    std::cout << "{ " << corners[DGGML::lower_right][0] << ", " << corners[DGGML::lower_right][1] << "} ";
+    std::cout << "{ " << corners[DGGML::upper_left][0] << ", " << corners[DGGML::upper_left][1] << "} ";
+    std::cout << "{ " << corners[DGGML::upper_right][0] << ", " << corners[DGGML::upper_right][1] << "} ";
     std::cout << "}\n";
 }
 
@@ -34,14 +34,14 @@ void print_keys(T* keys, std::size_t n, std::size_t dim)
 /*
 TEST_CASE("Histobucket 2D Test", "[binning-test]")
 {    
-    using key_type = typename Cajete::ExpandedComplex2D<>::graph_type::key_type;
-    using node_type = typename YAGL::Graph<Cajete::Plant::mt_key_type, Cajete::Plant::MT_NodeData>::node_type;
-    using cplex_type = Cajete::ExpandedComplex2D<>;
+    using key_type = typename DGGML::ExpandedComplex2D<>::graph_type::key_type;
+    using node_type = typename YAGL::Graph<DGGML::Plant::mt_key_type, DGGML::Plant::MT_NodeData>::node_type;
+    using cplex_type = DGGML::ExpandedComplex2D<>;
     
-    Cajete::ExpandedComplex2D<> geoplex2D;
+    DGGML::ExpandedComplex2D<> geoplex2D;
     geoplex2D.init(2, 2, 15.0, 15.0, false); //ghosted
     
-    Cajete::Histobucket<key_type> geosysmap2D;
+    DGGML::Histobucket<key_type> geosysmap2D;
     std::cout << geosysmap2D << std::endl;
 
     REQUIRE( geosysmap2D.numBin() == 0 );
@@ -51,8 +51,8 @@ TEST_CASE("Histobucket 2D Test", "[binning-test]")
     REQUIRE(geosysmap2D.totalSize() == 0);
     
     std::size_t ppmt = 3; std::size_t num_mt = 50;
-    YAGL::Graph<Cajete::Plant::mt_key_type, Cajete::Plant::MT_NodeData> system_graph; 
-    Cajete::Plant::microtubule_unit_scatter(system_graph, geoplex2D, num_mt); 
+    YAGL::Graph<DGGML::Plant::mt_key_type, DGGML::Plant::MT_NodeData> system_graph;
+    DGGML::Plant::microtubule_unit_scatter(system_graph, geoplex2D, num_mt);
         
     auto& geoplex_graph = geoplex2D.getGraph();
     
@@ -102,7 +102,7 @@ TEST_CASE("Histobucket 2D Test", "[binning-test]")
         auto id = iter->first;
         auto node = iter->second;
         
-        auto cardinal = Cajete::cartesian_complex_expanded_hash2D(node, geoplex2D);
+        auto cardinal = DGGML::cartesian_complex_expanded_hash2D(node, geoplex2D);
         auto search = sort_map2D.find(cardinal);
         if(search != sort_map2D.end())
             geosysmap2D.incrementBin(search->second);
@@ -145,9 +145,9 @@ TEST_CASE("Histobucket 2D Test", "[binning-test]")
         auto id = iter->first;
         auto node = iter->second; 
 
-        auto cardinal = Cajete::cartesian_complex_expanded_hash2D(node, geoplex2D);
-        Cajete::cartesian_complex_expanded_hash1D(node, geoplex2D);
-        auto id0D = Cajete::cartesian_complex_expanded_hash0D(node, geoplex2D);
+        auto cardinal = DGGML::cartesian_complex_expanded_hash2D(node, geoplex2D);
+        DGGML::cartesian_complex_expanded_hash1D(node, geoplex2D);
+        auto id0D = DGGML::cartesian_complex_expanded_hash0D(node, geoplex2D);
         if(geoplex_graph.findNode(id0D)->second.getData().type == 2)
         {
             count0D++;
@@ -186,25 +186,25 @@ TEST_CASE("Histobucket 2D Test", "[binning-test]")
 
 TEST_CASE("VectorMap ND Test", "[binning-test]")
 {    
-    using key_type = typename Cajete::ExpandedComplex2D<>::graph_type::key_type;
-    using cplex_type = Cajete::ExpandedComplex2D<>;
+    using key_type = typename DGGML::ExpandedComplex2D<>::graph_type::key_type;
+    using cplex_type = DGGML::ExpandedComplex2D<>;
     
-    Cajete::Parameters settings;
+    DGGML::Parameters settings;
     cplex_type geoplex2D;
     geoplex2D.init(2, 2, 15.0, 15.0, true); //ghosted
     auto& geoplex_graph = geoplex2D.getGraph();
     
     std::size_t ppmt = 3; std::size_t num_mt = 5'000; std::size_t total_objects = ppmt*num_mt;
     settings.NUM_MT = num_mt;
-    YAGL::Graph<Cajete::Plant::mt_key_type, Cajete::Plant::MT_NodeData> system_graph; 
+    YAGL::Graph<DGGML::Plant::mt_key_type, DGGML::Plant::MT_NodeData> system_graph;
     std::cout << "Initializing system graph\n";
-    Cajete::Plant::microtubule_unit_scatter(system_graph, geoplex2D, settings); 
+    DGGML::Plant::microtubule_unit_scatter(system_graph, geoplex2D, settings);
     
     std::cout << "Sorting the graph\n";
     std::map<key_type, std::vector<key_type>> bucketsND[3];
     std::size_t complementND[3] = {0, 0, 0};
 
-    Cajete::expanded_cartesian_complex_sort_stl(bucketsND, complementND, geoplex2D, system_graph);
+    DGGML::expanded_cartesian_complex_sort_stl(bucketsND, complementND, geoplex2D, system_graph);
     
     std::cout << "Computing bucket sums\n";
 

@@ -3,8 +3,8 @@
 arch=$(uname -m)
 compiler=g++
 compiler_version=$(g++ --version)
-env_prefix=/home/erock/Documents/Code/CajeteRevamped
-project_name=CajeteProto
+env_prefix=/home/erock/Documents/Code/
+project_name=DGGML
 build_name=build_basic
 source_prefix=${env_prefix}/${project_name}
 build_base_dir=${env_prefix}/${build_name}

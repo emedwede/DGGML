@@ -1,12 +1,12 @@
-#ifndef CAJETE_MEMORYMANAGER_HPP
-#define CAJETE_MEMORYMANAGER_HPP
+#ifndef DGGML_MEMORYMANAGER_HPP
+#define DGGML_MEMORYMANAGER_HPP
 
 #include <iostream> // TODO: replace with fmt library?
 
 #include <memory> // For smart pointers 
 
 // The memory Manager is part of the Library namespace
-namespace Cajete 
+namespace DGGML
 {
 // The memory manager has it's own namespace just to make
 // it more distinct 
@@ -21,9 +21,9 @@ namespace MemoryManager
 	
 	// These compiler statements enable flexibility
 	// to add new allocators for different device spaces 
-	#if defined CAJETE_ENABLE_HOST_SERIAL
+	#if defined DGGML_ENABLE_HOST_SERIAL
 			ptr = new T[size];
-			#if defined(CAJETE_DEBUG)
+			#if defined(DGGML_DEBUG)
 				std::cout << "Successfully allocated " << sizeof(T)*size 
 					<< " bytes at " << ptr << "\n";
 			#endif
@@ -42,7 +42,7 @@ namespace MemoryManager
 			//C++ 17 Way:
 			//std::shared_ptr<T> ptr(new T[size]);
 
-			#if defined(CAJETE_DEBUG)
+			#if defined(DGGML_DEBUG)
 				std::cout << "Successfully allocated " << sizeof(ptr)*size 
 					<< " bytes at " << ptr << "\n";
 			#endif
@@ -58,9 +58,9 @@ namespace MemoryManager
 		if(ptr) {
 		// These compiler statements enable flexibility
 		// to add new deallocators for different device spaces
-		#if defined(CAJETE_ENABLE_HOST_SERIAL)
+		#if defined(DGGML_ENABLE_HOST_SERIAL)
 			delete [] ptr;
-			#if defined(CAJETE_DEBUG) 
+			#if defined(DGGML_DEBUG)
 				std::cout << "Successfully deallocated bytes at " << ptr << "\n";
 			#endif
 		// TODO: add new deallocators here
@@ -73,6 +73,6 @@ namespace MemoryManager
 	//Smart pointers don't need deallocators
 
 } //End namespace MemoryManager
-} //End namespace Cajete 
+} //End namespace DGGML
 
 #endif

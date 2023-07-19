@@ -1,10 +1,10 @@
-#ifndef CAJETE_CARTESIAN_COMPLEX_2D_HPP
-#define CAJETE_CARTESIAN_COMPLEX_2D_HPP
+#ifndef DGGML_CARTESIAN_COMPLEX_2D_HPP
+#define DGGML_CARTESIAN_COMPLEX_2D_HPP
 
 #include "CellComplexTypes.hpp"
 #include "CartesianGrid2D.hpp"
 
-namespace Cajete 
+namespace DGGML
 {
     template <typename GraphType = CplexGraph2D_t>
     class CartesianComplex2D
@@ -414,6 +414,6 @@ namespace Cajete
             CartesianGrid2D coarse_grid;
     };
 
-    } // end namespace Cajete
+    } // end namespace DGGML
 
 #endif

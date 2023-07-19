@@ -3,7 +3,7 @@
 
 #include "CartesianComplex2D.hpp"
 
-namespace Cajete
+namespace DGGML
 {
     template <typename GraphType = CplexGraph2D_t>
     class ExpandedComplex2D : public CartesianComplex2D<CplexGraph2D_t>
@@ -236,6 +236,6 @@ namespace Cajete
         private:
            double epsilon;
         };
-} //ending namespace Cajete
+} //ending namespace DGGML
 
 #endif

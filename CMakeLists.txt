@@ -2,7 +2,7 @@
 cmake_minimum_required(VERSION 3.16)
 
 #set the project name
-project(CajeteProto VERSION 0.0 LANGUAGES CXX)
+project(DGGML VERSION 0.0 LANGUAGES CXX)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
@@ -16,18 +16,18 @@ add_compile_options(-O3)
 # Currently turning it of would break the code
 option(ENABLE_SERIAL_HOST "Enable Serial Host Mode" ON)
 if(ENABLE_SERIAL_HOST)
-	add_definitions(-DCAJETE_ENABLE_HOST_SERIAL)
+	add_definitions(-DDGGML_ENABLE_HOST_SERIAL)
 endif()
 
 # Add debugging option
 option(USE_DEBUG "Enter debug mode" ON)
 if (USE_DEBUG)
-	add_definitions(-DCAJETE_DEBUG)
+	add_definitions(-DDGGML_DEBUG)
 endif()
 
 # In the build script simpy do this:
 #
-# Set the variable SUNDIALS_DIR to the SUNDIALS instdir.
+# Set the variable SUNDIALS_DIR to the SUNDIALS install directory.
 # When using the cmake CLI command, this can be done like so:
 #   cmake -D SUNDIALS_DIR=/path/to/sundials/installation
 

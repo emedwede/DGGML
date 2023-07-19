@@ -17,8 +17,8 @@
 
 #include "RuleSystem.hpp"
 
-using key_type = Cajete::Plant::mt_key_type; 
-using node_type = Cajete::Plant::MT_NodeData;
+using key_type = DGGML::Plant::mt_key_type;
+using node_type = DGGML::Plant::MT_NodeData;
 
 using graph_type = YAGL::Graph<key_type, node_type>;
 
@@ -93,29 +93,29 @@ void microtubule_scatter(GraphType& graph, std::size_t num_mt)
         double p3[3] = {x_c - x_l, y_c - y_l, 0.0};
         double u1[3], u2[3];
 
-        Cajete::set_unit_vector(p1, p2, u1);
-        Cajete::set_unit_vector(p3, p2, u2);
+        DGGML::set_unit_vector(p1, p2, u1);
+        DGGML::set_unit_vector(p3, p2, u2);
 
         node_type node_l(i*segments, 
-                {{x_l, y_l, z_l}, 
-                {0.0, 0.0, 0.0}, 
-                Cajete::Plant::mt_type::negative, 
-                {-1, -1, -1}, 
-                {u2[0], u2[1], u2[2]}});
+                {{x_l, y_l, z_l},
+                 {0.0, 0.0, 0.0},
+                 DGGML::Plant::mt_type::negative,
+                 {-1, -1, -1},
+                 {u2[0], u2[1], u2[2]}});
 
         node_type node_c(i*segments+1, 
-                {{x_c, y_c, z_c}, 
-                {0.0, 0.0, 0.0}, 
-                Cajete::Plant::mt_type::intermediate, 
-                {-1, -1, -1}, 
-                {u1[0], u1[1], u1[2]}});
+                {{x_c, y_c, z_c},
+                 {0.0, 0.0, 0.0},
+                 DGGML::Plant::mt_type::intermediate,
+                 {-1, -1, -1},
+                 {u1[0], u1[1], u1[2]}});
         
         node_type node_r(i*segments+2, 
-                {{x_r, y_r, z_r}, 
-                {0.0, 0.0, 0.0}, 
-                Cajete::Plant::mt_type::positive, 
-                {-1, -1, -1}, 
-                {u1[0], u1[1], u1[2]}});
+                {{x_r, y_r, z_r},
+                 {0.0, 0.0, 0.0},
+                 DGGML::Plant::mt_type::positive,
+                 {-1, -1, -1},
+                 {u1[0], u1[1], u1[2]}});
 
         graph.addNode(node_l);
         graph.addNode(node_c);
@@ -156,11 +156,11 @@ std::pair<std::set<key_type>, std::set<key_type>> test_rewrite(GraphType& graph,
     u1[0] = u10_rot; u1[1] = u11_rot;
 
     graph.addNode({key, 
-            {{x3[0], x3[1], x3[2]}, 
-            {0, 0, 0}, 
-            Cajete::Plant::mt_type::intermediate, 
-            {0, 0, 0}, 
-            {u1[0], u1[1], u1[2]}}});
+            {{x3[0], x3[1], x3[2]},
+             {0, 0, 0},
+             DGGML::Plant::mt_type::intermediate,
+             {0, 0, 0},
+             {u1[0], u1[1], u1[2]}}});
 
     graph.removeEdge(i, j);
     graph.addEdge(i, key);
@@ -189,13 +189,13 @@ TEST_CASE("Incremental Update Test", "[update-test]")
     std::size_t n = 10; // num mt
     microtubule_scatter(graph, n);
 
-    std::vector<Cajete::Plant::mt_key_type> bucket;
+    std::vector<DGGML::Plant::mt_key_type> bucket;
     
     for(const auto& [key, value] : graph.getNodeSetRef())
         bucket.push_back(key);
     
     // compute all the matches
-    auto matches = Cajete::Plant::microtubule_growing_end_matcher(graph, bucket);
+    auto matches = DGGML::Plant::microtubule_growing_end_matcher(graph, bucket);
     //print_matches(matches);
     REQUIRE(matches.size() == n);
 
@@ -284,13 +284,13 @@ TEST_CASE("Incremental Update Test", "[update-test]")
 
     REQUIRE(subgraph.numNodes() == 4);
     
-    std::vector<Cajete::Plant::mt_key_type> sub_bucket;
+    std::vector<DGGML::Plant::mt_key_type> sub_bucket;
     
     for(const auto& [key, value] : subgraph.getNodeSetRef())
         sub_bucket.push_back(key);
     
     // compute all the matches
-    auto incremental_matches = Cajete::Plant::microtubule_growing_end_matcher(graph, sub_bucket);
+    auto incremental_matches = DGGML::Plant::microtubule_growing_end_matcher(graph, sub_bucket);
     //print_matches(matches);
     REQUIRE(incremental_matches.size() == 1);
     for(auto& key : sub_bucket)
@@ -324,28 +324,28 @@ TEST_CASE("RuleSystem Test", "[rule-system-test]")
     std::size_t n = 10; // num mt
     microtubule_scatter(graph, n);
 
-    std::vector<Cajete::Plant::mt_key_type> bucket;
+    std::vector<DGGML::Plant::mt_key_type> bucket;
     
     for(const auto& [key, value] : graph.getNodeSetRef())
         bucket.push_back(key);
     
     // compute all the matches
-    auto matches = Cajete::Plant::microtubule_growing_end_matcher(graph, bucket);
+    auto matches = DGGML::Plant::microtubule_growing_end_matcher(graph, bucket);
     //print_matches(matches);
     REQUIRE(matches.size() == n);
 
-    Cajete::RuleSystem<std::size_t> rule_system;
+    DGGML::RuleSystem<std::size_t> rule_system;
     REQUIRE(rule_system.size() == 0);
     
     for(auto& item : matches)
-        rule_system.push_back({std::move(item), Cajete::Rule::G});
+        rule_system.push_back({std::move(item), DGGML::Rule::G});
     REQUIRE(rule_system.size() == matches.size());
 
-    matches = Cajete::Plant::microtubule_retraction_end_matcher(graph, bucket);
+    matches = DGGML::Plant::microtubule_retraction_end_matcher(graph, bucket);
     REQUIRE(matches.size() == n);
 
     for(auto& item : matches) 
-        rule_system.push_back({std::move(item), Cajete::Rule::R});
+        rule_system.push_back({std::move(item), DGGML::Rule::R});
 
     REQUIRE(rule_system.size() == 2*n);
 
@@ -353,7 +353,7 @@ TEST_CASE("RuleSystem Test", "[rule-system-test]")
     
     auto grow = std::count_if(rule_system.begin(), rule_system.end(), 
             [](const auto& item) {
-        if(item.first.type == Cajete::Rule::R)
+        if(item.first.type == DGGML::Rule::R)
             return true;
         else return false;
     });
@@ -364,7 +364,7 @@ TEST_CASE("RuleSystem Test", "[rule-system-test]")
 
     auto selected = random_rewrite(n);
     
-    auto lambda_print = [](typename Cajete::RuleSystem<std::size_t>::inverse_type& gi_inverse)
+    auto lambda_print = [](typename DGGML::RuleSystem<std::size_t>::inverse_type& gi_inverse)
     {
         for(const auto& [key, value] : gi_inverse)
         {
@@ -376,7 +376,7 @@ TEST_CASE("RuleSystem Test", "[rule-system-test]")
     };
     lambda_print(rule_system.inverse_index);
     
-    REQUIRE(rule_system[0].type == Cajete::Rule::G);
+    REQUIRE(rule_system[0].type == DGGML::Rule::G);
     
     // rewrite the graph and gather the nodes the rule invalidates
     auto [invalidations, inducers] = test_rewrite(graph, rule_system[selected].match);
@@ -412,23 +412,23 @@ TEST_CASE("RuleSystem Test", "[rule-system-test]")
 
     REQUIRE(subgraph.numNodes() == 4);
     
-    std::vector<Cajete::Plant::mt_key_type> sub_bucket;
+    std::vector<DGGML::Plant::mt_key_type> sub_bucket;
     
     for(const auto& [key, value] : subgraph.getNodeSetRef())
         sub_bucket.push_back(key);
     
     // compute all the matches
-    auto incremental_matches = Cajete::Plant::microtubule_growing_end_matcher(graph, sub_bucket);
+    auto incremental_matches = DGGML::Plant::microtubule_growing_end_matcher(graph, sub_bucket);
     REQUIRE(incremental_matches.size() == 1);
 
     for(auto& item : incremental_matches)
-        rule_system.push_back({std::move(item), Cajete::Rule::G});
+        rule_system.push_back({std::move(item), DGGML::Rule::G});
     
-    incremental_matches = Cajete::Plant::microtubule_retraction_end_matcher(graph, sub_bucket);
+    incremental_matches = DGGML::Plant::microtubule_retraction_end_matcher(graph, sub_bucket);
     REQUIRE(incremental_matches.size() == 1);
 
     for(auto& item : incremental_matches)
-        rule_system.push_back({std::move(item), Cajete::Rule::R});
+        rule_system.push_back({std::move(item), DGGML::Rule::R});
 
     REQUIRE(rule_system.size() == 2*n);
     
@@ -436,10 +436,10 @@ TEST_CASE("RuleSystem Test", "[rule-system-test]")
 
     rule_system.print_index();
 
-    auto num_grow = rule_system.count(Cajete::Rule::G);
+    auto num_grow = rule_system.count(DGGML::Rule::G);
     REQUIRE(num_grow == n);
 
-    auto num_retract = rule_system.count(Cajete::Rule::R);
+    auto num_retract = rule_system.count(DGGML::Rule::R);
     REQUIRE(num_retract == n);
 }
 
@@ -452,9 +452,9 @@ TEST_CASE("CellList Test", "[cell-list-test]")
     std::size_t n = 10; // num mt
     microtubule_scatter(graph, n);
 
-    Cajete::CartesianComplex2D cplex(2, 2, 6.0, 6.0);
-    using cplex_key_t = typename Cajete::CartesianComplex2D<>::graph_type::key_type;
-    using plant_key_t = Cajete::Plant::mt_key_type;
+    DGGML::CartesianComplex2D cplex(2, 2, 6.0, 6.0);
+    using cplex_key_t = typename DGGML::CartesianComplex2D<>::graph_type::key_type;
+    using plant_key_t = DGGML::Plant::mt_key_type;
     
     std::vector<cplex_key_t> bucket2d;
     for(auto& item : cplex.graph.getNodeSetRef())
@@ -494,14 +494,14 @@ TEST_CASE("CellList Test", "[cell-list-test]")
         std::cout << c << ": " << total << "\n";
     }
     
-    std::vector<Cajete::Plant::mt_key_type> bucket;
+    std::vector<DGGML::Plant::mt_key_type> bucket;
     
     for(const auto& [key, value] : graph.getNodeSetRef())
         bucket.push_back(key);
     
-    auto matches = Cajete::Plant::microtubule_growing_end_matcher(graph, bucket);
+    auto matches = DGGML::Plant::microtubule_growing_end_matcher(graph, bucket);
     
-    Cajete::RuleSystem<std::size_t> rule_system;
+    DGGML::RuleSystem<std::size_t> rule_system;
     
     using rule_key_t = std::size_t;
     std::map<cplex_key_t, std::vector<rule_key_t>> rule_map;
@@ -509,7 +509,7 @@ TEST_CASE("CellList Test", "[cell-list-test]")
         rule_map.insert({item, {}});
 
     for(auto& item : matches)
-        rule_system.push_back({std::move(item), Cajete::Rule::G});
+        rule_system.push_back({std::move(item), DGGML::Rule::G});
     
     std::cout << "Num matches: " << rule_system.size() << "\n";
     //map the rules to particular cell

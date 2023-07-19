@@ -14,7 +14,7 @@ int main()
     simdjson::padded_string json = simdjson::padded_string::load("settings.json");
     simdjson::ondemand::document settings_file = parser.iterate(json);
 
-    Cajete::DggFactory<Cajete::PlantModel, simdjson::ondemand::document> plant_factory;
+    DGGML::DggFactory<DGGML::PlantModel, simdjson::ondemand::document> plant_factory;
     
     auto num_simulations = 1;
    

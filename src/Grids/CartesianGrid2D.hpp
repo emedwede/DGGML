@@ -1,10 +1,10 @@
-#ifndef __CAJETE_CARTESIANGRID2D_HPP
-#define __CAJETE_CARTESIANGRID2D_HPP
+#ifndef __DGGML_CARTESIANGRID2D_HPP
+#define __DGGML_CARTESIANGRID2D_HPP
 
 #include <cmath>
 #include <iostream>
 
-namespace Cajete 
+namespace DGGML
 {
 
 class CartesianGrid2D {
@@ -126,6 +126,6 @@ class CartesianGrid2D {
         }
 };
 
-} // end namespace Cajete
+} // end namespace DGGML
 
 #endif

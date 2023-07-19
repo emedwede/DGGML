@@ -1,0 +1,4 @@
+//the configured options and settings for DGGML
+#define DGGML_VERSION_MAJOR @DGGML_VERSION_MAJOR@
+#define DGGML_VERSION_MINOR @DGGML_VERSION_MINOR@
+

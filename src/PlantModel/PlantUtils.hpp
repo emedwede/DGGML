@@ -10,7 +10,7 @@
 
 #include "CartesianGrid2D.hpp"
 
-namespace Cajete
+namespace DGGML
 {
 namespace Plant 
 {
@@ -223,6 +223,6 @@ namespace Plant
 
     }
 } //end namespace Plant
-} //end namespace Cajete
+} //end namespace DGGML
 
 #endif

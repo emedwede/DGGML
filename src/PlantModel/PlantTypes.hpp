@@ -1,9 +1,9 @@
-#ifndef CAJETE_PLANT_TYPES_HPP
-#define CAJETE_PLANT_TYPES_HPP
+#ifndef DGGML_PLANT_TYPES_HPP
+#define DGGML_PLANT_TYPES_HPP
 
 #include "YAGL_Node.hpp"
 
-namespace Cajete 
+namespace DGGML
 {
     namespace Plant
     {
@@ -29,6 +29,6 @@ namespace Cajete
             double unit_vec[DIM3D];
         };
     } // end namespace Plant
-}// end namespace Cajete
+}// end namespace DGGML
 
 #endif

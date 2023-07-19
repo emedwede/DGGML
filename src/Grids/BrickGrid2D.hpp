@@ -1,10 +1,10 @@
-#ifndef __CAJETE_BRICKGRID2D_HPP
-#define __CAJETE_BRICKGRID2D_HPP
+#ifndef __DGGML_BRICKGRID2D_HPP
+#define __DGGML_BRICKGRID2D_HPP
 
 #include <cmath>
 #include <iostream>
 
-namespace Cajete 
+namespace DGGML
 {
 
 class BrickGrid2D 
@@ -154,6 +154,6 @@ std::ostream& operator<<(std::ostream& os, const BrickGrid2D& grid)
     return os;
 }
 
-} // end namespace Cajete
+} // end namespace DGGML
 
 #endif

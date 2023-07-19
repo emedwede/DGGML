@@ -12,7 +12,7 @@ TEST_CASE("Running Cartesian 2D Grid Test", "[grid test]")
 {    
     std::cout << "Running the Cartesian 2D Grid Test\n";
 
-    Cajete::CartesianGrid2D grid;
+    DGGML::CartesianGrid2D grid;
     
     double min_x = 0.0, min_y = 0.0, max_x = 4.0, max_y = 2.0;
     std::size_t nx = 2, ny = 2;
@@ -68,7 +68,7 @@ TEST_CASE("Running the Brick Grid 2D Test", "[grid test]")
     double min_x = 0.0, min_y = 0.0, max_x = 3.0, max_y = 6.0,
            delta_x = 1.5, delta_y = 2.0;
     
-    Cajete::BrickGrid2D grid(min_x, min_y, max_x, max_y, delta_x, delta_y);
+    DGGML::BrickGrid2D grid(min_x, min_y, max_x, max_y, delta_x, delta_y);
     
     std::cout << grid;
     
@@ -95,14 +95,14 @@ TEST_CASE("CartesianGrid2D Writer Test", "[grid writer test]")
 {    
     std::cout << "Running the Cartesian 2D Grid Writer Test\n";
 
-    Cajete::CartesianGrid2D grid;
+    DGGML::CartesianGrid2D grid;
     
     double min_x = 0.0, min_y = 0.0, max_x = 16.0, max_y = 9.0;
     std::size_t nx = 100, ny = 100;
 
     grid.init(min_x, min_y, max_x, max_y, nx, ny);
     std::cout << grid; 
-    Cajete::GridFileWriter writer;
+    DGGML::GridFileWriter writer;
     writer.save({grid, {}}, "grid_viz");
 }
  

@@ -4,7 +4,7 @@
 #include <cstdint>
 #include <iostream>
 
-namespace Cajete
+namespace DGGML
 {
 
 template <typename NodeType, typename CplexType>

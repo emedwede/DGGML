@@ -8,7 +8,7 @@ TEST_CASE("Base Graph Host Test", "[graph host test]")
 {    
     std::cout << "Running the Simple Graph Test...\n";
     
-    using GraphType = Cajete::SimpleGraph<std::size_t, std::size_t>;
+    using GraphType = DGGML::SimpleGraph<std::size_t, std::size_t>;
     
     GraphType::index_type node_capacity = 10;
     GraphType::index_type avg_degree = 4; //sets the edge block default size

@@ -1,9 +1,9 @@
-#ifndef CAJETE_SUNDIALS_UTILS_HPP
-#define CAJETE_SUNDIALS_UTILS_HPP 
+#ifndef DGGML_SUNDIALS_UTILS_HPP
+#define DGGML_SUNDIALS_UTILS_HPP
 
 #include <cstdio>
 
-namespace Cajete 
+namespace DGGML
 {
 
 namespace SundialsUtils
@@ -38,5 +38,5 @@ int check_flag(void *flagvalue, const char *funcname, int opt)
 
 } //end namespace SundialsUtils
 
-} //end namespace Cajete 
+} //end namespace DGGML
 #endif 

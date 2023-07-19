@@ -1,10 +1,10 @@
-#ifndef CAJETE_HISTOBUCKET_HPP
-#define CAJETE_HISTOBUCKET_HPP 
+#ifndef DGGML_HISTOBUCKET_HPP
+#define DGGML_HISTOBUCKET_HPP
 
 #include <iostream> 
 #include "MemoryManager.hpp"
 
-namespace Cajete 
+namespace DGGML
 {
 
 template <typename KeyType>
@@ -14,31 +14,31 @@ struct Histobucket
     using key_type = KeyType;
 
     Histobucket() : num_bins(0) {
-        counts = Cajete::MemoryManager::allocate_std<count_type>(0);
-        offsets = Cajete::MemoryManager::allocate_std<count_type>(0);
-        capacities = Cajete::MemoryManager::allocate_std<count_type>(0);
-        bucket_data = Cajete::MemoryManager::allocate_std<key_type>(0);
+        counts = DGGML::MemoryManager::allocate_std<count_type>(0);
+        offsets = DGGML::MemoryManager::allocate_std<count_type>(0);
+        capacities = DGGML::MemoryManager::allocate_std<count_type>(0);
+        bucket_data = DGGML::MemoryManager::allocate_std<key_type>(0);
     }
     
     Histobucket(std::size_t n) : num_bins(n) {
-        counts = Cajete::MemoryManager::allocate_std<count_type>(n);
-        offsets = Cajete::MemoryManager::allocate_std<count_type>(n);
-        capacities = Cajete::MemoryManager::allocate_std<count_type>(n);
-        bucket_data = Cajete::MemoryManager::allocate_std<key_type>(n);
+        counts = DGGML::MemoryManager::allocate_std<count_type>(n);
+        offsets = DGGML::MemoryManager::allocate_std<count_type>(n);
+        capacities = DGGML::MemoryManager::allocate_std<count_type>(n);
+        bucket_data = DGGML::MemoryManager::allocate_std<key_type>(n);
 
         zero_init();
     }
     
     void reset_and_realloc(std::size_t n)
     {
-        Cajete::MemoryManager::deallocate_std(counts);
-        Cajete::MemoryManager::deallocate_std(offsets);
-        Cajete::MemoryManager::deallocate_std(capacities);
+        DGGML::MemoryManager::deallocate_std(counts);
+        DGGML::MemoryManager::deallocate_std(offsets);
+        DGGML::MemoryManager::deallocate_std(capacities);
 
         num_bins = n;
-        counts = Cajete::MemoryManager::allocate_std<count_type>(n);
-        offsets = Cajete::MemoryManager::allocate_std<count_type>(n);
-        capacities = Cajete::MemoryManager::allocate_std<count_type>(n);
+        counts = DGGML::MemoryManager::allocate_std<count_type>(n);
+        offsets = DGGML::MemoryManager::allocate_std<count_type>(n);
+        capacities = DGGML::MemoryManager::allocate_std<count_type>(n);
          
         zero_init();
 
@@ -46,10 +46,10 @@ struct Histobucket
 
     ~Histobucket() 
     {
-        Cajete::MemoryManager::deallocate_std(counts);
-        Cajete::MemoryManager::deallocate_std(offsets);
-        Cajete::MemoryManager::deallocate_std(capacities);
-        Cajete::MemoryManager::deallocate_std(bucket_data);
+        DGGML::MemoryManager::deallocate_std(counts);
+        DGGML::MemoryManager::deallocate_std(offsets);
+        DGGML::MemoryManager::deallocate_std(capacities);
+        DGGML::MemoryManager::deallocate_std(bucket_data);
     }
    
     count_type numBin() const 
@@ -150,8 +150,8 @@ struct Histobucket
     
     void build_buckets()
     {
-        Cajete::MemoryManager::deallocate_std<key_type>(bucket_data);
-        Cajete::MemoryManager::allocate_std<key_type>(totalBinCapacity());
+        DGGML::MemoryManager::deallocate_std<key_type>(bucket_data);
+        DGGML::MemoryManager::allocate_std<key_type>(totalBinCapacity());
     }
     friend std::ostream& operator<<(std::ostream& os, Histobucket<KeyType>& bins)
     {
@@ -178,6 +178,6 @@ struct Histobucket
     key_type* bucket_data; //basically the edge relationships 
 };
 
-} // end namespace Cajete 
+} // end namespace DGGML
 
 #endif

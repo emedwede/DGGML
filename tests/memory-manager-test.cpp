@@ -17,13 +17,13 @@ TEST_CASE(" Standard MemoryManager Host Test", "[standard memory host test]")
     std::size_t size;
     
     size = 1;
-    auto ptr_a_1 = Cajete::MemoryManager::allocate_std<int>(size);
+    auto ptr_a_1 = DGGML::MemoryManager::allocate_std<int>(size);
 
-    Cajete::MemoryManager::deallocate_std(ptr_a_1);
+    DGGML::MemoryManager::deallocate_std(ptr_a_1);
 
-    auto ptr_a_2 = Cajete::MemoryManager::allocate_std<int>(size);
+    auto ptr_a_2 = DGGML::MemoryManager::allocate_std<int>(size);
 
-    Cajete::MemoryManager::deallocate_std(ptr_a_2);
+    DGGML::MemoryManager::deallocate_std(ptr_a_2);
 
     REQUIRE(ptr_a_1 == nullptr);
     REQUIRE(ptr_a_2 == nullptr);
@@ -31,9 +31,9 @@ TEST_CASE(" Standard MemoryManager Host Test", "[standard memory host test]")
     size = 10;
     
     // Creates an array of structs (AoS)
-    auto ptr_b = Cajete::MemoryManager::allocate_std<DataType>(size);
+    auto ptr_b = DGGML::MemoryManager::allocate_std<DataType>(size);
 
-    Cajete::MemoryManager::deallocate_std(ptr_b);
+    DGGML::MemoryManager::deallocate_std(ptr_b);
 
     REQUIRE(ptr_b == nullptr);
 
@@ -46,14 +46,14 @@ TEST_CASE(" Smart MemoryManager Host Test", "[smart memory host test]")
     std::size_t size;
     
     size = 1;
-    auto ptr_a = Cajete::MemoryManager::allocate_smart<int>(size);
+    auto ptr_a = DGGML::MemoryManager::allocate_smart<int>(size);
 
     REQUIRE(ptr_a.use_count() == 1);
 
     size = 10;
     
     // Creates an array of structs (AoS)
-    auto ptr_b = Cajete::MemoryManager::allocate_smart<DataType>(size);
+    auto ptr_b = DGGML::MemoryManager::allocate_smart<DataType>(size);
 
     REQUIRE(ptr_b.use_count() == 1);
 

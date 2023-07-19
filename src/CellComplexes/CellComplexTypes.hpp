@@ -1,9 +1,9 @@
-#ifndef CAJETE_CELL_COMPLEX_TYPES_HPP
-#define CAJETE_CELL_COMPLEX_TYPES_HPP
+#ifndef DGGML_CELL_COMPLEX_TYPES_HPP
+#define DGGML_CELL_COMPLEX_TYPES_HPP
 
 #include "YAGL_Graph.hpp"
 
-namespace Cajete 
+namespace DGGML
 {
     struct cell_complex_2D_node 
     {
@@ -37,6 +37,6 @@ namespace Cajete
 
     using CplexGraph2D_t = YAGL::Graph<cell_complex_2D_key_t, cell_complex_2D_node_t>;    
 
-}// end namespace Cajete
+}// end namespace DGGML
 
 #endif

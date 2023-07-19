@@ -22,10 +22,10 @@ TEST_CASE("Running Vtk FileWriter Test", "[vtk test]")
     using key_type = std::size_t; using data_type = PhysicsData;
     using graph_type = YAGL::Graph<key_type, data_type>;
     using node_type = YAGL::Node<key_type, data_type>;
-    using writer_type = Cajete::VtkFileWriter<graph_type>;
+    using writer_type = DGGML::VtkFileWriter<graph_type>;
 
     writer_type* vtk_writer = 
-        Cajete::MemoryManager::allocate_std<writer_type>(1);
+        DGGML::MemoryManager::allocate_std<writer_type>(1);
     
     graph_type graph;
     
@@ -51,5 +51,5 @@ TEST_CASE("Running Vtk FileWriter Test", "[vtk test]")
     
     vtk_writer->save(graph, filename);
 
-    Cajete::MemoryManager::deallocate_std(vtk_writer);
+    DGGML::MemoryManager::deallocate_std(vtk_writer);
 }

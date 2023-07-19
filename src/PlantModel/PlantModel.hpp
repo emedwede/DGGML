@@ -32,7 +32,7 @@
 #include <string>
 #include <filesystem>
 
-namespace Cajete
+namespace DGGML
 {
     struct Parameters
     {
@@ -126,7 +126,7 @@ namespace Cajete
     class PlantModel : public DggModel<InterfaceType> {
     public:
         using key_type = Plant::mt_key_type;
-        using gplex_key_type = typename Cajete::ExpandedComplex2D<>::graph_type::key_type;
+        using gplex_key_type = typename DGGML::ExpandedComplex2D<>::graph_type::key_type;
         using data_type = Plant::MT_NodeData;
         using graph_type = YAGL::Graph<key_type, data_type>;
         using node_type = typename graph_type::node_type;
@@ -160,16 +160,16 @@ namespace Cajete
                 geocell_progress[key] = {0.0, 0.0};
 
             //Save expanded cell complex graph
-            Cajete::VtkFileWriter<typename Cajete::ExpandedComplex2D<>::types::graph_type> writer;
+            DGGML::VtkFileWriter<typename DGGML::ExpandedComplex2D<>::types::graph_type> writer;
             writer.save(geoplex2D.getGraph(), results_dir_name+"/factory_geoplex");
-            Cajete::GridFileWriter grid_writer;
+            DGGML::GridFileWriter grid_writer;
             grid_writer.save({geoplex2D.reaction_grid, geoplex2D.dim_label}, results_dir_name+"/expanded_cell_complex");
 
             std::cout << "Initializing the system graph\n";
             Plant::microtubule_uniform_scatter(system_graph, geoplex2D, settings); 
             
             std::cout << "Generating the grammar\n";
-            Cajete::Plant::define_model(gamma); 
+            DGGML::Plant::define_model(gamma);
             gamma.print(); 
             
             std::vector<std::vector<Plant::mt_key_type>> match_set;
@@ -185,7 +185,7 @@ namespace Cajete
                         match.push_back(value);
                         std::cout << "{" << key << " -> " << value << "} ";
                     } std::cout << "\n";
-                    rule_system.push_back({std::move(match), Cajete::Rule::G});
+                    rule_system.push_back({std::move(match), DGGML::Rule::G});
                 }
                 std::cout << "Found " << matches.size() << " instances\n"; 
             }
@@ -196,21 +196,21 @@ namespace Cajete
             //precomputes all of the single component matches//
             
             //bucket to temporarily interfact the matcher rule
-            std::vector<Cajete::Plant::mt_key_type> node_set;
+            std::vector<DGGML::Plant::mt_key_type> node_set;
             for(const auto& [key, value] : system_graph.getNodeSetRef())
                 node_set.push_back(key);
             
             auto matches = 
-                Cajete::Plant::microtubule_growing_end_matcher(system_graph, node_set);
+                DGGML::Plant::microtubule_growing_end_matcher(system_graph, node_set);
             
             for(auto& item : matches)
-                rule_system.push_back({std::move(item), Cajete::Rule::G});
+                rule_system.push_back({std::move(item), DGGML::Rule::G});
             
             matches = 
-                Cajete::Plant::microtubule_retraction_end_matcher(system_graph, node_set);
+                DGGML::Plant::microtubule_retraction_end_matcher(system_graph, node_set);
             
             for(auto& item : matches)
-                rule_system.push_back({std::move(item), Cajete::Rule::R});
+                rule_system.push_back({std::move(item), DGGML::Rule::R});
             
             std::cout << "matches: " << rule_system.size() << "\n";
         }
@@ -218,7 +218,7 @@ namespace Cajete
         void run() override {
             std::cout << "Running the plant model simulation\n";
             return; 
-            Cajete::VtkFileWriter<graph_type> vtk_writer;
+            DGGML::VtkFileWriter<graph_type> vtk_writer;
             std::vector<std::size_t> con_com;
             con_com.push_back(YAGL::connected_components(system_graph));
             std::vector<std::size_t> total_nodes;
@@ -264,7 +264,7 @@ namespace Cajete
                  
                 // I think I only need to sort nodes by the highest dimensional cell to then
                 // map rules to the approrpiate cell? 
-                using cplex_key_t = typename Cajete::CartesianComplex2D<>::graph_type::key_type;
+                using cplex_key_t = typename DGGML::CartesianComplex2D<>::graph_type::key_type;
                 //bucket of dimensional keys
                 std::vector<cplex_key_t> bucket2d;
                 std::vector<cplex_key_t> bucket1d;
@@ -497,7 +497,7 @@ namespace Cajete
                 std::map<gplex_key_type, std::vector<key_type>> bucketsND[3];
                 std::size_t complementND[3] = {0, 0, 0};
                 
-                Cajete::build_bucketsND(bucketsND, geoplex2D);
+                DGGML::build_bucketsND(bucketsND, geoplex2D);
                 
                 double tot_time = 0.0;
 
@@ -597,6 +597,6 @@ namespace Cajete
         std::string results_dir_name;
 };
 
-} //end namespace Cajete
+} //end namespace DGGML
 
 #endif 

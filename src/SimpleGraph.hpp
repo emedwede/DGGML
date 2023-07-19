@@ -1,9 +1,9 @@
-#ifndef CAJETE_SIMPLE_GRAPH_HPP
-#define CAJETE_SIMPLE_GRAPH_HPP
+#ifndef DGGML_SIMPLE_GRAPH_HPP
+#define DGGML_SIMPLE_GRAPH_HPP
 
 #include "MemoryManager.hpp"
 
-namespace Cajete 
+namespace DGGML 
 {
 
 template <typename NodeType, typename CountingType>
@@ -51,9 +51,9 @@ struct SimpleGraph {
         edge_capacity = c*d;
         next_free_block = 0;
         undirected = true;
-        node_set = Cajete::MemoryManager::allocate_std<node_type>(c);
-        edge_set = Cajete::MemoryManager::allocate_std<edge_type>(c*d);
-        mapping_set = Cajete::MemoryManager::allocate_std<mapping_type>(c);
+        node_set = DGGML::MemoryManager::allocate_std<node_type>(c);
+        edge_set = DGGML::MemoryManager::allocate_std<edge_type>(c*d);
+        mapping_set = DGGML::MemoryManager::allocate_std<mapping_type>(c);
 
         
         //set the mapping set and other defaults
@@ -76,20 +76,20 @@ struct SimpleGraph {
 
    ~SimpleGraph() {
         if(node_set) {
-            Cajete::MemoryManager::deallocate_std(node_set);
+            DGGML::MemoryManager::deallocate_std(node_set);
            std::cout << "deleted node_set\n";
         } else {
             std::cout << "node_set is a nullptr, cannot delete\n";
         }
         if(edge_set) {
-            Cajete::MemoryManager::deallocate_std(edge_set);
+            DGGML::MemoryManager::deallocate_std(edge_set);
             std::cout << "deleted edge_set\n";
         } else {
             std::cout << "edge_set is a nullptr, cannot delete\n";
         }
 
         if(mapping_set) { 
-           Cajete::MemoryManager::deallocate_std(mapping_set);
+           DGGML::MemoryManager::deallocate_std(mapping_set);
            std::cout << "deleted mapping_set\n";
         } else {
             std::cout << "mapping_set is a nullptr, cannot delete\n";
@@ -277,5 +277,5 @@ void print_node(T &data, typename T::index_type idx) {
 
 }
 
-} //end namespace Cajete
+} //end namespace DGGML
 #endif

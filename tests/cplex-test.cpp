@@ -91,7 +91,7 @@ TEST_CASE("Cell Complex from Cartesian 2D Grid Test", "[cplex-test]")
     std::size_t n = 4, m = 3; //number of cells in the x and y direction
     double dx = 2.0, dy = 2.0; //size of each grid cell 
 
-    Cajete::CartesianComplex2D cplex2D(n, m, dx, dy);
+    DGGML::CartesianComplex2D cplex2D(n, m, dx, dy);
 
     std::cout << cplex2D << std::endl;
     
@@ -124,14 +124,14 @@ TEST_CASE("Cell Complex from Cartesian 2D Grid Test", "[cplex-test]")
     REQUIRE(exterior_integrity_check(cplex2D) == cplex2D.getTotalExteriorCellCount());
 
     //Save the cell complex graph
-    //Cajete::VtkFileWriter<typename Cajete::CartesianComplex2D<>::graph_type> writer;
+    //DGGML::VtkFileWriter<typename DGGML::CartesianComplex2D<>::graph_type> writer;
     
     //writer.save(cplex2D.getGraph(), "cplex_graph");
 }
 
 TEST_CASE("Cell Complex can just be a single domain", "[cplex-test]")
 {
-    Cajete::CartesianComplex2D cplex2D(1, 1, 6.0, 4.0);
+    DGGML::CartesianComplex2D cplex2D(1, 1, 6.0, 4.0);
     
     std::cout << cplex2D << std::endl;
     
@@ -154,7 +154,7 @@ TEST_CASE("Cell Complex can just be a single domain", "[cplex-test]")
 
 TEST_CASE("Cell Complex can just be a single domain and have ghost cells", "[cplex-test]")
 {
-    Cajete::CartesianComplex2D cplex2D(1, 1, 6.0, 4.0, true);
+    DGGML::CartesianComplex2D cplex2D(1, 1, 6.0, 4.0, true);
     
     std::cout << cplex2D << std::endl;
    
@@ -178,7 +178,7 @@ TEST_CASE("Cell Complex can just be a single domain and have ghost cells", "[cpl
 
 TEST_CASE("Any Cell Complex can have ghost cells", "[cplex-test]")
 {
-    Cajete::CartesianComplex2D cplex2D(4, 3, 6.0, 4.0, true);
+    DGGML::CartesianComplex2D cplex2D(4, 3, 6.0, 4.0, true);
     
     std::cout << cplex2D << std::endl;
    
@@ -202,7 +202,7 @@ TEST_CASE("Any Cell Complex can have ghost cells", "[cplex-test]")
 
 TEST_CASE("Testing the expanded cell complex", "[cplex-test]") 
 {
-    Cajete::ExpandedComplex2D<> cplex2D(2, 2, 3.0, 2.0, true);
+    DGGML::ExpandedComplex2D<> cplex2D(2, 2, 3.0, 2.0, true);
     
     std::cout << cplex2D << std::endl;
     
@@ -224,8 +224,8 @@ TEST_CASE("Testing the expanded cell complex", "[cplex-test]")
         } std::cout << "}\n";
     }
     std::cout << "Reaction Grid: \n" << cplex2D.reaction_grid;
-    Cajete::GridFileWriter writer;
+    DGGML::GridFileWriter writer;
     writer.save({cplex2D.reaction_grid, cplex2D.dim_label}, "labeled_grid_viz");
-    Cajete::VtkFileWriter<typename Cajete::ExpandedComplex2D<>::types::graph_type> complex_writer;
+    DGGML::VtkFileWriter<typename DGGML::ExpandedComplex2D<>::types::graph_type> complex_writer;
     complex_writer.save(cplex2D.getGraph(), "cplex_viz");
 }

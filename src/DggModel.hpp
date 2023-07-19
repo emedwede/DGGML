@@ -1,7 +1,7 @@
 #ifndef DGG_MODEL_HPP
 #define DGG_MODEL_HPP
 
-namespace Cajete 
+namespace DGGML
 {
 
 //Simple specification for a DGG Model base type
@@ -21,6 +21,6 @@ class DggModel {
         virtual void run() = 0;
 };
 
-} //end namespace Cajete
+} //end namespace DGGML
 
 #endif 

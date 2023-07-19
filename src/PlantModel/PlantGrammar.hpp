@@ -15,7 +15,7 @@
 #include <set>
 #include <string>
 
-namespace Cajete
+namespace DGGML
 {
 
 namespace Plant 
@@ -24,15 +24,15 @@ namespace Plant
 void define_model(Grammar& gamma) {
     //graph for a growing MT LHS
     graph_type g1;
-    g1.addNode({0, {{0, 0, 0}, {0, 0, 0}, Cajete::Plant::intermediate}});
-    g1.addNode({1, {{0, 0, 0}, {0, 0, 0}, Cajete::Plant::positive}});
+    g1.addNode({0, {{0, 0, 0}, {0, 0, 0}, DGGML::Plant::intermediate}});
+    g1.addNode({1, {{0, 0, 0}, {0, 0, 0}, DGGML::Plant::positive}});
     g1.addEdge(0, 1);
     
     //graph for a growing MT RHS
     graph_type g2;
-    g2.addNode({0, {{0, 0, 0}, {0, 0, 0}, Cajete::Plant::intermediate}});
-    g2.addNode({1, {{0, 0, 0}, {0, 0, 0}, Cajete::Plant::intermediate}});
-    g2.addNode({2, {{0, 0, 0}, {0, 0, 0}, Cajete::Plant::positive}});
+    g2.addNode({0, {{0, 0, 0}, {0, 0, 0}, DGGML::Plant::intermediate}});
+    g2.addNode({1, {{0, 0, 0}, {0, 0, 0}, DGGML::Plant::intermediate}});
+    g2.addNode({2, {{0, 0, 0}, {0, 0, 0}, DGGML::Plant::positive}});
     g2.addEdge(0, 1);
     g2.addEdge(1, 2);
     
@@ -41,22 +41,22 @@ void define_model(Grammar& gamma) {
     
     //graph for a catastrophe LHS
     graph_type g3;
-    g3.addNode({0, {{0, 0, 0}, {0, 0, 0}, Cajete::Plant::intermediate}});
-    g3.addNode({1, {{0, 0, 0}, {0, 0, 0}, Cajete::Plant::intermediate}});
-    g3.addNode({2, {{0, 0, 0}, {0, 0, 0}, Cajete::Plant::intermediate}});
-    g3.addNode({3, {{0, 0, 0}, {0, 0, 0}, Cajete::Plant::intermediate}});
-    g3.addNode({4, {{0, 0, 0}, {0, 0, 0}, Cajete::Plant::positive}});
+    g3.addNode({0, {{0, 0, 0}, {0, 0, 0}, DGGML::Plant::intermediate}});
+    g3.addNode({1, {{0, 0, 0}, {0, 0, 0}, DGGML::Plant::intermediate}});
+    g3.addNode({2, {{0, 0, 0}, {0, 0, 0}, DGGML::Plant::intermediate}});
+    g3.addNode({3, {{0, 0, 0}, {0, 0, 0}, DGGML::Plant::intermediate}});
+    g3.addNode({4, {{0, 0, 0}, {0, 0, 0}, DGGML::Plant::positive}});
     g3.addEdge(0, 1);
     g3.addEdge(1, 2);
     g3.addEdge(3, 4);
 
     //graph for catastrophe RHS
     graph_type g4;
-    g4.addNode({0, {{0, 0, 0}, {0, 0, 0}, Cajete::Plant::intermediate}});
-    g4.addNode({1, {{0, 0, 0}, {0, 0, 0}, Cajete::Plant::intermediate}});
-    g4.addNode({2, {{0, 0, 0}, {0, 0, 0}, Cajete::Plant::intermediate}});
-    g4.addNode({3, {{0, 0, 0}, {0, 0, 0}, Cajete::Plant::intermediate}});
-    g4.addNode({4, {{0, 0, 0}, {0, 0, 0}, Cajete::Plant::negative}});
+    g4.addNode({0, {{0, 0, 0}, {0, 0, 0}, DGGML::Plant::intermediate}});
+    g4.addNode({1, {{0, 0, 0}, {0, 0, 0}, DGGML::Plant::intermediate}});
+    g4.addNode({2, {{0, 0, 0}, {0, 0, 0}, DGGML::Plant::intermediate}});
+    g4.addNode({3, {{0, 0, 0}, {0, 0, 0}, DGGML::Plant::intermediate}});
+    g4.addNode({4, {{0, 0, 0}, {0, 0, 0}, DGGML::Plant::negative}});
     g4.addEdge(0, 1);
     g4.addEdge(1, 2);
     g4.addEdge(3, 4);
@@ -66,15 +66,15 @@ void define_model(Grammar& gamma) {
     
     //graph for a retraction MT LHS
     graph_type g5;
-    g5.addNode({0, {{0, 0, 0}, {0, 0, 0}, Cajete::Plant::intermediate}});
-    g5.addNode({1, {{0, 0, 0}, {0, 0, 0}, Cajete::Plant::negative}});
+    g5.addNode({0, {{0, 0, 0}, {0, 0, 0}, DGGML::Plant::intermediate}});
+    g5.addNode({1, {{0, 0, 0}, {0, 0, 0}, DGGML::Plant::negative}});
     g5.addEdge(0, 1);
     
     //graph for a retraction MT RHS
     graph_type g6;
-    g6.addNode({0, {{0, 0, 0}, {0, 0, 0}, Cajete::Plant::intermediate}});
-    g6.addNode({1, {{0, 0, 0}, {0, 0, 0}, Cajete::Plant::intermediate}});
-    g6.addNode({2, {{0, 0, 0}, {0, 0, 0}, Cajete::Plant::negative}});
+    g6.addNode({0, {{0, 0, 0}, {0, 0, 0}, DGGML::Plant::intermediate}});
+    g6.addNode({1, {{0, 0, 0}, {0, 0, 0}, DGGML::Plant::intermediate}});
+    g6.addNode({2, {{0, 0, 0}, {0, 0, 0}, DGGML::Plant::negative}});
     g6.addEdge(0, 1);
     g6.addEdge(1, 2);
     
@@ -83,21 +83,21 @@ void define_model(Grammar& gamma) {
     
     //graph for a zipper LHS
     graph_type g7;
-    g7.addNode({0, {{0, 0, 0}, {0, 0, 0}, Cajete::Plant::intermediate}});
-    g7.addNode({1, {{0, 0, 0}, {0, 0, 0}, Cajete::Plant::intermediate}});
-    g7.addNode({2, {{0, 0, 0}, {0, 0, 0}, Cajete::Plant::intermediate}});
-    g7.addNode({3, {{0, 0, 0}, {0, 0, 0}, Cajete::Plant::intermediate}});
-    g7.addNode({4, {{0, 0, 0}, {0, 0, 0}, Cajete::Plant::positive}});
+    g7.addNode({0, {{0, 0, 0}, {0, 0, 0}, DGGML::Plant::intermediate}});
+    g7.addNode({1, {{0, 0, 0}, {0, 0, 0}, DGGML::Plant::intermediate}});
+    g7.addNode({2, {{0, 0, 0}, {0, 0, 0}, DGGML::Plant::intermediate}});
+    g7.addNode({3, {{0, 0, 0}, {0, 0, 0}, DGGML::Plant::intermediate}});
+    g7.addNode({4, {{0, 0, 0}, {0, 0, 0}, DGGML::Plant::positive}});
     g7.addEdge(0, 1);
     g7.addEdge(1, 2);
     g7.addEdge(3, 4);
 
     //graph for a zipper RHS
     graph_type g8;
-    g8.addNode({0, {{0, 0, 0}, {0, 0, 0}, Cajete::Plant::intermediate}});
-    g8.addNode({1, {{0, 0, 0}, {0, 0, 0}, Cajete::Plant::zipper}});
-    g8.addNode({2, {{0, 0, 0}, {0, 0, 0}, Cajete::Plant::intermediate}});
-    g8.addNode({3, {{0, 0, 0}, {0, 0, 0}, Cajete::Plant::intermediate}});
+    g8.addNode({0, {{0, 0, 0}, {0, 0, 0}, DGGML::Plant::intermediate}});
+    g8.addNode({1, {{0, 0, 0}, {0, 0, 0}, DGGML::Plant::zipper}});
+    g8.addNode({2, {{0, 0, 0}, {0, 0, 0}, DGGML::Plant::intermediate}});
+    g8.addNode({3, {{0, 0, 0}, {0, 0, 0}, DGGML::Plant::intermediate}});
     g8.addEdge(0, 1);
     g8.addEdge(1, 2);
     g8.addEdge(3, 1);
@@ -382,11 +382,11 @@ std::pair<std::set<mt_key_type>, std::set<mt_key_type>> test_rewrite_growth(Grap
     u1[0] = u10_rot; u1[1] = u11_rot;
 
     graph.addNode({key, 
-            {{x3[0], x3[1], x3[2]}, 
-            {0, 0, 0}, 
-            Cajete::Plant::mt_type::intermediate, 
-            {0, 0, 0}, 
-            {u1[0], u1[1], u1[2]}}});
+            {{x3[0], x3[1], x3[2]},
+             {0, 0, 0},
+             DGGML::Plant::mt_type::intermediate,
+             {0, 0, 0},
+             {u1[0], u1[1], u1[2]}}});
 
     graph.removeEdge(i, j);
     graph.addEdge(i, key);
@@ -1119,6 +1119,6 @@ void microtubule_retraction_end_depolymerize_rewrite(GraphType& graph, std::vect
 
 
 } // end namespace Plant 
-} //end namespace Cajete
+} //end namespace DGGML
 
 #endif 

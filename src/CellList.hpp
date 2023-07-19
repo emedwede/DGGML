@@ -8,7 +8,7 @@
 #include "PlantTypes.hpp"
 #include "YAGL_Graph.hpp"
 
-namespace Cajete
+namespace DGGML
 {
 
 //type for holding the CellList Data in CSR format

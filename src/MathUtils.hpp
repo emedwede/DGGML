@@ -1,10 +1,10 @@
-#ifndef CAJETE_MATH_UTILS_HPP
-#define CAJETE_MATH_UTILS_HPP 
+#ifndef DGGML_MATH_UTILS_HPP
+#define DGGML_MATH_UTILS_HPP
 
 #include <iostream>
 #include <math.h>
 
-namespace Cajete 
+namespace DGGML
 {
 
 template <typename PositionType, std::size_t N>
@@ -139,6 +139,6 @@ double heaviside(double input, double threshold)
     }
 }
 
-} //end namespace Cajete 
+} //end namespace DGGML
 
 #endif 

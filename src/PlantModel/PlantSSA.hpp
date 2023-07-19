@@ -1,5 +1,5 @@
-#ifndef CAJETE_PLANT_SSA_HPP
-#define CAJETE_PLANT_SSA_HPP 
+#ifndef DGGML_PLANT_SSA_HPP
+#define DGGML_PLANT_SSA_HPP
 
 #include "PlantTypes.hpp"
 #include "PlantGrammar.hpp"
@@ -34,7 +34,7 @@
 #define ESYM "e"
 #define FSYM "f"
 #endif
-namespace Cajete 
+namespace DGGML
 {
 namespace Plant 
 {
@@ -137,7 +137,7 @@ struct Solver
         t_final = RCONST(user_data.settings.DELTA);
 
         flag = SUNContext_Create(NULL, &ctx);
-        if(!Cajete::SundialsUtils::check_flag(&flag, "SUNContext_Create", 1))
+        if(!DGGML::SundialsUtils::check_flag(&flag, "SUNContext_Create", 1))
             std::cout << "Passed the error check, suncontext created\n";
         
         // the number of equations is defined by the parameters of the nodes
@@ -177,7 +177,7 @@ struct Solver
 
         //std::cout << "J: " << j << "\n";
         arkode_mem = ERKStepCreate(rhs, t_start, y, ctx); 
-        //if (!Cajete::SundialsUtils::check_flag((void *)arkode_mem, "ERKStepCreate", 1))
+        //if (!DGGML::SundialsUtils::check_flag((void *)arkode_mem, "ERKStepCreate", 1))
         //    std::cout << "Passed the error check, stepper initialized\n";
 
         reltol = 1.0e-4;//1.0e-6;
@@ -380,7 +380,7 @@ struct Solver
     }
 };
 
-using RuleSystemType = Cajete::RuleSystem<Plant::mt_key_type>;
+using RuleSystemType = DGGML::RuleSystem<Plant::mt_key_type>;
 template <typename B, typename T, typename U, typename GeoplexType, typename GraphType, typename ParamType>
 std::pair<double, double> plant_model_ssa_new(RuleSystemType& rule_system, B& k, T& rule_map, 
         U& anchor_list, GeoplexType& geoplex2D, GraphType& system_graph, 
@@ -582,13 +582,13 @@ std::pair<double, double> plant_model_ssa_new(RuleSystemType& rule_system, B& k,
             std::cout << "Number of Inducers: " << inducers.size() << "\n";
             auto subgraph = YAGL::induced_subgraph(system_graph, inducers);
             std::cout << "Created induced subgraph\n";
-            std::vector<Cajete::Plant::mt_key_type> sub_bucket;
+            std::vector<DGGML::Plant::mt_key_type> sub_bucket;
 
             for(const auto& [key, value] : subgraph.getNodeSetRef())
                 sub_bucket.push_back(key);
             std::cout << "SubBucket Size: " << sub_bucket.size() << "\n";
             auto incremental_matches = 
-                Cajete::Plant::microtubule_growing_end_matcher(system_graph, sub_bucket);
+                DGGML::Plant::microtubule_growing_end_matcher(system_graph, sub_bucket);
 
             for(auto& item : incremental_matches)
             {
@@ -599,12 +599,12 @@ std::pair<double, double> plant_model_ssa_new(RuleSystemType& rule_system, B& k,
                 for(auto& v : item)
                     if(anchor_list[v] != k) { valid = false; std::cout << "Assigned cell mismatch rule G\n"; break; }
                 if(!valid) continue;
-                rule_system.push_back({std::move(item), Cajete::Rule::G});
+                rule_system.push_back({std::move(item), DGGML::Rule::G});
                 rule_map[k].push_back(rule_system.key_gen.current_key-1);
             }
 
             incremental_matches = 
-                Cajete::Plant::microtubule_retraction_end_matcher(system_graph, sub_bucket);
+                DGGML::Plant::microtubule_retraction_end_matcher(system_graph, sub_bucket);
             for(auto& item : incremental_matches)
             {
                 //only add back in matches the cell actually owns
@@ -612,7 +612,7 @@ std::pair<double, double> plant_model_ssa_new(RuleSystemType& rule_system, B& k,
                 for(auto& v : item)
                     if(anchor_list[v] != k) { valid = false; std::cout << "Assigned cell mismatch rule R\n"; break; }
                 if(!valid) continue;
-                rule_system.push_back({std::move(item), Cajete::Rule::R});
+                rule_system.push_back({std::move(item), DGGML::Rule::R});
                 rule_map[k].push_back(rule_system.key_gen.current_key-1); 
             }
             std::cout << "After Reinsertion:\n";
@@ -665,7 +665,7 @@ void plant_model_ssa(BucketType& bucket, GeoplexType& geoplex2D, GraphType& syst
     //Create the suncontext 
     SUNContext ctx;
     flag = SUNContext_Create(NULL, &ctx);
-    //if(!Cajete::SundialsUtils::check_flag(&flag, "SUNContext_Create", 1))
+    //if(!DGGML::SundialsUtils::check_flag(&flag, "SUNContext_Create", 1))
         //std::cout << "Passed the error check, suncontext created\n";
     
     /* Step 3: set the problem dimensions */
@@ -1025,6 +1025,6 @@ void microtubule_rule_firing(MatchType* all_matches, GraphType& system_graph, Bu
 }
 
 } //end namespace plant 
-} //end namespace cajete
+} //end namespace DGGML
 
 #endif

@@ -3,7 +3,7 @@
 
 #include <string>
 
-namespace Cajete 
+namespace DGGML
 {
     //Template Desing Pattern for the file writer workflow
 
@@ -38,6 +38,6 @@ class FileWriter {
         virtual void close_file() = 0;
 };
 
-} //end namespace cajete
+} //end namespace DGGML
 
 #endif

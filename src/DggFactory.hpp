@@ -4,7 +4,7 @@
 #include <iostream>
 #include "MemoryManager.hpp"
 
-namespace Cajete 
+namespace DGGML
 {
 
 	//Very simple templated factory pattern interface
@@ -19,7 +19,7 @@ namespace Cajete
         
         model_type* create(interface_type& interface) const {
             //allocate the model using my memory manager wrapper
-            return Cajete::MemoryManager::allocate_std<model_type>(1);
+            return DGGML::MemoryManager::allocate_std<model_type>(1);
             //return new model_type(); 
         }
 
@@ -31,11 +31,11 @@ namespace Cajete
             model->run();
             
             //deallocate using my memory manager wrapper
-            Cajete::MemoryManager::deallocate_std(model);
+            DGGML::MemoryManager::deallocate_std(model);
             //delete model;
         }
 	};
 
-} //end namespace Cajete
+} //end namespace DGGML
 
 #endif

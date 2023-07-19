@@ -13,7 +13,7 @@
 #include <vector>
 #include <unordered_map>
 
-namespace Cajete 
+namespace DGGML
 {
 
 namespace VTK
@@ -225,6 +225,6 @@ class GridFileWriter : public FileWriter<std::pair<CartesianGrid2D, std::vector<
         //std::vector<vtu11::DataSetInfo> dataSetInfo;
 };
 
-} //end namespace Cajete
+} //end namespace DGGML
 
 #endif 

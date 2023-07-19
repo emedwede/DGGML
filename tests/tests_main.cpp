@@ -6,13 +6,13 @@
 #include "catch.hpp"
 
 
-#include "CajeteConfig.hpp"
+#include "DGGMLConfig.hpp"
 
 int main(int argc, char *argv[]) {
     //report the version
    std::cout << "\n\n";
-    std::cout << argv[0] << " Version " << Cajete_VERSION_MAJOR << "."
-        << Cajete_VERSION_MINOR << " ... Welcome to Cajete, the Graph Grammar Simulator Prototype!\n";
+    std::cout << argv[0] << " Version " << DGGML_VERSION_MAJOR << "."
+        << DGGML_VERSION_MINOR << " ... Welcome to DGGML, the Graph Grammar Simulator Prototype!\n";
     std::cout << "\n\nUsage: " << argv[0] << "\n\n";
  
    

@@ -12,10 +12,10 @@
 #include "YAGL_Algorithms.hpp"
 #include "YAGL_Graph.hpp"
 
-namespace Cajete 
+namespace DGGML
 {
-    using key_type = Cajete::Plant::mt_key_type; 
-    using data_type = Cajete::Plant::MT_NodeData;
+    using key_type = DGGML::Plant::mt_key_type;
+    using data_type = DGGML::Plant::MT_NodeData;
 
     using graph_type = YAGL::Graph<key_type, data_type>;
     using node_type = YAGL::Node<key_type, data_type>;
@@ -368,7 +368,7 @@ namespace Cajete
             }
         };
     };
-} //end namespace cajete 
+} //end namespace DGGML
 
 #endif 
 
