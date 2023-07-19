@@ -1,7 +1,7 @@
 #include <iostream>
 
 #include "catch.hpp"
-#include "MemoryManager.hpp"
+#include "Utlities/MemoryManager.hpp"
 
 struct DataType {
     bool filled;

@@ -12,7 +12,7 @@
 #include "YAGL_Graph.hpp"
 #include "YAGL_Node.hpp"
 #include "YAGL_Algorithms.hpp"
-#include "VtkWriter.hpp"
+#include "Utlities/VtkWriter.hpp"
 
 #include "ExpandedComplex2D.hpp"
 
@@ -22,7 +22,7 @@
 
 #include "RuleSystem.hpp"
 
-#include "MathUtils.hpp"
+#include "Utlities/MathUtils.hpp"
 
 #include "CellList.hpp"
 

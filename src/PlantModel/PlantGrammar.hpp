@@ -5,7 +5,7 @@
 
 #include "YAGL_Graph.hpp"
 
-#include "MathUtils.hpp"
+#include "Utlities/MathUtils.hpp"
 
 #include "RuleSystem.hpp"
 

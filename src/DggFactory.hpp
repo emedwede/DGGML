@@ -2,7 +2,7 @@
 #define DGG_FACTORY_HPP
 
 #include <iostream>
-#include "MemoryManager.hpp"
+#include "Utlities/MemoryManager.hpp"
 
 namespace DGGML
 {

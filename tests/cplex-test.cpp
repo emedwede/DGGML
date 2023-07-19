@@ -5,7 +5,7 @@
 #include "CartesianComplex2D.hpp"
 #include "ExpandedComplex2D.hpp"
 
-#include "VtkWriter.hpp"
+#include "Utlities/VtkWriter.hpp"
 
 #include <iostream>
 

@@ -4,7 +4,7 @@
 
 #include "BrickGrid2D.hpp"
 #include "CartesianGrid2D.hpp"
-#include "VtkWriter.hpp"
+#include "Utlities/VtkWriter.hpp"
 
 #include <iostream>
 

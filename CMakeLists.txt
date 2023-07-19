@@ -47,5 +47,5 @@ add_subdirectory(thirdparty/vtu11)
 add_subdirectory(src)
 add_subdirectory(tests)
 add_subdirectory(tools)
-add_subdirectory(simulators)
+add_subdirectory(examples/CMA)
 

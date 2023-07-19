@@ -2,8 +2,8 @@
 
 #include "catch.hpp"
 
-#include "VtkWriter.hpp"
-#include "MemoryManager.hpp"
+#include "Utlities/VtkWriter.hpp"
+#include "Utlities/MemoryManager.hpp"
 
 #include "YAGL_Graph.hpp"
 

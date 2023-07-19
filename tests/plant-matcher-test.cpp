@@ -4,8 +4,8 @@
 
 #include "YAGL_Graph.hpp"
 #include "YAGL_Algorithms.hpp"
-#include "VtkWriter.hpp"
-#include "MemoryManager.hpp"
+#include "Utlities/VtkWriter.hpp"
+#include "Utlities/MemoryManager.hpp"
 #include "PlantTypes.hpp"
 #include "PlantGrammar.hpp"
 #include "ExpandedComplex2D.hpp"

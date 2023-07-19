@@ -4,7 +4,7 @@
 
 #include "ExpandedComplex2D.hpp"
 #include "CartesianHashFunctions.hpp"
-#include "MemoryManager.hpp"
+#include "Utlities/MemoryManager.hpp"
 #include "Histobucket.hpp"
 #include "PlantModel.hpp"
 #include "PlantTypes.hpp"

@@ -2,7 +2,7 @@
 
 #include "catch.hpp"
 
-#include "MathUtils.hpp"
+#include "Utlities/MathUtils.hpp"
 
 TEST_CASE("Running Paramaterized Intersection Test", "[math test]")
 {    
