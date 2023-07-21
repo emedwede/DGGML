@@ -5,7 +5,7 @@ namespace DGGML {
     template<typename GraphGrammarType>
     class Model {
     public:
-        virtual void initialize() const = 0;
+        virtual void initialize() = 0;
 
         virtual ~Model() = default;
 

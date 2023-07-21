@@ -25,7 +25,11 @@ int main()
     DGGML::SimulatorInterface<CMA::cmaModel> cma_simulation;
 
     CMA::cmaModel experiment1;
+    experiment1.set_parameters(settings_file);
+    experiment1.initialize();
+    experiment1.gamma.print();
     experiment1.name = "experiment1";
+
 
     cma_simulation.setModel(experiment1);
     cma_simulation.simulate();
