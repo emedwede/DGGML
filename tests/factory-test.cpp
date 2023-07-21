@@ -3,7 +3,6 @@
 #include "catch.hpp"
 
 #include "DggFactory.hpp"
-#include "PlantModel.hpp"
 
 #include "simdjson.h"
 
