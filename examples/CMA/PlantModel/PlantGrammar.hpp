@@ -9,6 +9,8 @@
 
 #include "RuleSystem.hpp"
 
+#include "Grammar/Grammar.h"
+
 #include <random>
 
 #include <vector>
