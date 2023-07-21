@@ -8,7 +8,8 @@ namespace DGGML
 {
 
 	//Very simple templated factory pattern interface
-
+    //TODO: the factory may need to be removed and I don't think it should be
+    // responsible for running the simulation algorithm
 	template <template<typename> typename ModelType, typename InterfaceType>
 	class DggFactory {
     public:

@@ -2,7 +2,7 @@
 
 #include "DggFactory.hpp"
 #include "PlantModel.hpp"
-
+#include "cmaModel.h"
 #include "simdjson.h"
 
 int main()
@@ -21,4 +21,12 @@ int main()
     //TODO: add some sort of ensemble simulation mode
     for(auto i = 0; i < num_simulations; i++)
         plant_factory.execute(settings_file);
+
+    DGGML::SimulatorInterface<CMA::cmaModel> cma_simulation;
+
+    CMA::cmaModel experiment1;
+    experiment1.name = "experiment1";
+
+    cma_simulation.setModel(experiment1);
+    cma_simulation.simulate();
 }
