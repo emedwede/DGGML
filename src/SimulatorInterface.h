@@ -21,6 +21,7 @@ namespace DGGML {
         {
             if(simRunner)
             {
+                simRunner->initialize();
                 simRunner->run();
             }
             else

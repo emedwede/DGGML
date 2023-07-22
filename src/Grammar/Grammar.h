@@ -59,6 +59,12 @@ namespace DGGML {
         RuleType(std::string name, graph_type& lhs_graph, graph_type& rhs_graph) : name(name), lhs(lhs_graph), rhs(rhs_graph) {}
     };
 
+    //TODO: we need to make sure there is a numbered graph class for rule definitions
+    // the numbered graphs has a numbering that is the maximum size of the left and right
+    // hand side. All integer labels must differ from each other and they should cover the
+    // numbering space and have no gaps. We also need some helper functions. One that
+    // returns input only’s = destroyed, shared = maybe changed params not created or
+    // destroyed, and the output helper for ones that are only created
     struct Grammar
     {
         std::map<std::string, RuleType> rule_set;

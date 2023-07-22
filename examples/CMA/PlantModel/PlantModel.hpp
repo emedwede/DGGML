@@ -133,13 +133,11 @@ namespace DGGML
 
         void init(InterfaceType& interface) override {
 
-            std::cout << "\n\n-----------------------------------------------------------------------\n";
-            //TODO: implement timers to monitor start up phase
             std::cout << "Initializing the plant model simulation\n";
-            
+
             std::cout << "Parsing the input interface and setting configuration settings\n";
             //TODO: handle the interface input
-            set_parameters(settings, interface); 
+            set_parameters(settings, interface);
             
             std::cout << "Cleaning up old results folder if it exists and creating a new one\n";
             results_dir_name = settings.EXPERIMENT_NAME + "_results";

@@ -24,6 +24,7 @@ namespace Plant
 {
 
 void define_model(Grammar& gamma) {
+    //TODO: we need to make sure there is a numbered graph class
     //graph for a growing MT LHS
     graph_type g1;
     g1.addNode({0, {{0, 0, 0}, {0, 0, 0}, DGGML::Plant::intermediate}});

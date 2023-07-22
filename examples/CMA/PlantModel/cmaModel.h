@@ -4,6 +4,7 @@
 #include "DGGML.h"
 #include "PlantGrammar.hpp"
 #include "simdjson.h"
+#include "ExpandedComplex2D.hpp"
 
 namespace CMA {
 
@@ -39,17 +40,33 @@ namespace CMA {
     using graph_grammar_t = DGGML::Grammar;
     class cmaModel : public DGGML::Model<graph_grammar_t> {
     public:
+        YAGL::Graph<DGGML::Plant::mt_key_type, DGGML::Plant::MT_NodeData> system_graph;
+        DGGML::ExpandedComplex2D<> geoplex2D;
+
         void initialize() override
         {
-            std::cout << "Initializing model\n";
-
+            std::cout << "Initializing the plant model simulation\n";
             DGGML::Plant::define_model(gamma);
+
+            std::cout << "Generating the expanded cell complex\n";
+            geoplex2D.init(settings.CELL_NX,
+                           settings.CELL_NY,
+                           settings.CELL_DX,
+                           settings.CELL_DY,
+                           settings.GHOSTED,
+                           settings.MAXIMAL_REACTION_RADIUS); //ghosted
+            std::cout << geoplex2D;
+
+            std::cout << "Initializing the system graph\n";
+            DGGML::Plant::microtubule_uniform_scatter(system_graph, geoplex2D, settings);
         }
 
         void set_parameters(simdjson::ondemand::document& interface)
         {
             std::string_view temp = interface["META"]["EXPERIMENT"];
             settings.EXPERIMENT_NAME = static_cast<std::string>(temp);
+
+            name = settings.EXPERIMENT_NAME;
 
             std::cout << settings.EXPERIMENT_NAME << "+++\n";
             settings.CELL_NX = int64_t(interface["SETTINGS"]["CELL_NX"]);
