@@ -37,7 +37,7 @@ namespace CMA {
         double RHO_TEST_RATE; //a tunable test parameter for MT dynamics
     };
 
-    using graph_grammar_t = DGGML::Grammar;
+    using graph_grammar_t = DGGML::Grammar<DGGML::Plant::graph_type>;
     class cmaModel : public DGGML::Model<graph_grammar_t> {
     public:
         YAGL::Graph<DGGML::Plant::mt_key_type, DGGML::Plant::MT_NodeData> system_graph;

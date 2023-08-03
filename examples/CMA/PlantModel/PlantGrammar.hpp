@@ -23,7 +23,7 @@ namespace DGGML
 namespace Plant 
 {
 
-void define_model(Grammar& gamma) {
+void define_model(Grammar<graph_type>& gamma) {
     //TODO: we need to make sure there is a numbered graph class
     //graph for a growing MT LHS
     graph_type g1;
@@ -40,7 +40,7 @@ void define_model(Grammar& gamma) {
     g2.addEdge(1, 2);
     
     //create the grammar rule 
-    RuleType r1("growing", g1, g2);
+    SolvingRule<graph_type> r1("growing", g1, g2);
     
     //graph for a catastrophe LHS
     graph_type g3;
@@ -65,7 +65,7 @@ void define_model(Grammar& gamma) {
     g4.addEdge(3, 4);
     
     //create the grammar rule 
-    RuleType r2("catastrophe", g3, g4);
+    WithRule<graph_type> r2("catastrophe", g3, g4);
     
     //graph for a retraction MT LHS
     graph_type g5;
@@ -82,7 +82,8 @@ void define_model(Grammar& gamma) {
     g6.addEdge(1, 2);
     
     //create the grammar rule 
-    RuleType r3("retraction", g5, g6);
+    WithRule<graph_type> r3("retraction", g5, g6);
+    r3.propensity = [](graph_type& lhs) -> double { return 2.2; };
     
     //graph for a zipper LHS
     graph_type g7;
@@ -104,8 +105,8 @@ void define_model(Grammar& gamma) {
     g8.addEdge(0, 1);
     g8.addEdge(1, 2);
     g8.addEdge(3, 1);
-    
-    RuleType r4("zipper", g7, g8);
+
+    WithRule<graph_type> r4("zipper", g7, g8);
 
     //build the Grammar 
     gamma.addRule(r1);

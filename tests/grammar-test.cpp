@@ -85,7 +85,7 @@ struct Grammar
         else
             std::cout << "name already exists in rule_set\n";
     }
-
+    // TODO: move to grammar analysis class
     void incremental_build_min_set(Rule& r)
     {
         

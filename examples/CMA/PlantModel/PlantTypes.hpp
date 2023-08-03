@@ -1,6 +1,7 @@
 #ifndef DGGML_PLANT_TYPES_HPP
 #define DGGML_PLANT_TYPES_HPP
 
+#include "YAGL_Graph.hpp"
 #include "YAGL_Node.hpp"
 
 namespace DGGML
@@ -28,6 +29,12 @@ namespace DGGML
             int64_t tagND[3]; 
             double unit_vec[DIM3D];
         };
+
+        using key_type = DGGML::Plant::mt_key_type;
+        using data_type = DGGML::Plant::MT_NodeData;
+
+        using graph_type = YAGL::Graph<key_type, data_type>;
+        using node_type = YAGL::Node<key_type, data_type>;
     } // end namespace Plant
 }// end namespace DGGML
 

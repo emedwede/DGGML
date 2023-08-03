@@ -166,27 +166,27 @@ namespace DGGML
             std::cout << "Initializing the system graph\n";
             Plant::microtubule_uniform_scatter(system_graph, geoplex2D, settings); 
             
-            std::cout << "Generating the grammar\n";
-            DGGML::Plant::define_model(gamma);
-            gamma.print(); 
-            
-            std::vector<std::vector<Plant::mt_key_type>> match_set;
-            //TODO: I think we need to store the ordering or the rooted spanning tree
-            for(auto& pattern : gamma.minimal_set)
-            {
-                auto matches = YAGL::subgraph_isomorphism2(pattern, system_graph);
-                for(auto& item : matches)
-                {
-                    std::vector<Plant::mt_key_type> match;
-                    for(auto& [key, value] : item)
-                    {
-                        match.push_back(value);
-                        std::cout << "{" << key << " -> " << value << "} ";
-                    } std::cout << "\n";
-                    rule_system.push_back({std::move(match), DGGML::Rule::G});
-                }
-                std::cout << "Found " << matches.size() << " instances\n"; 
-            }
+//            std::cout << "Generating the grammar\n";
+//            DGGML::Plant::define_model(gamma);
+//            gamma.print();
+//
+//            std::vector<std::vector<Plant::mt_key_type>> match_set;
+//            //TODO: I think we need to store the ordering or the rooted spanning tree
+//            for(auto& pattern : gamma.minimal_set)
+//            {
+//                auto matches = YAGL::subgraph_isomorphism2(pattern, system_graph);
+//                for(auto& item : matches)
+//                {
+//                    std::vector<Plant::mt_key_type> match;
+//                    for(auto& [key, value] : item)
+//                    {
+//                        match.push_back(value);
+//                        std::cout << "{" << key << " -> " << value << "} ";
+//                    } std::cout << "\n";
+//                    rule_system.push_back({std::move(match), DGGML::Rule::G});
+//                }
+//                std::cout << "Found " << matches.size() << " instances\n";
+//            }
 
             //TODO: we should fold the below code into some interface 
             //function to apply the rule set
@@ -585,7 +585,7 @@ namespace DGGML
 
 
     private:
-        Grammar gamma;
+        //Grammar<graph_type> gamma;
         RuleSystem<Plant::mt_key_type> rule_system;
         std::map<gplex_key_type, std::pair<double, double>> geocell_progress;
         Parameters settings;

@@ -44,7 +44,8 @@ namespace DGGML {
 
             set_geocell_propensities();
 
-            compute_matches();
+            model->gamma.print();
+            //compute_matches();
         }
 
         void run() {
@@ -78,26 +79,26 @@ namespace DGGML {
                              results_dir_name+"/expanded_cell_complex");
         }
 
-        void compute_matches()
-        {
-            std::vector<std::vector<Plant::mt_key_type>> match_set;
-            //TODO: I think we need to store the ordering or the rooted spanning tree
-            for(auto& pattern : model->gamma.minimal_set)
-            {
-                auto matches = YAGL::subgraph_isomorphism2(pattern, model->system_graph);
-                for(auto& item : matches)
-                {
-                    std::vector<Plant::mt_key_type> match;
-                    for(auto& [key, value] : item)
-                    {
-                        match.push_back(value);
-                        std::cout << "{" << key << " -> " << value << "} ";
-                    } std::cout << "\n";
-                    rule_system.push_back({std::move(match), DGGML::Rule::G});
-                }
-                std::cout << "Found " << matches.size() << " instances\n";
-            }
-        }
+//        void compute_matches()
+//        {
+//            std::vector<std::vector<Plant::mt_key_type>> match_set;
+//            //TODO: I think we need to store the ordering or the rooted spanning tree
+//            for(auto& pattern : model->gamma.minimal_set)
+//            {
+//                auto matches = YAGL::subgraph_isomorphism2(pattern, model->system_graph);
+//                for(auto& item : matches)
+//                {
+//                    std::vector<Plant::mt_key_type> match;
+//                    for(auto& [key, value] : item)
+//                    {
+//                        match.push_back(value);
+//                        std::cout << "{" << key << " -> " << value << "} ";
+//                    } std::cout << "\n";
+//                    rule_system.push_back({std::move(match), DGGML::Rule::G});
+//                }
+//                std::cout << "Found " << matches.size() << " instances\n";
+//            }
+//        }
         std::shared_ptr<ModelType> model;
         //Grammar gamma;
         RuleSystem<Plant::mt_key_type> rule_system;
