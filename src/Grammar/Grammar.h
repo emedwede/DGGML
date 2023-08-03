@@ -58,13 +58,46 @@ namespace DGGML {
     template <typename GraphType>
     struct WithRule
     {
-        GraphType lhs;
-        GraphType rhs;
-        std::string name;
+        GraphType lhs_graph;
+        GraphType rhs_graph;
+        std::string rname;
         std::function<double(GraphType& lhs)> propensity;
+        std::function<void(const GraphType& lhs, GraphType& rhs)> update;
 
         WithRule() {}
-        WithRule(std::string name, GraphType& lhs_graph, GraphType& rhs_graph) : name(name), lhs(lhs_graph), rhs(rhs_graph) {}
+
+        WithRule(std::string rname, GraphType& lhs_graph, GraphType& rhs_graph) :
+        rname(rname), lhs_graph(lhs_graph), rhs_graph(rhs_graph) {}
+
+        // Fluent interface
+        WithRule<GraphType>& name(std::string&& n)
+        {
+            rname = n;
+            return *this;
+        }
+        WithRule<GraphType>& lhs(GraphType& graph)
+        {
+            lhs_graph = graph;
+            return *this;
+        }
+
+        WithRule<GraphType>& rhs(GraphType& graph)
+        {
+            rhs_graph = graph;
+            return *this;
+        }
+
+        WithRule<GraphType>& with(std::function<double(const GraphType& lhs)>&& p)
+        {
+            propensity = p;
+            return *this;
+        }
+
+        WithRule<GraphType>& where(std::function<void(const GraphType& lhs, GraphType& rhs)>&& u)
+        {
+            update = u;
+            return *this;
+        }
 
     };
 
@@ -94,9 +127,9 @@ namespace DGGML {
 
         void addRule(WithRule<GraphType>& r)
         {
-            if(stochastic_rules.find(r.name) == stochastic_rules.end())
+            if(stochastic_rules.find(r.rname) == stochastic_rules.end())
             {
-                stochastic_rules[r.name] = r;
+                stochastic_rules[r.rname] = r;
             }
             else
                 std::cout << "stochastic rule name already exists in rule_set\n";
