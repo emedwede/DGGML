@@ -62,7 +62,7 @@ namespace DGGML {
         GraphType rhs_graph;
         std::string rname;
         std::function<double(GraphType& lhs)> propensity;
-        std::function<void(const GraphType& lhs, GraphType& rhs)> update;
+        std::function<void(GraphType& lhs, GraphType& rhs)> update;
 
         WithRule() {}
 
@@ -87,13 +87,13 @@ namespace DGGML {
             return *this;
         }
 
-        WithRule<GraphType>& with(std::function<double(const GraphType& lhs)>&& p)
+        WithRule<GraphType>& with(std::function<double(GraphType& lhs)>&& p)
         {
             propensity = p;
             return *this;
         }
 
-        WithRule<GraphType>& where(std::function<void(const GraphType& lhs, GraphType& rhs)>&& u)
+        WithRule<GraphType>& where(std::function<void(GraphType& lhs, GraphType& rhs)>&& u)
         {
             update = u;
             return *this;
