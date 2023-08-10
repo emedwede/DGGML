@@ -2,6 +2,7 @@
 #define DGGML_GRAMMAR_H
 
 #include <functional>
+#include <map>
 
 namespace DGGML {
 
@@ -61,8 +62,10 @@ namespace DGGML {
         GraphType lhs_graph;
         GraphType rhs_graph;
         std::string rname;
-        std::function<double(GraphType& lhs)> propensity;
-        std::function<void(GraphType& lhs, GraphType& rhs)> update;
+
+        using GraphMapType = std::map<typename GraphType::key_type, typename GraphType::key_type>;
+        std::function<double(GraphType& lhs, GraphMapType& m)> propensity;
+        std::function<void(GraphType& lhs, GraphType& rhs, GraphMapType& m)> update;
 
         WithRule() {}
 
@@ -87,13 +90,13 @@ namespace DGGML {
             return *this;
         }
 
-        WithRule<GraphType>& with(std::function<double(GraphType& lhs)>&& p)
+        WithRule<GraphType>& with(std::function<double(GraphType& lhs, GraphMapType& m)>&& p)
         {
             propensity = p;
             return *this;
         }
 
-        WithRule<GraphType>& where(std::function<void(GraphType& lhs, GraphType& rhs)>&& u)
+        WithRule<GraphType>& where(std::function<void(GraphType& lhs, GraphType& rhs, GraphMapType& m)>&& u)
         {
             update = u;
             return *this;

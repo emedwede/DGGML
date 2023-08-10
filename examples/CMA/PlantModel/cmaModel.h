@@ -37,16 +37,84 @@ namespace CMA {
         double RHO_TEST_RATE; //a tunable test parameter for MT dynamics
     };
 
-    using graph_grammar_t = DGGML::Grammar<DGGML::Plant::graph_type>;
+    using graph_grammar_t = DGGML::Grammar<Plant::graph_type>;
     class cmaModel : public DGGML::Model<graph_grammar_t> {
     public:
-        YAGL::Graph<DGGML::Plant::mt_key_type, DGGML::Plant::MT_NodeData> system_graph;
+        using graph_type = Plant::graph_type;
+        using key_type = Plant::key_type;
+        graph_type system_graph;
         DGGML::ExpandedComplex2D<> geoplex2D;
 
         void initialize() override
         {
             std::cout << "Initializing the plant model simulation\n";
-            DGGML::Plant::define_model(gamma);
+
+            settings = {
+                    "treadmilling",
+                        10.0,
+                        2.0,
+                        10,
+                        2,
+                        2,
+                        15.0,
+                        15.0,
+                        true,
+                        64,
+                        0.5,
+                        0.8,
+                        10,
+                        1.2,
+                        1.0,
+                        0.125,
+                        1.0, 0.25,
+                        10.0,
+                        5.0,
+                        1.0,
+                        1.0,
+                        10.0
+            };
+
+            name = settings.EXPERIMENT_NAME;
+            std::cout << "Creating the grammar\n";
+            using GT = Plant::graph_type;
+            GT g1;
+            g1.addNode({1, {Plant::Intermediate{}}});
+            g1.addNode({2, {Plant::Positive{}}});
+            g1.addEdge(1, 2);
+
+            GT g2;
+            g2.addNode({1, {Plant::Intermediate{}}});
+            g2.addNode({3, {Plant::Intermediate{}}});
+            g2.addNode({2, {Plant::Positive{}}});
+            g2.addEdge(1, 3);
+            g2.addEdge(3, 2);
+
+            DGGML::WithRule<GT> r1;
+            r1.name("growing").lhs(g1).rhs(g2)
+                .with([](auto& lhs, auto& m) { std::cout << "growing propensity\n"; return 1.0; })
+                .where([](auto& lhs, auto& rhs, auto& m) { std::cout << "updating growing rule\n"; });
+
+            gamma.addRule(r1);
+
+            GT g3;
+            g3.addNode({1, {Plant::Negative{}}});
+            g3.addNode({2, {Plant::Intermediate{}}});
+            g3.addNode({3, {Plant::Intermediate{}}});
+            g3.addEdge(1, 2);
+            g3.addEdge(2, 3);
+
+            GT g4;
+            g4.addNode({1, {Plant::Negative{}}});
+            g4.addNode({3, {Plant::Intermediate{}}});
+            g4.addEdge(1, 3);
+
+            DGGML::WithRule<GT> r2;
+            r2.name("retraction").lhs(g3).rhs(g4)
+                    .with([](auto& lhs, auto& m) { std::cout << "retraction propensity\n"; return 0.5; })
+                    .where([](auto& lhs, auto& rhs, auto& m) { std::cout << "updating retraction rule\n"; });
+
+            gamma.addRule(r2);
+
 
             std::cout << "Generating the expanded cell complex\n";
             geoplex2D.init(settings.CELL_NX,
@@ -55,10 +123,10 @@ namespace CMA {
                            settings.CELL_DY,
                            settings.GHOSTED,
                            settings.MAXIMAL_REACTION_RADIUS); //ghosted
-            std::cout << geoplex2D;
+            //std::cout << geoplex2D;
 
             std::cout << "Initializing the system graph\n";
-            DGGML::Plant::microtubule_uniform_scatter(system_graph, geoplex2D, settings);
+            Plant::microtubule_uniform_scatter(system_graph, geoplex2D, settings);
         }
 
         void set_parameters(simdjson::ondemand::document& interface)

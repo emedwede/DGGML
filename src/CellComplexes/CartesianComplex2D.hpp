@@ -167,7 +167,7 @@ namespace DGGML
             
             void build()
             {
-                std::cout << "Building the cell complex for a 2D cartesian grid\n";
+                //std::cout << "Building the cell complex for a 2D cartesian grid\n";
                 
                 //We do extra work because redundant edges may be attempted to be added
                 for(int j = 1; j < fine_grid._py; j += 2)

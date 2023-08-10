@@ -82,8 +82,8 @@ void define_model(Grammar<graph_type>& gamma) {
     g6.addEdge(1, 2);
     
     //create the grammar rule 
-    WithRule<graph_type> r3("retraction", g5, g6);
-    r3.propensity = [](graph_type& lhs) -> double { return 2.2; };
+    //WithRule<graph_type> r3("retraction", g5, g6);
+    //r3.propensity = [](graph_type& lhs) -> double { return 2.2; };
     
     //graph for a zipper LHS
     graph_type g7;
@@ -106,13 +106,13 @@ void define_model(Grammar<graph_type>& gamma) {
     g8.addEdge(1, 2);
     g8.addEdge(3, 1);
 
-    WithRule<graph_type> r4("zipper", g7, g8);
+    //WithRule<graph_type> r4("zipper", g7, g8);
 
     //build the Grammar 
     gamma.addRule(r1);
     gamma.addRule(r2);
-    gamma.addRule(r3);
-    gamma.addRule(r4);
+    //gamma.addRule(r3);
+    //gamma.addRule(r4);
 
     //if runtime just run 
     //else we need a two phase compile or some compile time way to generate optimized code?

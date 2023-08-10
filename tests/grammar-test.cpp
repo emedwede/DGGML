@@ -1,8 +1,8 @@
 #include <iostream>
-
+#include <memory>
 #include "catch.hpp"
 
-#include "YAGL_Graph.hpp"
+/*#include "YAGL_Graph.hpp"
 #include "YAGL_Algorithms.hpp"
 #include "Utlities/MemoryManager.hpp"
 #include "PlantTypes.hpp"
@@ -261,5 +261,108 @@ TEST_CASE("Grammar Test", "[grammar-test]")
     REQUIRE(gamma.minimal_set.size() == 3);
     
     print_mapping(gamma);
+}*/
+
+struct Graph {};
+struct Rule
+{
+    Graph lhs;
+    Graph rhs;
+    std::string name;
+
+    virtual std::string getName() = 0;
+
+};
+struct WithRule : Rule
+{
+    virtual double propensity(Graph&& l) = 0;
+    virtual void where(Graph& l, Graph& r) = 0;
+};
+
+struct SolvingRule : Rule
+{
+    virtual void ode(Graph& l) = 0;
+    virtual void where(Graph& l, Graph& r) = 0;
+};
+
+struct StochasticGrowingRule : WithRule
+{
+    double propensity(Graph&& l) override
+    {
+        std::cout << "computing propensity in " << getName() << "\n";
+        return 2.2;
+    }
+
+    void where(Graph& l, Graph& r) override
+    {
+        std::cout << "doing some updates in " << getName() << "\n";
+    }
+
+    std::string getName() override
+    {
+        return "Stochastic Growth Rule";
+    }
+};
+
+struct StochasticRetractionRule : WithRule
+{
+    double propensity(Graph&& l) override
+    {
+        std::cout << "computing propensity in " << getName() << "\n";
+        return 2.2;
+    }
+
+    void where(Graph& l, Graph& r) override
+    {
+        std::cout << "doing some updates in " << getName() << "\n";
+    }
+
+    std::string getName() override
+    {
+        return "Stochastic Retraction Rule";
+    }
+};
+
+struct DeterministicRetractionRule : SolvingRule
+{
+    void ode(Graph& l) override
+    {
+        std::cout << "doing some solving in " << getName() << "\n";
+    }
+
+    void where(Graph& l, Graph& r) override
+    {
+        std::cout << "doing some updates in " << getName() << "\n";
+    }
+
+    std::string getName() override
+    {
+        return "Deterministic Retraction Rule";
+    }
+};
+
+struct RuleSet
+{
+    std::vector<std::shared_ptr<Rule>> rules;
+
+
+};
+
+
+TEST_CASE("alternative rule definition", "[alternate-rule-test]")
+{
+    std::vector<std::shared_ptr<Rule>> rules;
+
+    rules.push_back(std::make_shared<DeterministicRetractionRule>());
+    rules.push_back(std::make_shared<StochasticGrowingRule>());
+    rules.push_back(std::make_shared<StochasticRetractionRule>());
+
+    for (auto &item: rules) {
+        std::cout << item->getName() << "\n";
+        auto with_spell = std::dynamic_pointer_cast<WithRule>(item);
+        if(with_spell)
+            with_spell->propensity(Graph{});
+    }
+
 }
 
