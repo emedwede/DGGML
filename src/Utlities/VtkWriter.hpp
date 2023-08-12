@@ -48,7 +48,7 @@ class VtkFileWriter : public FileWriter<DataType> {
 
         void format_data(data_type data) override {
             std::cout << "Formating the data to be vtk compatibile\n";
-            std::cout << data;
+            //std::cout << data;
             
             //first rekey the points for vtk format
             vtu11::VtkIndexType count = 0;

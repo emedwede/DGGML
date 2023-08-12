@@ -5,57 +5,6 @@
 #include <map>
 
 namespace DGGML {
-
-//    struct LHS
-//    {
-//        graph_type graph;
-//        std::vector<graph_type> components;
-//
-//        LHS() {}
-//
-//        LHS(graph_type& graph) : graph(graph)
-//        {
-//            //build the list of components
-//            std::unordered_set<key_type> visited;
-//            std::size_t count = 0; //no connected components found to start
-//            for(auto i = graph.node_list_begin(); i != graph.node_list_end(); i++)
-//            {
-//                auto v = i->first;
-//                //node hasn't been visited so it must be the start of a new connected component
-//                if(visited.find(v) == visited.end())
-//                {
-//                    std::vector<key_type> path;
-//                    //we could use whatever search method we feel like
-//                    YAGL::impl_iterative_bfs(graph, v, visited, path);
-//                    components.push_back(YAGL::induced_subgraph(graph, path));
-//                    count++;
-//                }
-//            }
-//        }
-//    };
-//
-//    //should LHS and RHS be the same object?
-//    struct RHS
-//    {
-//        graph_type graph;
-//        std::vector<graph_type> components;
-//
-//        RHS() {}
-//
-//        RHS(graph_type& graph) : graph(graph) {}
-//    };
-//
-//    struct RuleType
-//    {
-//        LHS lhs;
-//        RHS rhs;
-//        std::string name;
-//
-//        RuleType() {}
-//
-//        RuleType(std::string name, graph_type& lhs_graph, graph_type& rhs_graph) : name(name), lhs(lhs_graph), rhs(rhs_graph) {}
-//    };
-
     template <typename GraphType>
     struct WithRule
     {
@@ -159,7 +108,5 @@ namespace DGGML {
                 std::cout << "\t" << rule.first << "\n";
         }
     };
-
 } // DGGML
-
 #endif //DGGML_GRAMMAR_H

@@ -23,10 +23,11 @@ namespace DGGML {
     template<typename ModelType>
     class SimulationRunner {
     public:
-        using key_type = Plant::mt_key_type; //TODO: Plant namespace needs to be removed from here
+        using key_type = typename ModelType::key_type;
         using gplex_key_type = typename DGGML::ExpandedComplex2D<>::graph_type::key_type;
-        using data_type = Plant::MT_NodeData;
-        using graph_type = YAGL::Graph<key_type, data_type>;
+        //using data_type = typename ModelType::graph_type;
+        //using graph_type = YAGL::Graph<key_type, data_type>;
+        using graph_type = typename ModelType::graph_type;
         using node_type = typename graph_type::node_type;
         explicit SimulationRunner(const ModelType& model) : model(std::make_shared<ModelType>(model)) {}
 
@@ -36,7 +37,8 @@ namespace DGGML {
             //Should the model initialize even happen here? or sooner
             std::cout << "Initializing " << model->name << "\n";
             model->initialize();
-
+            analyze_grammar();
+            return;
             //order matters here, which indicates maybe I should have a
             //file writer class which initializes with the save directory?
             create_save_directory();
@@ -54,6 +56,105 @@ namespace DGGML {
 
         }
     private:
+
+        void analyze_grammar()
+        {
+            std::cout << "Performing grammar analysis\n";
+            Grammar<graph_type>& gamma = model->gamma;
+
+            std::vector<graph_type> components;
+            std::map<std::string, std::vector<std::size_t>> rule_component;
+            std::map<std::size_t, std::vector<std::string>> component_rule;
+            std::map<std::size_t, graph_type> minimal_set;
+
+            for(auto& [name, rule] : gamma.stochastic_rules)
+            {
+                graph_type& graph = rule.lhs_graph;
+                rule_component.insert({name, {}});
+                //build the list of components
+                std::unordered_set<key_type> visited;
+                std::size_t count = 0; //no connected components found to start
+                for(auto i = graph.node_list_begin(); i != graph.node_list_end(); i++) {
+                    auto v = i->first;
+                    //node hasn't been visited, so it must be the start of a new connected component
+                    if (visited.find(v) == visited.end()) {
+                        std::vector<key_type> path;
+                        //we could use whatever search method we feel like
+                        YAGL::impl_iterative_bfs(graph, v, visited, path);
+                        auto c = YAGL::induced_subgraph(graph, path);
+
+                        auto is_isomorphic = [&](auto& a) {
+                            auto matches = YAGL::subgraph_isomorphism2(a, c);
+                            return !matches.empty();
+                        };
+
+                        if(!components.empty())
+                        {
+                            auto it = std::find_if(components.begin(), components.end(), is_isomorphic);
+                            if(it == components.end()) {
+                                components.push_back(c);
+                                rule_component[name].push_back(components.size()-1);
+                            } else
+                            {
+                                rule_component[name].push_back(std::distance(components.begin(), it));
+                            }
+                        }
+                        else
+                        {
+                            components.push_back(c);
+                            rule_component[name].push_back(components.size()-1);
+                        }
+                        count++;
+                    }
+                }
+                std::cout << name << " has " << count << " components { ";
+                for(auto& item : rule_component[name]) std::cout << item << " ";
+                std::cout << "}\n";
+            }
+            std::cout << components.size() << " unique components found\n";
+
+            //compute the graph rewrite operations, the numbering of the graphs matters here
+            for(auto& [name, rule] : gamma.stochastic_rules)
+            {
+                graph_type& lhs_graph = rule.lhs_graph;
+                graph_type& rhs_graph = rule.rhs_graph;
+
+                std::set<key_type> left_keys, right_keys, create, destroy;
+                for(auto& node : lhs_graph.getNodeSetRef())
+                    left_keys.insert(node.first);
+                for(auto& node : rhs_graph.getNodeSetRef())
+                    right_keys.insert(node.first);
+
+                std::set_difference(left_keys.begin(), left_keys.end(),
+                                    right_keys.begin(), right_keys.end(),
+                                    std::inserter(destroy, destroy.begin()));
+                std::set_difference(right_keys.begin(), right_keys.end(),
+                                    left_keys.begin(), left_keys.end(),
+                                    std::inserter(create, create.begin()));
+
+                auto print = [](auto&& n, auto& s) {
+                    std::cout << n << ": ";
+                    for(auto& i : s) std::cout << i << " ";
+                    std::cout << "\n";
+                };
+
+                //print("left", left_keys);
+                //print("right", right_keys);
+                //print("destroy", destroy);
+                //print("create", create);
+
+                auto lhs_graph_copy = lhs_graph;
+                for(auto& k : create) {
+                    auto n = rhs_graph.findNode(k)->second;
+                    std::cout << n.getData().type << "\n";
+                    lhs_graph_copy.addNode(n);
+                }
+
+                //TODO: finish computing rewrites for edge set
+
+            }
+
+        }
 
         void create_save_directory()
         {
@@ -91,8 +192,8 @@ namespace DGGML {
 
         void compute_matches()
         {
-            std::vector<std::vector<typename ModelType::key_type>> match_set;
-            std::vector<typename ModelType::graph_type> pattern_set;
+            std::vector<std::vector<key_type>> match_set;
+            std::vector<graph_type> pattern_set;
             for(auto& r : model->gamma.stochastic_rules)
                 pattern_set.push_back(r.second.lhs_graph);
             //TODO: I think we need to store the ordering or the rooted spanning tree
@@ -107,7 +208,6 @@ namespace DGGML {
                         match.push_back(value);
                         std::cout << "{" << key << " -> " << value << "} ";
                     } std::cout << "\n";
-                    rule_system.push_back({std::move(match), DGGML::Rule::G});
                 }
                 std::cout << "Found " << matches.size() << " instances\n";
             }

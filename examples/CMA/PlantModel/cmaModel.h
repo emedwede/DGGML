@@ -77,6 +77,8 @@ namespace CMA {
             name = settings.EXPERIMENT_NAME;
             std::cout << "Creating the grammar\n";
             using GT = Plant::graph_type;
+
+            //stochastic growing rule
             GT g1;
             g1.addNode({1, {Plant::Intermediate{}}});
             g1.addNode({2, {Plant::Positive{}}});
@@ -96,6 +98,7 @@ namespace CMA {
 
             gamma.addRule(r1);
 
+            //stochastic retraction rule
             GT g3;
             g3.addNode({1, {Plant::Negative{}}});
             g3.addNode({2, {Plant::Intermediate{}}});
@@ -114,6 +117,36 @@ namespace CMA {
                     .where([](auto& lhs, auto& rhs, auto& m) { std::cout << "updating retraction rule\n"; });
 
             gamma.addRule(r2);
+
+            //collision catastrophe rule
+            GT g5;
+            g5.addNode({1, {Plant::Intermediate{}}});
+            g5.addNode({2, {Plant::Positive{}}});
+            g5.addNode({3, {Plant::Intermediate{}}});
+            g5.addNode({4, {Plant::Intermediate{}}});
+            g5.addNode({5, {Plant::Intermediate{}}});
+            g5.addEdge(1, 2);
+            g5.addEdge(3, 4);
+            g5.addEdge(4, 5);
+
+            GT g6;
+            g6.addNode({1, {Plant::Intermediate{}}});
+            g6.addNode({2, {Plant::Negative{}}});
+            g6.addNode({3, {Plant::Intermediate{}}});
+            g6.addNode({4, {Plant::Intermediate{}}});
+            g6.addNode({5, {Plant::Intermediate{}}});
+            g6.addEdge(1, 2);
+            g6.addEdge(3, 4);
+            g6.addEdge(4, 5);
+
+
+            DGGML::WithRule<GT> r3;
+            r3.name("catastrophe").lhs(g5).rhs(g6)
+                    .with([](auto& lhs, auto& m) { std::cout << "catastrophe propensity\n"; return 7.5; })
+                    .where([](auto& lhs, auto& rhs, auto& m) { std::cout << "updating catastrophe rule\n"; });
+
+            gamma.addRule(r3);
+
 
 
             std::cout << "Generating the expanded cell complex\n";
