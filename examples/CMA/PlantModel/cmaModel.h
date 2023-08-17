@@ -5,8 +5,24 @@
 #include "PlantGrammar.hpp"
 #include "simdjson.h"
 #include "ExpandedComplex2D.hpp"
+#include "YAGL_Algorithms.hpp"
 
 namespace CMA {
+
+    template <typename DataType>
+    void print_numpy_array_stats(DataType& data, std::string var_name)
+    {
+        std::cout << var_name << " = np.asarray([";
+        for(auto i = 0; i < data.size(); i++)
+        {
+            if(i != 0 && i % 20 == 0) std::cout << "\n";
+            if(i != data.size() - 1)
+                std::cout << data[i] << ", ";
+            else
+                std::cout << data[i];
+        }
+        std::cout << "]);\n";
+    }
 
     //TODO: user and system params should be split
     // This also may be more appropriate for the base class
@@ -40,11 +56,6 @@ namespace CMA {
     using graph_grammar_t = DGGML::Grammar<Plant::graph_type>;
     class cmaModel : public DGGML::Model<graph_grammar_t> {
     public:
-        using graph_type = Plant::graph_type;
-        using key_type = Plant::key_type;
-        graph_type system_graph;
-        DGGML::ExpandedComplex2D<> geoplex2D;
-
         void initialize() override
         {
             std::cout << "Initializing the plant model simulation\n";
@@ -56,8 +67,8 @@ namespace CMA {
                         10,
                         2,
                         2,
-                        15.0,
-                        15.0,
+                        8.0,
+                        8.0,
                         true,
                         64,
                         0.5,
@@ -93,7 +104,7 @@ namespace CMA {
 
             DGGML::WithRule<GT> r1;
             r1.name("growing").lhs(g1).rhs(g2)
-                .with([](auto& lhs, auto& m) { std::cout << "growing propensity\n"; return 1.0; })
+                .with([](auto& lhs, auto& m) { return 0.5; })
                 .where([](auto& lhs, auto& rhs, auto& m) { std::cout << "updating growing rule\n"; });
 
             gamma.addRule(r1);
@@ -147,6 +158,7 @@ namespace CMA {
 
             gamma.addRule(r3);
 
+            //
 
 
             std::cout << "Generating the expanded cell complex\n";
@@ -160,6 +172,69 @@ namespace CMA {
 
             std::cout << "Initializing the system graph\n";
             Plant::microtubule_uniform_scatter(system_graph, geoplex2D, settings);
+        }
+
+        struct MyMetrics {
+            std::vector<std::size_t> con_com;
+            std::vector<std::size_t> total_nodes;
+            std::vector<std::size_t> type_counts[5];
+            std::vector<double> time_count;
+
+            std::size_t junction_count;
+            std::size_t positive_count;
+            std::size_t negative_count;
+            std::size_t zipper_count;
+            std::size_t intermediate_count;
+
+            void reset_count()
+            {
+                junction_count = 0;
+                positive_count = 0;
+                negative_count = 0;
+                zipper_count = 0;
+                intermediate_count = 0;
+            }
+        } metrics;
+
+        void collect() override
+        {
+            metrics.reset_count();
+            metrics.con_com.push_back(YAGL::connected_components(system_graph));
+
+            for(auto iter = system_graph.node_list_begin();
+                iter != system_graph.node_list_end(); iter++) {
+                auto itype = iter->second.getData();
+                if(std::holds_alternative<Plant::Negative>(itype.data))
+                    metrics.negative_count++;
+                if(std::holds_alternative<Plant::Positive>(itype.data))
+                    metrics.positive_count++;
+                if(std::holds_alternative<Plant::Intermediate>(itype.data))
+                    metrics.intermediate_count++;
+                if(std::holds_alternative<Plant::Junction>(itype.data))
+                    metrics.junction_count++;
+                if(std::holds_alternative<Plant::Zipper>(itype.data))
+                    metrics.zipper_count++;
+            }
+            metrics.type_counts[0].push_back(metrics.negative_count);
+            metrics.type_counts[1].push_back(metrics.positive_count);
+            metrics.type_counts[2].push_back(metrics.intermediate_count);
+            metrics.type_counts[3].push_back(metrics.junction_count);
+            metrics.type_counts[4].push_back(metrics.zipper_count);
+
+            metrics.total_nodes.push_back(metrics.negative_count + metrics.positive_count +
+            metrics.intermediate_count + metrics.junction_count + metrics.zipper_count);
+        }
+
+        void print_metrics() override
+        {
+            print_numpy_array_stats(metrics.con_com, "con_com");
+            print_numpy_array_stats(metrics.type_counts[0], "negative");
+            print_numpy_array_stats(metrics.type_counts[1], "positive");
+            print_numpy_array_stats(metrics.type_counts[2], "intermediate");
+            print_numpy_array_stats(metrics.type_counts[3], "junction");
+            print_numpy_array_stats(metrics.type_counts[4], "zipper");
+            print_numpy_array_stats(metrics.total_nodes, "total_nodes");
+            print_numpy_array_stats(metrics.time_count, "time_count");
         }
 
         void set_parameters(simdjson::ondemand::document& interface)

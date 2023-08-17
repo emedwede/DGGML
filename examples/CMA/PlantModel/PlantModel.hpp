@@ -34,226 +34,14 @@
 
 namespace DGGML
 {
-    struct Parameters
-    {
-        std::string EXPERIMENT_NAME;
-        double DELTA;
-        double DELTA_DELTA_T;
-        int NUM_INTERNAL_STEPS;
-        std::size_t CELL_NX;
-        std::size_t CELL_NY;
-        double CELL_DX;
-        double CELL_DY;
-        bool GHOSTED;
-        std::size_t NUM_MT;
-        double MT_MIN_SEGMENT_INIT;
-        double MT_MAX_SEGMENT_INIT;
-        std::size_t NUM_STEPS;
-        double LENGTH_DIV_FACTOR;
-        double DIV_LENGTH;
-        double DIV_LENGTH_RETRACT;
-        double V_PLUS;
-        double V_MINUS;
-        double SIGMOID_K;
-        double TOTAL_TIME;
-        double MAXIMAL_REACTION_RADIUS;
-        double DELTA_T_MIN;
-        double RHO_TEST_RATE; //a tunable test paramater for MT dynamics
-    };
-  
-    template <typename DataType>
-    void print_numpy_array_stats(DataType& data, std::string var_name)
-    {
-        std::cout << var_name << " = np.asarray([";
-            for(auto i = 0; i < data.size(); i++)
-            {
-                if(i != 0 && i % 20 == 0) std::cout << "\n";
-                if(i != data.size() - 1)
-                    std::cout << data[i] << ", ";
-                else
-                    std::cout << data[i];
-            }
-            std::cout << "]);\n";
-    }
-
-    template <typename ParamType, typename InterfaceType>
-    void set_parameters(ParamType& settings, InterfaceType& interface)
-    {
-        std::string_view temp = interface["META"]["EXPERIMENT"];
-        settings.EXPERIMENT_NAME = static_cast<std::string>(temp);
-
-        std::cout << settings.EXPERIMENT_NAME << "+++\n";
-                settings.CELL_NX = int64_t(interface["SETTINGS"]["CELL_NX"]);
-        settings.CELL_NY = int64_t(interface["SETTINGS"]["CELL_NY"]);
-        
-        settings.CELL_DX = double(interface["SETTINGS"]["CELL_DX"]);
-        settings.CELL_DY = double(interface["SETTINGS"]["CELL_DY"]);
-        settings.GHOSTED = bool(interface["SETTINGS"]["GHOSTED"]);
-
-        settings.NUM_MT = int64_t(interface["SETTINGS"]["NUM_MT"]);
-        settings.MT_MIN_SEGMENT_INIT = double(interface["SETTINGS"]["MT_MIN_SEGMENT_INIT"]);
-        settings.MT_MAX_SEGMENT_INIT = double(interface["SETTINGS"]["MT_MAX_SEGMENT_INIT"]);
-
-        settings.LENGTH_DIV_FACTOR = double(interface["SETTINGS"]["LENGTH_DIV_FACTOR"]);
-        settings.DIV_LENGTH = double(interface["SETTINGS"]["DIV_LENGTH"]);
-        settings.DIV_LENGTH_RETRACT = double(interface["SETTINGS"]["DIV_LENGTH_RETRACT"]);
-        settings.V_PLUS = double(interface["SETTINGS"]["V_PLUS"]);
-        settings.V_MINUS = double(interface["SETTINGS"]["V_MINUS"]);
-
-        settings.SIGMOID_K = double(interface["SETTINGS"]["SIGMOID_K"]);
-        
-        settings.MAXIMAL_REACTION_RADIUS = settings.DIV_LENGTH*2.0;
-        
-        //Simulate until the specified unit time
-        settings.TOTAL_TIME = double(interface["SETTINGS"]["TOTAL_TIME"]);
-        settings.NUM_INTERNAL_STEPS = 5;
-        //Delta should be big, but not to big. In this case, the maximum amount of time it would
-        //take one MT to grow a single unit of MT
-        settings.DELTA = 
-            0.25*settings.MAXIMAL_REACTION_RADIUS / std::max(settings.V_PLUS, settings.V_MINUS);
-        //The internal step of the solver should be at least this small
-        settings.DELTA_DELTA_T = settings.DELTA / settings.NUM_INTERNAL_STEPS; 
-        settings.DELTA_T_MIN = settings.DELTA_DELTA_T;
-        settings.NUM_STEPS = settings.TOTAL_TIME / settings.DELTA;
-
-        settings.RHO_TEST_RATE = double(interface["EXPERIMENTAL"]["RHO_TEST_RATE"]);
-    }
-
-    //Models are inteded to be designed based on the 
-    //DggModel specification. Right now it's very loose
-    //and capable of handling almost anything
+    // Slowing deleting this class until it's seperated in the code base
+    /*
+}
     template <typename InterfaceType>
     class PlantModel : public DggModel<InterfaceType> {
     public:
-        using key_type = Plant::mt_key_type;
-        using gplex_key_type = typename DGGML::ExpandedComplex2D<>::graph_type::key_type;
-        using data_type = Plant::MT_NodeData;
-        using graph_type = YAGL::Graph<key_type, data_type>;
-        using node_type = typename graph_type::node_type;
-
-        void init(InterfaceType& interface) override {
-
-            std::cout << "Initializing the plant model simulation\n";
-
-            std::cout << "Parsing the input interface and setting configuration settings\n";
-            //TODO: handle the interface input
-            set_parameters(settings, interface);
-            
-            std::cout << "Cleaning up old results folder if it exists and creating a new one\n";
-            results_dir_name = settings.EXPERIMENT_NAME + "_results";
-            std::filesystem::remove_all(results_dir_name);
-            std::filesystem::create_directory(results_dir_name);
-            
-            std::cout << "Generating the expanded cell complex\n";
-            geoplex2D.init(settings.CELL_NX, 
-                    settings.CELL_NY, 
-                    settings.CELL_DX, 
-                    settings.CELL_DY,
-                    settings.GHOSTED,
-                    settings.MAXIMAL_REACTION_RADIUS); //ghosted
-            //std::cout << geoplex2D;
-           
-            std::cout << "Setting intial cell propensities to zero\n";
-            for(auto& [key, value] : geoplex2D.graph.getNodeSetRef())
-                geocell_progress[key] = {0.0, 0.0};
-
-            //Save expanded cell complex graph
-            DGGML::VtkFileWriter<typename DGGML::ExpandedComplex2D<>::types::graph_type> writer;
-            writer.save(geoplex2D.getGraph(), results_dir_name+"/factory_geoplex");
-            DGGML::GridFileWriter grid_writer;
-            grid_writer.save({geoplex2D.reaction_grid, geoplex2D.dim_label}, results_dir_name+"/expanded_cell_complex");
-
-            std::cout << "Initializing the system graph\n";
-            Plant::microtubule_uniform_scatter(system_graph, geoplex2D, settings); 
-            
-//            std::cout << "Generating the grammar\n";
-//            DGGML::Plant::define_model(gamma);
-//            gamma.print();
-//
-//            std::vector<std::vector<Plant::mt_key_type>> match_set;
-//            //TODO: I think we need to store the ordering or the rooted spanning tree
-//            for(auto& pattern : gamma.minimal_set)
-//            {
-//                auto matches = YAGL::subgraph_isomorphism2(pattern, system_graph);
-//                for(auto& item : matches)
-//                {
-//                    std::vector<Plant::mt_key_type> match;
-//                    for(auto& [key, value] : item)
-//                    {
-//                        match.push_back(value);
-//                        std::cout << "{" << key << " -> " << value << "} ";
-//                    } std::cout << "\n";
-//                    rule_system.push_back({std::move(match), DGGML::Rule::G});
-//                }
-//                std::cout << "Found " << matches.size() << " instances\n";
-//            }
-
-            //TODO: we should fold the below code into some interface 
-            //function to apply the rule set
-            
-            //precomputes all of the single component matches//
-            
-            //bucket to temporarily interfact the matcher rule
-            std::vector<DGGML::Plant::mt_key_type> node_set;
-            for(const auto& [key, value] : system_graph.getNodeSetRef())
-                node_set.push_back(key);
-            
-            auto matches = 
-                DGGML::Plant::microtubule_growing_end_matcher(system_graph, node_set);
-            
-            for(auto& item : matches)
-                rule_system.push_back({std::move(item), DGGML::Rule::G});
-            
-            matches = 
-                DGGML::Plant::microtubule_retraction_end_matcher(system_graph, node_set);
-            
-            for(auto& item : matches)
-                rule_system.push_back({std::move(item), DGGML::Rule::R});
-            
-            std::cout << "matches: " << rule_system.size() << "\n";
-        }
 
         void run() override {
-            std::cout << "Running the plant model simulation\n";
-            return; 
-            DGGML::VtkFileWriter<graph_type> vtk_writer;
-            std::vector<std::size_t> con_com;
-            con_com.push_back(YAGL::connected_components(system_graph));
-            std::vector<std::size_t> total_nodes;
-            std::vector<std::size_t> type_counts[5];
-            std::vector<double> time_count; 
-            std::size_t junction_count = 0;
-            std::size_t positive_count = 0;
-            std::size_t negative_count = 0;
-            std::size_t zipper_count = 0;
-            std::size_t intermediate_count = 0;
-            for(auto iter = system_graph.node_list_begin(); 
-                    iter != system_graph.node_list_end(); iter++) {
-                    auto itype = iter->second.getData().type;
-                    if(itype == Plant::negative)
-                        negative_count++;
-                    if(itype == Plant::positive)
-                        positive_count++;
-                    if(itype == Plant::intermediate)
-                        intermediate_count++;
-                    if(itype == Plant::junction)
-                        junction_count++;
-                    if(itype == Plant::zipper)
-                        zipper_count++;
-            }
-            type_counts[Plant::negative].push_back(negative_count);
-            type_counts[Plant::positive].push_back(positive_count);
-            type_counts[Plant::intermediate].push_back(intermediate_count);
-            type_counts[Plant::junction].push_back(junction_count);
-            type_counts[Plant::zipper].push_back(zipper_count);
-            
-            total_nodes.push_back(negative_count +
-                    positive_count + intermediate_count + junction_count + zipper_count);
-                
-            std::string title = results_dir_name+"/simulation_step_";
-            std::cout << "Saving the initial state of the system graph\n";
-            vtk_writer.save(system_graph, title+std::to_string(0));
-            
             //TODO: move the simulation algorithm to its own class
             //is this where we run the simulation?
             for(auto i = 1; i <= settings.NUM_STEPS; i++)
@@ -473,7 +261,6 @@ namespace DGGML
                     std::cout << dim << "d Cell " << k << " has " << v.size() << " rules\n";
                 }
                 std::cout << "Total rules: " << rule_tot << "\n";
-                */
                 //TODO: end remove old inspiration code 
 
                 //scoped printing section for testing
@@ -523,10 +310,6 @@ namespace DGGML
                 
                     tot_time += dim_time;
                     std::cout << (2 - i) << "D took " << dim_time << " milliseconds\n";
-                
-                    //std::cout << "----------------\n";
-                    //std::cout << "CC: " << YAGL::connected_components(system_graph); 
-                    //std::cout << "\n---------------\n";
                                 
                     std::cout << "Synchronizing work\n";
                 }
@@ -536,65 +319,18 @@ namespace DGGML
                 //TODO: The checkpointer to save time steps
                 vtk_writer.save(system_graph, title+std::to_string(i));
                 
-                con_com.push_back(YAGL::connected_components(system_graph)); 
-                
-                std::size_t junction_count = 0;
-                std::size_t positive_count = 0;
-                std::size_t negative_count = 0;
-                std::size_t zipper_count = 0;
-                std::size_t intermediate_count = 0;
-                for(auto iter = system_graph.node_list_begin(); 
-                        iter != system_graph.node_list_end(); iter++) {
-                        auto itype = iter->second.getData().type;
-                        if(itype == Plant::negative)
-                            negative_count++;
-                        if(itype == Plant::positive)
-                            positive_count++;
-                        if(itype == Plant::intermediate)
-                            intermediate_count++;
-                        if(itype == Plant::junction)
-                            junction_count++;
-                        if(itype == Plant::zipper)
-                            zipper_count++;
-                }
-                type_counts[Plant::negative].push_back(negative_count);
-                type_counts[Plant::positive].push_back(positive_count);
-                type_counts[Plant::intermediate].push_back(intermediate_count);
-                type_counts[Plant::junction].push_back(junction_count);
-                type_counts[Plant::zipper].push_back(zipper_count);
-                
-                total_nodes.push_back(negative_count +
-                        positive_count + intermediate_count + junction_count + zipper_count);
-                
                 std::cout << "Total dimensional time is " << tot_time << " milliseconds\n";
                 time_count.push_back(tot_time);
             }
-            std::cout << "-----------------------------------------------------------------------\n\n";
-            
-            /*
-            print_numpy_array_stats(con_com, "con_com");
-            print_numpy_array_stats(type_counts[Plant::negative], "negative");
-            print_numpy_array_stats(type_counts[Plant::positive], "positive");
-            print_numpy_array_stats(type_counts[Plant::intermediate], "intermediate");
-            print_numpy_array_stats(type_counts[Plant::junction], "junction");
-            print_numpy_array_stats(type_counts[Plant::zipper], "zipper");
-            print_numpy_array_stats(total_nodes, "total_nodes");
-            print_numpy_array_stats(time_count, "time_count");
-            */
         }
 
 
     private:
-        //Grammar<graph_type> gamma;
         RuleSystem<Plant::mt_key_type> rule_system;
-        std::map<gplex_key_type, std::pair<double, double>> geocell_progress;
         Parameters settings;
         CartesianComplex2D<> cplex2D;
-        ExpandedComplex2D<> geoplex2D;
-        YAGL::Graph<Plant::mt_key_type, Plant::MT_NodeData> system_graph; 
-        std::string results_dir_name;
 };
-
+*/
 } //end namespace DGGML
 
 #endif 

@@ -74,6 +74,9 @@ namespace DGGML {
     template<typename GraphType>
     struct Grammar
     {
+        using graph_type = GraphType;
+        using key_type = typename GraphType::key_type;
+
         std::map<std::string, WithRule<GraphType>> stochastic_rules;
         std::map<std::string, SolvingRule<GraphType>> deterministic_rules;
 

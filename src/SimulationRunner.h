@@ -37,36 +37,69 @@ namespace DGGML {
             //Should the model initialize even happen here? or sooner
             std::cout << "Initializing " << model->name << "\n";
             model->initialize();
-            analyze_grammar();
-            return;
+            std::cout << "Printing grammar rules...\n";
+            model->gamma.print();
+
             //order matters here, which indicates maybe I should have a
             //file writer class which initializes with the save directory?
             create_save_directory();
             write_cell_complex();
-            write_initial_system_graph();
+            write_system_graph(0);
+
+            analyze_grammar();
+            compute_matches();
 
             set_geocell_propensities();
 
-            std::cout << "Printing grammar rules...\n";
-            model->gamma.print();
-            //compute_matches();
+            model->collect();
+            model->print_metrics();
+
         }
 
         void run() {
 
+            for (auto &[n, r]: compTab.rule_component)
+            {
+                if(r.size() == 1)
+                {
+                    std::cout << "Running test for rule " << n << " \n";
+                    for(auto& c : r)
+                    {
+                        auto result = 0.0;
+                        for(auto& m : instances[c])
+                        {
+                            auto lhs_match = YAGL::induced_subgraph(model->system_graph, m);
+                            typename WithRule<graph_type>::GraphMapType temp; //need actual ordering
+                            result += model->gamma.stochastic_rules[n].propensity(lhs_match, temp);
+                        }
+                        std::cout << "Result: " << result << "\n";
+                    }
+                }
+            }
+
+            return;
         }
     private:
 
+        /*
+         * Grammar analysis currently consists of:
+         *
+         * 1. Looking at LHS and finding patterns to be fed into search code.
+         *    The search is responsible for building a state of the system.
+         *
+         * 2. C Pre computing rewrite functions
+         */
         void analyze_grammar()
         {
             std::cout << "Performing grammar analysis\n";
             Grammar<graph_type>& gamma = model->gamma;
 
-            std::vector<graph_type> components;
-            std::map<std::string, std::vector<std::size_t>> rule_component;
-            std::map<std::size_t, std::vector<std::string>> component_rule;
+            auto& components = compTab.components;
+            auto& rule_component = compTab.rule_component;
+            auto& component_rule = compTab.component_rule;
             std::map<std::size_t, graph_type> minimal_set;
 
+            std::size_t ckey = 0;
             for(auto& [name, rule] : gamma.stochastic_rules)
             {
                 graph_type& graph = rule.lhs_graph;
@@ -84,7 +117,7 @@ namespace DGGML {
                         auto c = YAGL::induced_subgraph(graph, path);
 
                         auto is_isomorphic = [&](auto& a) {
-                            auto matches = YAGL::subgraph_isomorphism2(a, c);
+                            auto matches = YAGL::graph_isomorphism(a.second, c);
                             return !matches.empty();
                         };
 
@@ -92,17 +125,22 @@ namespace DGGML {
                         {
                             auto it = std::find_if(components.begin(), components.end(), is_isomorphic);
                             if(it == components.end()) {
-                                components.push_back(c);
-                                rule_component[name].push_back(components.size()-1);
+                                components[ckey] = c;
+                                rule_component[name].push_back(ckey);
+                                component_rule[ckey].push_back(name);
+                                ckey++;
                             } else
                             {
-                                rule_component[name].push_back(std::distance(components.begin(), it));
+                                rule_component[name].push_back(it->first);
+                                component_rule[it->first].push_back(name);
                             }
                         }
                         else
                         {
-                            components.push_back(c);
-                            rule_component[name].push_back(components.size()-1);
+                            components[ckey] = c;
+                            rule_component[name].push_back(ckey);
+                            component_rule[ckey].push_back(name);
+                            ckey++;
                         }
                         count++;
                     }
@@ -112,6 +150,14 @@ namespace DGGML {
                 std::cout << "}\n";
             }
             std::cout << components.size() << " unique components found\n";
+
+            for(auto& [k, v] : component_rule)
+            {
+                    std::cout << "Component " << k << ": { ";
+                    for(auto& s : v)
+                        std::cout << s << " ";
+                    std::cout << "}\n";
+            }
 
             //compute the graph rewrite operations, the numbering of the graphs matters here
             for(auto& [name, rule] : gamma.stochastic_rules)
@@ -182,40 +228,58 @@ namespace DGGML {
                              results_dir_name+"/expanded_cell_complex");
         }
 
-        void write_initial_system_graph()
+        void write_system_graph(std::size_t step)
         {
-            DGGML::VtkFileWriter<typename ModelType::graph_type> vtk_writer;
             std::string title = results_dir_name+"/simulation_step_";
             std::cout << "Saving the initial state of the system graph\n";
-            vtk_writer.save(model->system_graph, title+std::to_string(0));
+            vtk_writer.save(model->system_graph, title+std::to_string(step));
         }
 
         void compute_matches()
         {
+            //single component matches are space invariant, but multi-component matches
+            //are not
             std::vector<std::vector<key_type>> match_set;
-            std::vector<graph_type> pattern_set;
-            for(auto& r : model->gamma.stochastic_rules)
-                pattern_set.push_back(r.second.lhs_graph);
             //TODO: I think we need to store the ordering or the rooted spanning tree
-            for(auto& pattern : pattern_set)
+            for(auto& [k, pattern] : compTab.components)
             {
+                instances[k] = {};
+                //need to actually get the ordering for the mapping
                 auto matches = YAGL::subgraph_isomorphism2(pattern, model->system_graph);
+                if(!matches.empty())
                 for(auto& item : matches)
                 {
                     std::vector<typename ModelType::key_type> match;
                     for(auto& [key, value] : item)
                     {
                         match.push_back(value);
-                        std::cout << "{" << key << " -> " << value << "} ";
-                    } std::cout << "\n";
+                    }
+                    instances[k].push_back(std::move(match));
                 }
                 std::cout << "Found " << matches.size() << " instances\n";
             }
+
+            for(auto& [k, p] : instances)
+            {
+                std::cout << "Component " << k << " has " << p.size() << " instances\n";
+            }
         }
         std::shared_ptr<ModelType> model;
+
+        //actually a component table and a "join"
+        struct RuleComponentTable{
+                std::map<std::string, std::vector<std::size_t>> rule_component;
+                std::map<std::size_t, std::vector<std::string>> component_rule;
+                std::map<std::size_t, graph_type> components;
+        } compTab;
+
+       std::map<std::size_t, std::vector<std::vector<typename ModelType::key_type>>> instances;
+       std::map<std::size_t, std::vector<typename ModelType::key_type>> ordering;
+
         //Grammar gamma;
         RuleSystem<Plant::mt_key_type> rule_system;
         std::map<gplex_key_type, std::pair<double, double>> geocell_progress;
+        DGGML::VtkFileWriter<typename ModelType::graph_type> vtk_writer;
         std::string results_dir_name;
     };
 }
