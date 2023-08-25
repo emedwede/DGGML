@@ -34,7 +34,7 @@
 
 namespace DGGML
 {
-    // Slowing deleting this class until it's seperated in the code base
+    // Slowly deleting this class until it's seperated in the code base
     /*
 }
     template <typename InterfaceType>
@@ -68,32 +68,6 @@ namespace DGGML
                 std::cout << "Bucket2D: " << bucket2d.size() << "\n";
                 std::cout << "Bucket1D: " << bucket1d.size() << "\n";
                 std::cout << "Bucket0D: " << bucket0d.size() << "\n";
-                
-                //TODO: remove code starting here?
-                std::unordered_map<key_type, gplex_key_type> cell_list;
-
-                //dimensionally aware, expanded_cell_complex cell list
-                std::unordered_map<key_type, gplex_key_type> node_to_dim;  
-                std::unordered_map<key_type, gplex_key_type> node_to_geocell;
-
-                //for each node in the system graph, find the geocell/subcell it belongs to
-                for(auto& [key, value] : system_graph.getNodeSetRef())
-                {
-                    auto& node_data = value.getData();
-                    double xp = node_data.position[0];
-                    double yp = node_data.position[1];
-                    int ic, jc;
-                    
-                    geoplex2D.coarse_grid.locatePoint(xp, yp, ic, jc);
-                    geoplex2D.coarse_cell_to_fine_lattice(ic, jc); 
-                    auto cardinal = geoplex2D.fine_grid.cardinalLatticeIndex(ic, jc);
-                    cell_list.insert({key, cardinal}); 
-                    geoplex2D.reaction_grid.locatePoint(xp, yp, ic, jc);
-                    cardinal = geoplex2D.reaction_grid.cardinalCellIndex(ic, jc);
-                    node_to_dim.insert({key, geoplex2D.dim_label[cardinal]});
-                    node_to_geocell.insert({key, geoplex2D.cell_label[cardinal]});
-                }
-                //TODO: end remove code ending here
 
                 using rule_key_t = std::size_t;             
                 //first attempt at a dimensional mapping function
@@ -201,67 +175,6 @@ namespace DGGML
                     auto dim = geoplex2D.getGraph().findNode(k)->second.getData().type;
                 }
                 std::cout << "Total rules: " << r_tot << "\n";
-                
-                //TODO: remove old inspiration code starting here
-                /*std::vector<std::size_t> map_count = {0, 0, 0, 0};
-                for(const auto& match : rule_system)
-                {
-                    auto& instance = match.first.match;
-                    int local_max = node_to_dim.find(instance[0])->second;
-                    std::size_t local_label = node_to_geocell.find(instance[0])->second; 
-                    std::cout << "R: { ";
-                    for(auto& l : instance)
-                    {
-                        int d = node_to_dim.find(l)->second;
-                        if(d > local_max)
-                        {
-                            local_max = d;
-                            local_label = node_to_geocell.find(l)->second;
-                        }
-
-                        std::cout << l << " : { ";
-                        auto& participation = rule_system.inverse_index.find(l)->second;
-                        for(auto& p : participation)
-                        {
-                            //if(p == match.second)
-                            //    continue;
-                            std::cout << p << " : { ";
-                            auto& p_match = rule_system[p];
-                            for(auto& m : p_match)
-                            {
-                                std::cout << m << " ";
-                                int _m = node_to_dim.find(m)->second;
-                                if(_m > local_max)
-                                {
-                                    local_max = d;
-                                    local_label = node_to_geocell.find(_m)->second;
-                                }
-                            }
-                            std::cout << "} ";
-                        }
-                        std::cout << "} ";
-                    } std::cout << "-- maps to --> dim: " << local_max << ", cell: " << local_label << "\n";
-                    rule_map[local_label].push_back(match.second);
-                    map_count[local_max]++;
-                }
-                auto dim_tot = 0;
-                for(auto i = 0; i < map_count.size(); i++) 
-                {
-                    std::cout << "Dim " << i << ": " << map_count[i] << "\n";
-                    dim_tot += map_count[i];
-                }
-                std::cout << "Total mapped: " << dim_tot << "\n";
-
-                //rule map total 
-                auto rule_tot = 0;
-                for(const auto& [k, v] : rule_map)
-                {
-                    rule_tot += v.size();
-                    auto dim = geoplex2D.getGraph().findNode(k)->second.getData().type;
-                    std::cout << dim << "d Cell " << k << " has " << v.size() << " rules\n";
-                }
-                std::cout << "Total rules: " << rule_tot << "\n";
-                //TODO: end remove old inspiration code 
 
                 //scoped printing section for testing
                 //TODO: make these scoped prints unit tests for phi mapping function

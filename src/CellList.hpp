@@ -35,15 +35,15 @@ struct CellListDataVec
 
 };
 
-//template <typename GraphType, typename MatchType>
+template <typename GraphType>
 struct CellList
 {
 
     //CellListData data;
-    using RuleSystemType = RuleSystem<Plant::mt_key_type>;
-    using CellListObjectType = typename RuleSystem<Plant::mt_key_type>::pair_type;
+    using RuleSystemType = RuleSystem<typename GraphType::key_type>;
+    using CellListObjectType = typename RuleSystem<typename GraphType::key_type>::pair_type;
     using CellListDataType = std::vector<std::vector<CellListObjectType>>;
-    using GraphType = YAGL::Graph<Plant::mt_key_type, Plant::MT_NodeData>; 
+    //using GraphType = YAGL::Graph<Plant::mt_key_type, Plant::MT_NodeData>;
     CellListDataType data;
 
     CartesianGrid2D grid;
@@ -63,7 +63,7 @@ struct CellList
         for(auto& match : rule_system) insert_match(match);
         std::cout << "Cell list has been built\n";
         std::cout << "The cell list has " << totalNumCells() << " reaction cells\n"; 
-        std::cout << "Matches mapped: " << getTotalSize() << "\n";
+        std::cout << "Components mapped: " << getTotalSize() << "\n";
     }
     
     std::size_t getCellSize(const int cell)

@@ -158,8 +158,28 @@ namespace CMA {
 
             gamma.addRule(r3);
 
-            //
+            //Testable Interaction Rule
+            //collision catastrophe rule
+            GT g7;
+            g7.addNode({1, {Plant::Negative{}}});
+            g7.addNode({2, {Plant::Intermediate{}}});
+            g7.addNode({3, {Plant::Positive{}}});
+            g7.addNode({4, {Plant::Negative{}}});
+            g7.addNode({5, {Plant::Intermediate{}}});
+            g7.addNode({6, {Plant::Positive{}}});
+            g7.addEdge(1, 2);
+            g7.addEdge(2, 3);
+            g7.addEdge(4, 5);
+            g7.addEdge(5, 6);
 
+            GT g8;
+
+            DGGML::WithRule<GT> r4;
+            r4.name("interaction").lhs(g7).rhs(g8)
+                    .with([](auto& lhs, auto& m) { std::cout << "interaction propensity\n"; return 7.5; })
+                    .where([](auto& lhs, auto& rhs, auto& m) { std::cout << "updating interaction rule\n"; });
+
+            gamma.addRule(r4);
 
             std::cout << "Generating the expanded cell complex\n";
             geoplex2D.init(settings.CELL_NX,

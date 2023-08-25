@@ -14,7 +14,7 @@
 
 namespace DGGML
 {
-    //TODO: Perhaps make this class a member of the rule system 
+    //TODO: Please remove after the rework
     enum class Rule {G, R, I};
 
     std::ostream& operator << (std::ostream& os, const Rule& r)
@@ -49,14 +49,14 @@ namespace DGGML
         using instance_type = std::vector<key_type>;
         instance_type match;
         
-        Rule type;
+        std::size_t type;
         key_type anchor;
 
         using iterator = typename std::vector<key_type>::iterator;
 
         Instance() {}
 
-        Instance(instance_type _match, Rule _type) 
+        Instance(instance_type _match, Rule _type)
             : match(_match), type(_type) 
         {
             anchor = match[0];    
@@ -208,7 +208,7 @@ namespace DGGML
         const auto size() const { return matches.size(); }
         
         //TODO could be a template?
-        auto count(enum Rule r)
+        auto count(std::size_t r)
         {
             auto total = 0;
             for(auto it = matches.begin(); it != matches.end(); it++)

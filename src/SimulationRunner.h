@@ -47,37 +47,139 @@ namespace DGGML {
             write_system_graph(0);
 
             analyze_grammar();
-            compute_matches();
 
+            //find single components and compute the anchor
+            compute_component_matches();
+
+            //should multicomp matches be copies of single comps or references?
             set_geocell_propensities();
 
             model->collect();
             model->print_metrics();
 
-        }
+            CellList test_cell_list(model->geoplex2D.reaction_grid, model->system_graph, rule_system);
 
-        void run() {
+            for(auto& [name, value] : rule_instances)
+                std::cout << "So far we have found " << value.size() << " instances of rule " << name << "\n";
 
-            for (auto &[n, r]: compTab.rule_component)
+            std::function<void(std::string, std::vector<std::size_t>&, int, std::vector<std::size_t>&, decltype(test_cell_list)&, std::size_t)> reaction_instance_backtracker =
+                    [&](std::string name, std::vector<std::size_t>& result, int k, std::vector<std::size_t>& pattern, decltype(test_cell_list)& cell_list, std::size_t c)
             {
-                if(r.size() == 1)
+                if( k == pattern.size())
                 {
-                    std::cout << "Running test for rule " << n << " \n";
-                    for(auto& c : r)
-                    {
-                        auto result = 0.0;
-                        for(auto& m : instances[c])
-                        {
-                            auto lhs_match = YAGL::induced_subgraph(model->system_graph, m);
-                            typename WithRule<graph_type>::GraphMapType temp; //need actual ordering
-                            result += model->gamma.stochastic_rules[n].propensity(lhs_match, temp);
+                    rule_instances[name].push_back(result);
+                }
+                else {
+                    int imin, imax, jmin, jmax;
+                    cell_list.getCells(c, imin, imax, jmin, jmax);
+                    for (auto i = imin; i < imax; i++) {
+                        for (auto j = jmin; j < jmax; j++) {
+                            auto nbr_idx = cell_list.cardinalCellIndex(i, j);
+                            for (const auto& m2: cell_list.data[nbr_idx]) {
+                               bool found = false;
+                               for(auto v = 0; v < k; v++)
+                               {
+                                   if(result[v] == m2.second) found = true;
+                               }
+                               if(!found && m2.first.type == pattern[k])
+                               {
+                                   result[k] = m2.second;
+                                   reaction_instance_backtracker(name, result, k+1, pattern, cell_list, c);
+                               }
+                            }
                         }
-                        std::cout << "Result: " << result << "\n";
+                    }
+                }
+            };
+
+            for(auto& m1 : rule_system)
+            {
+                for(auto& [name, pattern] : compTab.rule_component)
+                {
+                    int k = 0;
+                    std::vector<std::size_t> result;
+                    result.resize(pattern.size());
+
+                    if(pattern.size() && m1.first.type == pattern.front())
+                    {
+                        result[k] = m1.second;
+                        k++;
+                        auto c = test_cell_list.locate_cell(m1);
+                        reaction_instance_backtracker(name, result, k, pattern, test_cell_list, c);
                     }
                 }
             }
 
+            auto sum  = 0;
+            for(auto& [name, instances] : rule_instances)
+            {
+                std::cout << "Rule " << name << " has " << instances.size() << " instances\n";
+                sum += instances.size();
+            }
+            std::cout << "There are " << sum << " rule instances in total\n";
+//            auto growing_matches = 0;
+//            for(auto c = 0; c < test_cell_list.totalNumCells(); c++)
+//            {
+//                int imin, imax, jmin, jmax;
+//                test_cell_list.getCells(c, imin, imax, jmin, jmax);
+//                for(auto& [name, patterns] : compTab.components)
+//                {
+//                    for(auto& p : patterns)
+//                    {
+//
+//                    }
+//                }
+//
+//                /*
+//                 * for each pattern p, first search inside the cell
+//                 */
+//                for(auto i = imin; i < imax; i++)
+//                {
+//                    for(auto j = jmin; j < jmax; j++)
+//                    {
+//                        auto nbr_idx = test_cell_list.cardinalCellIndex(i, j);
+//                        for(const auto& match1 : test_cell_list.data[c])
+//                        {
+//                            for(const auto& match2 : test_cell_list.data[nbr_idx])
+//                            {
+//                                if(match1.first.type == 2 && match2.first.type == 2
+//                                   && match1.second != match2.second)
+//                                {
+//                                    auto a1 = match1.first.anchor;
+//                                    auto a2 = match2.first.anchor;
+//                                    auto& p1 = model->system_graph.findNode(a1)->second.getData().position;
+//                                    auto& p2 = model->system_graph.findNode(a2)->second.getData().position;
+//                                    auto d = calculate_distance(p1, p2);
+//                                    //std::cout << "Distance: " << d << "\n";
+//                                    if(d < test_cell_list.grid._dx)
+//                                        growing_matches++;
+//                                }
+//                            }
+//                        }
+//                    }
+//                }
+//            }
+//            std::cout << "Potential Growing End Collision Matches Found: " << growing_matches << "\n";
+
+        }
+
+        void run() {
+
             return;
+
+            using rule_key_t = std::size_t;
+            using cplex_key_t = typename DGGML::CartesianComplex2D<>::graph_type::key_type;
+            std::map<cplex_key_t, std::vector<rule_key_t>> rule_map;
+
+            for(auto& [key, value] : model->geoplex2D.graph.getNodeSetRef())
+                rule_map.insert({key, {}});
+
+            auto count2d = std::count_if(rule_map.begin(), rule_map.end(), [](auto& iter){ return iter.first == 0; });
+            std::cout << "Count2D: " << count2d << "\n";
+            for(auto i = 0; i <= model->settings.NUM_STEPS; i++)
+            {
+                std::cout << "Running step " << i << "\n";
+            }
         }
     private:
 
@@ -87,7 +189,7 @@ namespace DGGML {
          * 1. Looking at LHS and finding patterns to be fed into search code.
          *    The search is responsible for building a state of the system.
          *
-         * 2. C Pre computing rewrite functions
+         * 2. Pre-computing rewrite functions
          */
         void analyze_grammar()
         {
@@ -235,7 +337,7 @@ namespace DGGML {
             vtk_writer.save(model->system_graph, title+std::to_string(step));
         }
 
-        void compute_matches()
+        void compute_component_matches()
         {
             //single component matches are space invariant, but multi-component matches
             //are not
@@ -243,7 +345,6 @@ namespace DGGML {
             //TODO: I think we need to store the ordering or the rooted spanning tree
             for(auto& [k, pattern] : compTab.components)
             {
-                instances[k] = {};
                 //need to actually get the ordering for the mapping
                 auto matches = YAGL::subgraph_isomorphism2(pattern, model->system_graph);
                 if(!matches.empty())
@@ -254,15 +355,39 @@ namespace DGGML {
                     {
                         match.push_back(value);
                     }
-                    instances[k].push_back(std::move(match));
+                    Instance<typename ModelType::key_type> inst;
+                    inst.match = match;
+                    inst.type = k;
+                    inst.anchor = match[0];
+                    rule_system.push_back(inst);
                 }
                 std::cout << "Found " << matches.size() << " instances\n";
             }
 
-            for(auto& [k, p] : instances)
+            //for(auto& [k, p] : instances)
+            for(auto& [k, pattern] : compTab.components)
             {
-                std::cout << "Component " << k << " has " << p.size() << " instances\n";
+                std::cout << "Component " << k << " has " << rule_system.count(k) << " instances\n";
             }
+
+//            for(auto& [name, rule] : model->gamma.stochastic_rules)
+//            {
+//                rule_instances[name] = {};
+//                if(compTab.rule_component[name].size() == 1)
+//                {
+//                    std::cout << name << " is a " << compTab.rule_component[name].size() << " component rule\n";
+//                    for(auto& ckey : compTab.rule_component[name])
+//                    {
+//                        std::cout << "There are " << rule_system.count(ckey) << " instances of component " << ckey << "\n";
+//                        for(auto& cinst : rule_system)
+//                        {
+//                            if(cinst.first.type == ckey)
+//                                rule_instances[name].push_back({cinst.second});
+//                        }
+//                    }
+//                }
+//
+//            }
         }
         std::shared_ptr<ModelType> model;
 
@@ -273,11 +398,11 @@ namespace DGGML {
                 std::map<std::size_t, graph_type> components;
         } compTab;
 
-       std::map<std::size_t, std::vector<std::vector<typename ModelType::key_type>>> instances;
+       std::map<std::string, std::vector<std::vector<std::size_t>>> rule_instances;
        std::map<std::size_t, std::vector<typename ModelType::key_type>> ordering;
 
         //Grammar gamma;
-        RuleSystem<Plant::mt_key_type> rule_system;
+        RuleSystem<typename ModelType::key_type> rule_system;
         std::map<gplex_key_type, std::pair<double, double>> geocell_progress;
         DGGML::VtkFileWriter<typename ModelType::graph_type> vtk_writer;
         std::string results_dir_name;
