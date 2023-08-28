@@ -1,7 +1,6 @@
 #include <iostream>
 
 #include "DggFactory.hpp"
-#include "PlantModel.hpp"
 #include "cmaModel.h"
 #include "simdjson.h"
 

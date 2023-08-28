@@ -4,6 +4,7 @@
 #include <iostream>
 #include <memory>
 #include <map>
+#include <set>
 #include <random>
 #include <chrono>
 #include <string>
@@ -14,9 +15,13 @@
 #include "YAGL_Node.hpp"
 #include "YAGL_Algorithms.hpp"
 #include "Utlities/VtkWriter.hpp"
+#include "ExpandedComplex2D.hpp"
 #include "CartesianComplex2D.hpp"
+#include "CellList.hpp"
 #include "RuleSystem.hpp"
+#include "Grammar.h"
 #include "Utlities/MathUtils.hpp"
+#include "CartesianHashFunctions.hpp"
 
 
 namespace DGGML {
@@ -29,6 +34,9 @@ namespace DGGML {
         //using graph_type = YAGL::Graph<key_type, data_type>;
         using graph_type = typename ModelType::graph_type;
         using node_type = typename graph_type::node_type;
+        using rule_key_t = std::size_t;
+        using cplex_key_t = typename DGGML::CartesianComplex2D<>::graph_type::key_type;
+
         explicit SimulationRunner(const ModelType& model) : model(std::make_shared<ModelType>(model)) {}
 
         //May want to make this part of the constructor instead
@@ -40,6 +48,10 @@ namespace DGGML {
             std::cout << "Printing grammar rules...\n";
             model->gamma.print();
 
+            //building rule map sets
+            for(auto& [key, value] : model->geoplex2D.graph.getNodeSetRef())
+                rule_map.insert({key, {}});
+
             //order matters here, which indicates maybe I should have a
             //file writer class which initializes with the save directory?
             create_save_directory();
@@ -48,137 +60,77 @@ namespace DGGML {
 
             analyze_grammar();
 
-            //find single components and compute the anchor
-            compute_component_matches();
+            compute_single_component_matches();
 
-            //should multicomp matches be copies of single comps or references?
             set_geocell_propensities();
 
             model->collect();
             model->print_metrics();
 
+            // A cell list is used to accelerate the spatial geometric search, but
+            // we could use other methods like a bounding volume hierarchy(ArborX), kd-trees etc
+            // see books on collision detection like gpu-gems or Real-Time Collision Detection
             CellList test_cell_list(model->geoplex2D.reaction_grid, model->system_graph, rule_system);
 
-            for(auto& [name, value] : rule_instances)
-                std::cout << "So far we have found " << value.size() << " instances of rule " << name << "\n";
+            compute_all_rule_instances(test_cell_list);
 
-            std::function<void(std::string, std::vector<std::size_t>&, int, std::vector<std::size_t>&, decltype(test_cell_list)&, std::size_t)> reaction_instance_backtracker =
-                    [&](std::string name, std::vector<std::size_t>& result, int k, std::vector<std::size_t>& pattern, decltype(test_cell_list)& cell_list, std::size_t c)
-            {
-                if( k == pattern.size())
-                {
-                    rule_instances[name].push_back(result);
-                }
-                else {
-                    int imin, imax, jmin, jmax;
-                    cell_list.getCells(c, imin, imax, jmin, jmax);
-                    for (auto i = imin; i < imax; i++) {
-                        for (auto j = jmin; j < jmax; j++) {
-                            auto nbr_idx = cell_list.cardinalCellIndex(i, j);
-                            for (const auto& m2: cell_list.data[nbr_idx]) {
-                               bool found = false;
-                               for(auto v = 0; v < k; v++)
-                               {
-                                   if(result[v] == m2.second) found = true;
-                               }
-                               if(!found && m2.first.type == pattern[k])
-                               {
-                                   result[k] = m2.second;
-                                   reaction_instance_backtracker(name, result, k+1, pattern, cell_list, c);
-                               }
-                            }
-                        }
-                    }
-                }
-            };
+            map_rule_instances_to_geocells();
 
-            for(auto& m1 : rule_system)
-            {
-                for(auto& [name, pattern] : compTab.rule_component)
-                {
-                    int k = 0;
-                    std::vector<std::size_t> result;
-                    result.resize(pattern.size());
-
-                    if(pattern.size() && m1.first.type == pattern.front())
-                    {
-                        result[k] = m1.second;
-                        k++;
-                        auto c = test_cell_list.locate_cell(m1);
-                        reaction_instance_backtracker(name, result, k, pattern, test_cell_list, c);
-                    }
-                }
-            }
-
-            auto sum  = 0;
-            for(auto& [name, instances] : rule_instances)
-            {
-                std::cout << "Rule " << name << " has " << instances.size() << " instances\n";
-                sum += instances.size();
-            }
-            std::cout << "There are " << sum << " rule instances in total\n";
-//            auto growing_matches = 0;
-//            for(auto c = 0; c < test_cell_list.totalNumCells(); c++)
-//            {
-//                int imin, imax, jmin, jmax;
-//                test_cell_list.getCells(c, imin, imax, jmin, jmax);
-//                for(auto& [name, patterns] : compTab.components)
-//                {
-//                    for(auto& p : patterns)
-//                    {
-//
-//                    }
-//                }
-//
-//                /*
-//                 * for each pattern p, first search inside the cell
-//                 */
-//                for(auto i = imin; i < imax; i++)
-//                {
-//                    for(auto j = jmin; j < jmax; j++)
-//                    {
-//                        auto nbr_idx = test_cell_list.cardinalCellIndex(i, j);
-//                        for(const auto& match1 : test_cell_list.data[c])
-//                        {
-//                            for(const auto& match2 : test_cell_list.data[nbr_idx])
-//                            {
-//                                if(match1.first.type == 2 && match2.first.type == 2
-//                                   && match1.second != match2.second)
-//                                {
-//                                    auto a1 = match1.first.anchor;
-//                                    auto a2 = match2.first.anchor;
-//                                    auto& p1 = model->system_graph.findNode(a1)->second.getData().position;
-//                                    auto& p2 = model->system_graph.findNode(a2)->second.getData().position;
-//                                    auto d = calculate_distance(p1, p2);
-//                                    //std::cout << "Distance: " << d << "\n";
-//                                    if(d < test_cell_list.grid._dx)
-//                                        growing_matches++;
-//                                }
-//                            }
-//                        }
-//                    }
-//                }
-//            }
-//            std::cout << "Potential Growing End Collision Matches Found: " << growing_matches << "\n";
-
+            //TODO: deprecate and refactor
+            //builds a list of interior geocells to iterate
+            build_bucketsND(bucketsND, model->geoplex2D);
         }
 
         void run() {
 
-            return;
+            for(auto i = 0; i <= 2; i++) {
+                auto countNd = std::count_if(rule_map.begin(), rule_map.end(),
+                                             [&](auto &iter) {
+                    return model->geoplex2D.getGraph().findNode(iter.first)->second.getData().type == i;
+                });
+                std::cout << "Count" << (2 - i) << "D: " << countNd << "\n";
+            }
 
-            using rule_key_t = std::size_t;
-            using cplex_key_t = typename DGGML::CartesianComplex2D<>::graph_type::key_type;
-            std::map<cplex_key_t, std::vector<rule_key_t>> rule_map;
-
-            for(auto& [key, value] : model->geoplex2D.graph.getNodeSetRef())
-                rule_map.insert({key, {}});
-
-            auto count2d = std::count_if(rule_map.begin(), rule_map.end(), [](auto& iter){ return iter.first == 0; });
-            std::cout << "Count2D: " << count2d << "\n";
             for(auto i = 0; i <= model->settings.NUM_STEPS; i++)
             {
                 std::cout << "Running step " << i << "\n";
+
+                double tot_time = 0.0;
+
+                for(int d = 0; d < 3; d++)
+                {
+                    double dim_time = 0.0;
+
+                    if(d == 1 || d == 2) continue;
+                    std::cout << "Running the Hybrid ODES/SSA inner loop " << (2 - d) << "D phase\n";
+                    for(auto& bucket : bucketsND[d])
+                    {
+                        auto k = bucket.first;
+                        auto start = std::chrono::high_resolution_clock::now();
+                        //geocell_progress[k] =
+                                //plant_model_ssa_new(rule_system, k, rule_map, anchor_list,
+                                                    //geoplex2D, system_graph, settings, geocell_progress[k]);
+                        auto stop = std::chrono::high_resolution_clock::now();
+                        auto duration =
+                                std::chrono::duration_cast<std::chrono::milliseconds>(stop-start);
+                        std::cout << "Cell " << k << " took " << duration.count()
+                                  << " milliseconds and has a current tau "
+                                  << geocell_progress[k].first << "\n";
+                        dim_time += duration.count();
+                    }
+
+                    tot_time += dim_time;
+                    std::cout << (2 - d) << "D took " << dim_time << " milliseconds\n";
+
+                    std::cout << "Synchronizing work\n";
+                }
+
+                std::cout << "Running the checkpointer\n";
+                write_system_graph(0);
+
+                std::cout << "Total dimensional time is " << tot_time << " milliseconds\n";
+                //time_count.push_back(tot_time);
+                return;
             }
         }
     private:
@@ -337,7 +289,7 @@ namespace DGGML {
             vtk_writer.save(model->system_graph, title+std::to_string(step));
         }
 
-        void compute_component_matches()
+        void compute_single_component_matches()
         {
             //single component matches are space invariant, but multi-component matches
             //are not
@@ -369,26 +321,121 @@ namespace DGGML {
             {
                 std::cout << "Component " << k << " has " << rule_system.count(k) << " instances\n";
             }
-
-//            for(auto& [name, rule] : model->gamma.stochastic_rules)
-//            {
-//                rule_instances[name] = {};
-//                if(compTab.rule_component[name].size() == 1)
-//                {
-//                    std::cout << name << " is a " << compTab.rule_component[name].size() << " component rule\n";
-//                    for(auto& ckey : compTab.rule_component[name])
-//                    {
-//                        std::cout << "There are " << rule_system.count(ckey) << " instances of component " << ckey << "\n";
-//                        for(auto& cinst : rule_system)
-//                        {
-//                            if(cinst.first.type == ckey)
-//                                rule_instances[name].push_back({cinst.second});
-//                        }
-//                    }
-//                }
-//
-//            }
         }
+
+
+        template<typename CellListType> //TODO: fix me the hacky template fix for a type we should know!
+        void compute_all_rule_instances(CellListType& test_cell_list)
+        {
+            for(auto& [name, rule] : model->gamma.stochastic_rules) {
+                auto count = std::count_if(rule_instances.begin(), rule_instances.end(), [&](auto& iter) { return iter.second.name == name; });
+                std::cout << "So far we have found " << count << " instances of rule " << name << "\n";
+            }
+            // This is a recursive backtracking function, and it is memory efficient because it does a DFS (inorder traversal)
+            // so only one vector is need for finding the result
+            // TODO: Check for bugs patterns > 2, currently some permutations may not be picked up correctly
+            std::function<void(std::string, std::vector<std::size_t>&, int, std::vector<std::size_t>&, decltype(test_cell_list)&, std::size_t)> reaction_instance_backtracker =
+                    [&](std::string name, std::vector<std::size_t>& result, int k, std::vector<std::size_t>& pattern, decltype(test_cell_list)& cell_list, std::size_t c)
+                    {
+                        if( k == pattern.size())
+                        {
+                            auto generated_key = instance_key_gen.get_key();
+                            rule_instances[generated_key].name = name;
+                            rule_instances[generated_key].components = result;
+                            rule_instances[generated_key].anchor = rule_system[result[0]].anchor;
+                        }
+                        else {
+                            int imin, imax, jmin, jmax;
+                            cell_list.getCells(c, imin, imax, jmin, jmax);
+                            for (auto i = imin; i < imax; i++) {
+                                for (auto j = jmin; j < jmax; j++) {
+                                    auto nbr_idx = cell_list.cardinalCellIndex(i, j);
+                                    for (const auto& m2: cell_list.data[nbr_idx]) {
+                                        bool found = false;
+                                        for(auto v = 0; v < k; v++)
+                                        {
+                                            if(result[v] == m2.second) found = true;
+                                        }
+                                        if(!found && m2.first.type == pattern[k])
+                                        {
+
+                                            auto a1 = rule_system[result[0]].anchor;
+                                            auto a2 = m2.first.anchor;
+                                            auto& p1 = model->system_graph.findNode(a1)->second.getData().position;
+                                            auto& p2 = model->system_graph.findNode(a2)->second.getData().position;
+                                            auto d = calculate_distance(p1, p2);
+
+                                            // TODO: a constraint for nearness is needed, there are other ways to do it
+                                            //  this is just a placeholder
+                                            if(d < model->settings.MAXIMAL_REACTION_RADIUS)
+                                            {
+                                                result[k] = m2.second;
+                                                reaction_instance_backtracker(name, result, k + 1, pattern, cell_list, c);
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    };
+
+            for(auto& m1 : rule_system)
+            {
+                for(auto& [name, pattern] : compTab.rule_component)
+                {
+                    int k = 0;
+                    std::vector<std::size_t> result;
+                    result.resize(pattern.size());
+
+                    if(pattern.size() && m1.first.type == pattern.front())
+                    {
+                        result[k] = m1.second;
+                        k++;
+                        auto c = test_cell_list.locate_cell(m1);
+                        reaction_instance_backtracker(name, result, k, pattern, test_cell_list, c);
+                    }
+                }
+            }
+
+            auto sum  = 0;
+            for(auto& [name, rule] : model->gamma.stochastic_rules) {
+                auto count = std::count_if(rule_instances.begin(), rule_instances.end(), [&](auto& iter) { return iter.second.name == name; });
+                std::cout << "Rule " << name << " has " << count << " instances\n";
+                sum += count;
+            }
+            std::cout << "There are " << sum << " rule instances in total\n";
+        }
+
+        void map_rule_instances_to_geocells()
+        {
+            //depending on the complexity, map anchor nodes to reaction subcells or
+            // alternative map reaction instances directly using a computed position
+            // or anchor node. We could also use a participation list etc, but for now
+            // we've reduced the problem to sorting a whole reaction by an anchor node
+            for(auto& [key, inst] : rule_instances)
+            {
+                auto& node_data = model->system_graph.findNode(inst.anchor)->second.getData();
+
+                double xp = node_data.position[0];
+                double yp = node_data.position[1];
+                int ic, jc;
+
+                model->geoplex2D.reaction_grid.locatePoint(xp, yp, ic, jc);
+                auto cardinal = model->geoplex2D.reaction_grid.cardinalCellIndex(ic, jc);
+                // here would be the anchor list reduction, plus whatever other code needs to be added
+                //anchor_list.insert({match.first.anchor, cardinal});
+                auto max_cell = model->geoplex2D.cell_label[cardinal];
+                rule_map[max_cell].push_back(key);
+            }
+
+            auto sum = 0;
+            for(auto& [key, value] : rule_map)
+            {
+                sum += value.size();
+            }
+            std::cout << "Total rules mapped " << sum << "\n";
+        }
+
         std::shared_ptr<ModelType> model;
 
         //actually a component table and a "join"
@@ -398,9 +445,17 @@ namespace DGGML {
                 std::map<std::size_t, graph_type> components;
         } compTab;
 
-       std::map<std::string, std::vector<std::vector<std::size_t>>> rule_instances;
-       std::map<std::size_t, std::vector<typename ModelType::key_type>> ordering;
+        KeyGenerator<std::size_t> instance_key_gen;
+        struct RuleInstType {
+            std::string name;
+            std::vector<std::size_t> components;
+            key_type anchor;
+        };
+        std::map<std::size_t, RuleInstType> rule_instances;
+        std::map<cplex_key_t, std::vector<rule_key_t>> rule_map;
+        std::map<std::size_t, std::vector<typename ModelType::key_type>> ordering;
 
+        std::map<gplex_key_type, std::vector<key_type>> bucketsND[3];
         //Grammar gamma;
         RuleSystem<typename ModelType::key_type> rule_system;
         std::map<gplex_key_type, std::pair<double, double>> geocell_progress;

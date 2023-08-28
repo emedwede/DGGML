@@ -3,6 +3,7 @@
 
 #include "DGGML.h"
 #include "PlantGrammar.hpp"
+#include "PlantUtils.hpp"
 #include "simdjson.h"
 #include "ExpandedComplex2D.hpp"
 #include "YAGL_Algorithms.hpp"
