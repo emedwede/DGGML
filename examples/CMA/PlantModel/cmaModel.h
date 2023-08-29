@@ -177,7 +177,7 @@ namespace CMA {
 
             DGGML::WithRule<GT> r4;
             r4.name("interaction").lhs(g7).rhs(g8)
-                    .with([](auto& lhs, auto& m) { std::cout << "interaction propensity\n"; return 7.5; })
+                    .with([](auto& lhs, auto& m) { return 7.5; })
                     .where([](auto& lhs, auto& rhs, auto& m) { std::cout << "updating interaction rule\n"; });
 
             gamma.addRule(r4);

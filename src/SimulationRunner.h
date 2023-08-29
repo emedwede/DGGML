@@ -22,6 +22,7 @@
 #include "Grammar.h"
 #include "Utlities/MathUtils.hpp"
 #include "CartesianHashFunctions.hpp"
+#include "ApproximateSSA.hpp"
 
 
 namespace DGGML {
@@ -107,9 +108,7 @@ namespace DGGML {
                     {
                         auto k = bucket.first;
                         auto start = std::chrono::high_resolution_clock::now();
-                        //geocell_progress[k] =
-                                //plant_model_ssa_new(rule_system, k, rule_map, anchor_list,
-                                                    //geoplex2D, system_graph, settings, geocell_progress[k]);
+                        approximate_ssa(rule_system, rule_map, rule_instances, model, k, geocell_progress[k]);
                         auto stop = std::chrono::high_resolution_clock::now();
                         auto duration =
                                 std::chrono::duration_cast<std::chrono::milliseconds>(stop-start);
