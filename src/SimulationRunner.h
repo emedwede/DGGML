@@ -245,38 +245,75 @@ namespace DGGML {
                 print("destroy", destroy);
                 print("create", create);
 
+                //custom pair comparator so that (a, b) == (b, a)
+                struct PairComparator {
+                    using pair_t = std::pair<std::size_t,std::size_t>;
+                    bool operator()(const pair_t& a, const pair_t& b) const {
+                        int min_a = std::min(a.first, a.second);
+                        int max_a = std::max(a.first, a.second);
+
+                        int min_b = std::min(b.first, b.second);
+                        int max_b = std::max(b.first, b.second);
+
+                        if (min_a < min_b) {
+                            return true;
+                        } else if (min_a > min_b) {
+                            return false;
+                        } else {
+                            return max_a < max_b;
+                        }
+                    }
+                };
+
+
+                std::set<std::pair<std::size_t, std::size_t>, PairComparator>
+                        edge_set_left, edge_set_right, edge_set_create, edge_set_destroy;
+
+                //builds edgeset without inverses for an undirected graph using a custom comparator
+                auto build_edge_set = [&](auto& edge_set, auto& g)
+                {
+                    for(auto& node : g.getNodeSetRef())
+                    {
+                        auto& nbrs = g.out_neighbors(node.first);
+                        for(auto& item : nbrs)
+                        {
+                            edge_set.insert({node.first, item});
+                        }
+                    }
+                };
+                auto print_edge_set = [](std::string&& name, auto& edge_set)
+                {
+                    std::cout << name << ": ";
+                    for(auto& e : edge_set)
+                        std::cout << "( " << e.first << ", " << e.second << " ) ";
+                    std::cout << "\n";
+                };
+
+                build_edge_set(edge_set_left, lhs_graph);
+                build_edge_set(edge_set_right, rhs_graph);
+
+                //finds set differences between edge sets, using the custom comparator
+                std::set_difference(edge_set_left.begin(), edge_set_left.end(),
+                                    edge_set_right.begin(), edge_set_right.end(),
+                                    std::inserter(edge_set_destroy, edge_set_destroy.begin()));
+                std::set_difference(edge_set_right.begin(), edge_set_right.end(),
+                                    edge_set_left.begin(), edge_set_left.end(),
+                                    std::inserter(edge_set_create, edge_set_create.begin()));
+
+                print_edge_set("left", edge_set_left);
+                print_edge_set("right", edge_set_right);
+                print_edge_set("create", edge_set_create);
+                print_edge_set("destroy", edge_set_destroy);
+
+                //TODO: finish packaging up rewrite operators for each rule
+                //TODO: Note - need to take into account that removing a node will remove edges too
+                //TODO: just a start, adding a node should be maybe like this?
                 auto lhs_graph_copy = lhs_graph;
                 for(auto& k : create) {
                     auto n = rhs_graph.findNode(k)->second;
                     std::cout << n.getData().type << "\n";
                     lhs_graph_copy.addNode(n);
                 }
-
-                //TODO: finish computing rewrites for edge set
-
-                std::vector<std::pair<std::size_t, std::size_t>> edge_set;
-                for(auto& node : lhs_graph.getNodeSetRef())
-                {
-                    auto& nbrs = lhs_graph.out_neighbors(node.first);
-                    for(auto& item : nbrs)
-                    {
-                        bool found = false;
-                        for(auto& p : edge_set)
-                        {
-                            if(p.first == item && p.second == node.first)
-                            {
-                                found = true;
-                                break;
-                            }
-                        }
-                        if(!found)
-                            edge_set.push_back({node.first, item});
-                    }
-                }
-                for(auto& e : edge_set)
-                    std::cout << "( " << e.first << ", " << e.second << " ) ";
-                std::cout << "\n";
-
             }
             std::cout << "Completed grammar analysis\n";
 
