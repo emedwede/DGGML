@@ -73,9 +73,7 @@ void approximate_ssa(T1& rule_system, T2& rule_map, T3& rule_instances, M1& mode
     while(delta_t < settings.DELTA)
     {
         //the propensities calculated for a particular rule
-        std::map<std::string, std::vector<double>> propensity_space;
-        for(auto& [name, rule] : gamma.stochastic_rules)
-            propensity_space[name] = {};
+        std::vector<std::pair<std::size_t, double>> propensity_space;
 
         if(tau < exp_sample)
         {
@@ -87,6 +85,8 @@ void approximate_ssa(T1& rule_system, T2& rule_map, T3& rule_instances, M1& mode
                 // keys into compatible inputs into propensity functions
                 std::vector<std::size_t> inducers;
                 auto& inst = rule_instances[r];
+                if(inst.category != "stochastic")
+                    continue;
                 for(auto& c : inst.components)
                 {
                     for(auto& id : rule_system[c])
@@ -95,16 +95,16 @@ void approximate_ssa(T1& rule_system, T2& rule_map, T3& rule_instances, M1& mode
                 auto induced_graph = YAGL::induced_subgraph(system_graph, inducers);
                 std::map<std::size_t, std::size_t> placeholder;
                 auto rho = gamma.stochastic_rules[inst.name].propensity(induced_graph, placeholder);
-                propensity_space[inst.name].push_back(rho);
+                propensity_space.push_back({r,rho});
             }
 
             geocell_propensity = 0.0;
-            for(auto& [name, rhos] : propensity_space)
+            for(auto& [name, data] : gamma.stochastic_rules)
             {
                 auto sum = 0.0;
-                for(auto& rho : rhos)
+                for(auto& item : propensity_space)
                 {
-                    sum += rho;
+                    if(rule_instances[item.first].name == name) sum += item.second;
                 }
                 std::cout << "Rule " << name << " has total propensity of " << sum << "\n";
                 geocell_propensity += sum;
@@ -130,10 +130,27 @@ void approximate_ssa(T1& rule_system, T2& rule_map, T3& rule_instances, M1& mode
         // if we get over our threshold an event can occur
         if(tau >= exp_sample) {
             //determine which rule to fire and fire it
-            std::cout << "Size of sample space: " << propensity_space.size() << "\n";
+            auto lam = [](double& s, auto& rp) { return s+rp.second; };
+            auto sum = std::accumulate(propensity_space.begin(), propensity_space.end(), 0.0, lam);
+            std::cout << "Size of sample space: " << sum << "\n";
 
             auto local_sample = RandomRealsBetween(0.0, 1.0)();
+
             auto eventFired = 0;
+
+            auto local_progress = local_sample*geocell_propensity - propensity_space[0].second;
+            while(local_progress > 0.0)
+            {
+                eventFired++;
+                local_progress -= propensity_space[eventFired].second;
+            }
+
+            auto fired_id = propensity_space[eventFired].first;
+            std::cout << "Selected rule id " << fired_id << " of type " << rule_instances[fired_id].name << "\n";
+
+            //TODO: perform the rewrite
+
+            //TODO: incrementally update the in memory set of matches
 
             //zero out tau since a rule has fired
             tau = 0.0;

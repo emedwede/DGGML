@@ -60,6 +60,7 @@ namespace DGGML {
             write_system_graph(0);
 
             analyze_grammar();
+            return;
 
             compute_single_component_matches();
 
@@ -83,6 +84,7 @@ namespace DGGML {
         }
 
         void run() {
+            return;
 
             for(auto i = 0; i <= 2; i++) {
                 auto countNd = std::count_if(rule_map.begin(), rule_map.end(),
@@ -237,10 +239,11 @@ namespace DGGML {
                     std::cout << "\n";
                 };
 
-                //print("left", left_keys);
-                //print("right", right_keys);
-                //print("destroy", destroy);
-                //print("create", create);
+                std::cout << name << ":\n";
+                print("left", left_keys);
+                print("right", right_keys);
+                print("destroy", destroy);
+                print("create", create);
 
                 auto lhs_graph_copy = lhs_graph;
                 for(auto& k : create) {
@@ -251,7 +254,31 @@ namespace DGGML {
 
                 //TODO: finish computing rewrites for edge set
 
+                std::vector<std::pair<std::size_t, std::size_t>> edge_set;
+                for(auto& node : lhs_graph.getNodeSetRef())
+                {
+                    auto& nbrs = lhs_graph.out_neighbors(node.first);
+                    for(auto& item : nbrs)
+                    {
+                        bool found = false;
+                        for(auto& p : edge_set)
+                        {
+                            if(p.first == item && p.second == node.first)
+                            {
+                                found = true;
+                                break;
+                            }
+                        }
+                        if(!found)
+                            edge_set.push_back({node.first, item});
+                    }
+                }
+                for(auto& e : edge_set)
+                    std::cout << "( " << e.first << ", " << e.second << " ) ";
+                std::cout << "\n";
+
             }
+            std::cout << "Completed grammar analysis\n";
 
         }
 
@@ -340,6 +367,7 @@ namespace DGGML {
                         {
                             auto generated_key = instance_key_gen.get_key();
                             rule_instances[generated_key].name = name;
+                            rule_instances[generated_key].category = "stochastic";
                             rule_instances[generated_key].components = result;
                             rule_instances[generated_key].anchor = rule_system[result[0]].anchor;
                         }
@@ -446,6 +474,7 @@ namespace DGGML {
 
         KeyGenerator<std::size_t> instance_key_gen;
         struct RuleInstType {
+            std::string category;
             std::string name;
             std::vector<std::size_t> components;
             key_type anchor;
