@@ -3,66 +3,54 @@
 
 #include <functional>
 #include <map>
+#include <set>
 
 namespace DGGML {
+
     template <typename GraphType>
-    struct WithRule
+    struct RuleBase
     {
-        GraphType lhs_graph;
-        GraphType rhs_graph;
+        using key_type = typename GraphType::key_type;
         std::string rname;
 
-        using GraphMapType = std::map<typename GraphType::key_type, typename GraphType::key_type>;
-        std::function<double(GraphType& lhs, GraphMapType& m)> propensity;
-        std::function<void(GraphType& lhs, GraphType& rhs, GraphMapType& m)> update;
+        GraphType lhs_graph;
+        GraphType rhs_graph;
 
-        WithRule() {}
+        //TODO: figure out why I need the base constructor and can't delete
+        //RuleBase() = delete;
+        //RuleBase() = default;
 
-        WithRule(std::string rname, GraphType& lhs_graph, GraphType& rhs_graph) :
+        explicit RuleBase(std::string rname, GraphType& lhs_graph, GraphType& rhs_graph) :
         rname(rname), lhs_graph(lhs_graph), rhs_graph(rhs_graph) {}
+    };
 
-        // Fluent interface
-        WithRule<GraphType>& name(std::string&& n)
-        {
-            rname = n;
-            return *this;
-        }
-        WithRule<GraphType>& lhs(GraphType& graph)
-        {
-            lhs_graph = graph;
-            return *this;
-        }
+    template <typename GraphType>
+    struct WithRule : RuleBase<GraphType>
+    {
+        using GraphMapType = std::map<typename GraphType::key_type, typename GraphType::key_type>;
+        using propensity_t = std::function<double(GraphType& lhs, GraphMapType& m)>;
+        using update_t =  std::function<void(GraphType& lhs, GraphType& rhs, GraphMapType& m)>;
 
-        WithRule<GraphType>& rhs(GraphType& graph)
-        {
-            rhs_graph = graph;
-            return *this;
-        }
+        propensity_t propensity;
+        update_t update;
 
-        WithRule<GraphType>& with(std::function<double(GraphType& lhs, GraphMapType& m)>&& p)
-        {
-            propensity = p;
-            return *this;
-        }
+        //TODO: figure out why I need the base constructor and can't delete
+        //WithRule() = delete;
+        //WithRule() {};
 
-        WithRule<GraphType>& where(std::function<void(GraphType& lhs, GraphType& rhs, GraphMapType& m)>&& u)
-        {
-            update = u;
-            return *this;
-        }
+        explicit WithRule(std::string rname, GraphType& lhs_graph, GraphType& rhs_graph, propensity_t&& p, update_t&& u)
+            : RuleBase<GraphType>(rname, lhs_graph, rhs_graph), propensity(p), update(u) {}
 
     };
 
     template <typename GraphType>
-    struct SolvingRule
+    struct SolvingRule : RuleBase<GraphType>
     {
-        GraphType lhs;
-        GraphType rhs;
-        std::string name;
-        std::function<double(GraphType& lhs)> ode;
+        using solving_t = std::function<double(GraphType& lhs)>;
+        solving_t ode;
 
-        SolvingRule() {}
-        SolvingRule(std::string name, GraphType& lhs_graph, GraphType& rhs_graph) : name(name), lhs(lhs_graph), rhs(rhs_graph) {}
+        explicit SolvingRule(std::string rname, GraphType& lhs_graph, GraphType& rhs_graph, solving_t&& ode)
+                : RuleBase<GraphType>(rname, lhs_graph, rhs_graph), ode(ode) {}
     };
 
     //TODO: we need to make sure there is a numbered graph class for rule definitions
@@ -84,7 +72,8 @@ namespace DGGML {
         {
             if(stochastic_rules.find(r.rname) == stochastic_rules.end())
             {
-                stochastic_rules[r.rname] = r;
+                //using insert, vs [] = because the [] requires they map_type to be default constructible
+                stochastic_rules.insert({r.rname, r});
             }
             else
                 std::cout << "stochastic rule name already exists in rule_set\n";
@@ -92,9 +81,10 @@ namespace DGGML {
 
         void addRule(SolvingRule<GraphType>& r)
         {
-            if(deterministic_rules.find(r.name) == deterministic_rules.end())
+            if(deterministic_rules.find(r.rname) == deterministic_rules.end())
             {
-                deterministic_rules[r.name] = r;
+                //using insert, vs [] = because the [] requires they map_type to be default constructible
+                deterministic_rules.insert({r.rname, r});
             }
             else
                 std::cout << "deterministic rule name already exists in rule_set\n";

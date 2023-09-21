@@ -23,6 +23,7 @@
 #include "Utlities/MathUtils.hpp"
 #include "CartesianHashFunctions.hpp"
 #include "ApproximateSSA.hpp"
+#include "AnalyzedGrammar.hpp"
 
 
 namespace DGGML {
@@ -38,16 +39,23 @@ namespace DGGML {
         using rule_key_t = std::size_t;
         using cplex_key_t = typename DGGML::CartesianComplex2D<>::graph_type::key_type;
 
-        explicit SimulationRunner(const ModelType& model) : model(std::make_shared<ModelType>(model)) {}
+        explicit SimulationRunner(const ModelType& _model) :
+        model(std::make_shared<ModelType>(_model)) {}
 
-        //May want to make this part of the constructor instead
+        //TODO: we probably want to make this part of the constructor instead or
+        // even better yet, move most of these objects to be external to the class and injected upon
+        // construction
         void initialize()
         {
             //Should the model initialize even happen here? or sooner
             std::cout << "Initializing " << model->name << "\n";
             model->initialize();
+
             std::cout << "Printing grammar rules...\n";
             model->gamma.print();
+
+            std::cout << "Performing grammar analysis and building analyzed grammar data structure\n";
+            grammar_analysis = AnalyzedGrammar<graph_type>(model->gamma);
 
             //building rule map sets
             for(auto& [key, value] : model->geoplex2D.graph.getNodeSetRef())
@@ -58,9 +66,6 @@ namespace DGGML {
             create_save_directory();
             write_cell_complex();
             write_system_graph(0);
-
-            analyze_grammar();
-            return;
 
             compute_single_component_matches();
 
@@ -136,189 +141,6 @@ namespace DGGML {
         }
     private:
 
-        /*
-         * Grammar analysis currently consists of:
-         *
-         * 1. Looking at LHS and finding patterns to be fed into search code.
-         *    The search is responsible for building a state of the system.
-         *
-         * 2. Pre-computing rewrite functions
-         */
-        void analyze_grammar()
-        {
-            std::cout << "Performing grammar analysis\n";
-            Grammar<graph_type>& gamma = model->gamma;
-
-            auto& components = compTab.components;
-            auto& rule_component = compTab.rule_component;
-            auto& component_rule = compTab.component_rule;
-            std::map<std::size_t, graph_type> minimal_set;
-
-            std::size_t ckey = 0;
-            for(auto& [name, rule] : gamma.stochastic_rules)
-            {
-                graph_type& graph = rule.lhs_graph;
-                rule_component.insert({name, {}});
-                //build the list of components
-                std::unordered_set<key_type> visited;
-                std::size_t count = 0; //no connected components found to start
-                for(auto i = graph.node_list_begin(); i != graph.node_list_end(); i++) {
-                    auto v = i->first;
-                    //node hasn't been visited, so it must be the start of a new connected component
-                    if (visited.find(v) == visited.end()) {
-                        std::vector<key_type> path;
-                        //we could use whatever search method we feel like
-                        YAGL::impl_iterative_bfs(graph, v, visited, path);
-                        auto c = YAGL::induced_subgraph(graph, path);
-
-                        auto is_isomorphic = [&](auto& a) {
-                            auto matches = YAGL::graph_isomorphism(a.second, c);
-                            return !matches.empty();
-                        };
-
-                        if(!components.empty())
-                        {
-                            auto it = std::find_if(components.begin(), components.end(), is_isomorphic);
-                            if(it == components.end()) {
-                                components[ckey] = c;
-                                rule_component[name].push_back(ckey);
-                                component_rule[ckey].push_back(name);
-                                ckey++;
-                            } else
-                            {
-                                rule_component[name].push_back(it->first);
-                                component_rule[it->first].push_back(name);
-                            }
-                        }
-                        else
-                        {
-                            components[ckey] = c;
-                            rule_component[name].push_back(ckey);
-                            component_rule[ckey].push_back(name);
-                            ckey++;
-                        }
-                        count++;
-                    }
-                }
-                std::cout << name << " has " << count << " components { ";
-                for(auto& item : rule_component[name]) std::cout << item << " ";
-                std::cout << "}\n";
-            }
-            std::cout << components.size() << " unique components found\n";
-
-            for(auto& [k, v] : component_rule)
-            {
-                    std::cout << "Component " << k << ": { ";
-                    for(auto& s : v)
-                        std::cout << s << " ";
-                    std::cout << "}\n";
-            }
-
-            //compute the graph rewrite operations, the numbering of the graphs matters here
-            for(auto& [name, rule] : gamma.stochastic_rules)
-            {
-                graph_type& lhs_graph = rule.lhs_graph;
-                graph_type& rhs_graph = rule.rhs_graph;
-
-                std::set<key_type> left_keys, right_keys, create, destroy;
-                for(auto& node : lhs_graph.getNodeSetRef())
-                    left_keys.insert(node.first);
-                for(auto& node : rhs_graph.getNodeSetRef())
-                    right_keys.insert(node.first);
-
-                std::set_difference(left_keys.begin(), left_keys.end(),
-                                    right_keys.begin(), right_keys.end(),
-                                    std::inserter(destroy, destroy.begin()));
-                std::set_difference(right_keys.begin(), right_keys.end(),
-                                    left_keys.begin(), left_keys.end(),
-                                    std::inserter(create, create.begin()));
-
-                auto print = [](auto&& n, auto& s) {
-                    std::cout << n << ": ";
-                    for(auto& i : s) std::cout << i << " ";
-                    std::cout << "\n";
-                };
-
-                std::cout << name << ":\n";
-                print("left", left_keys);
-                print("right", right_keys);
-                print("destroy", destroy);
-                print("create", create);
-
-                //custom pair comparator so that (a, b) == (b, a)
-                struct PairComparator {
-                    using pair_t = std::pair<std::size_t,std::size_t>;
-                    bool operator()(const pair_t& a, const pair_t& b) const {
-                        int min_a = std::min(a.first, a.second);
-                        int max_a = std::max(a.first, a.second);
-
-                        int min_b = std::min(b.first, b.second);
-                        int max_b = std::max(b.first, b.second);
-
-                        if (min_a < min_b) {
-                            return true;
-                        } else if (min_a > min_b) {
-                            return false;
-                        } else {
-                            return max_a < max_b;
-                        }
-                    }
-                };
-
-
-                std::set<std::pair<std::size_t, std::size_t>, PairComparator>
-                        edge_set_left, edge_set_right, edge_set_create, edge_set_destroy;
-
-                //builds edgeset without inverses for an undirected graph using a custom comparator
-                auto build_edge_set = [&](auto& edge_set, auto& g)
-                {
-                    for(auto& node : g.getNodeSetRef())
-                    {
-                        auto& nbrs = g.out_neighbors(node.first);
-                        for(auto& item : nbrs)
-                        {
-                            edge_set.insert({node.first, item});
-                        }
-                    }
-                };
-                auto print_edge_set = [](std::string&& name, auto& edge_set)
-                {
-                    std::cout << name << ": ";
-                    for(auto& e : edge_set)
-                        std::cout << "( " << e.first << ", " << e.second << " ) ";
-                    std::cout << "\n";
-                };
-
-                build_edge_set(edge_set_left, lhs_graph);
-                build_edge_set(edge_set_right, rhs_graph);
-
-                //finds set differences between edge sets, using the custom comparator
-                std::set_difference(edge_set_left.begin(), edge_set_left.end(),
-                                    edge_set_right.begin(), edge_set_right.end(),
-                                    std::inserter(edge_set_destroy, edge_set_destroy.begin()));
-                std::set_difference(edge_set_right.begin(), edge_set_right.end(),
-                                    edge_set_left.begin(), edge_set_left.end(),
-                                    std::inserter(edge_set_create, edge_set_create.begin()));
-
-                print_edge_set("left", edge_set_left);
-                print_edge_set("right", edge_set_right);
-                print_edge_set("create", edge_set_create);
-                print_edge_set("destroy", edge_set_destroy);
-
-                //TODO: finish packaging up rewrite operators for each rule
-                //TODO: Note - need to take into account that removing a node will remove edges too
-                //TODO: just a start, adding a node should be maybe like this?
-                auto lhs_graph_copy = lhs_graph;
-                for(auto& k : create) {
-                    auto n = rhs_graph.findNode(k)->second;
-                    std::cout << n.getData().type << "\n";
-                    lhs_graph_copy.addNode(n);
-                }
-            }
-            std::cout << "Completed grammar analysis\n";
-
-        }
-
         void create_save_directory()
         {
             std::cout << "Cleaning up old results folder if it exists and creating a new one\n";
@@ -358,7 +180,7 @@ namespace DGGML {
             //are not
             std::vector<std::vector<key_type>> match_set;
             //TODO: I think we need to store the ordering or the rooted spanning tree
-            for(auto& [k, pattern] : compTab.components)
+            for(auto& [k, pattern] : grammar_analysis.unique_components)
             {
                 //need to actually get the ordering for the mapping
                 auto matches = YAGL::subgraph_isomorphism2(pattern, model->system_graph);
@@ -380,7 +202,7 @@ namespace DGGML {
             }
 
             //for(auto& [k, p] : instances)
-            for(auto& [k, pattern] : compTab.components)
+            for(auto& [k, pattern] : grammar_analysis.unique_components)
             {
                 std::cout << "Component " << k << " has " << rule_system.count(k) << " instances\n";
             }
@@ -445,7 +267,7 @@ namespace DGGML {
 
             for(auto& m1 : rule_system)
             {
-                for(auto& [name, pattern] : compTab.rule_component)
+                for(auto& [name, pattern] : grammar_analysis.rule_component)
                 {
                     int k = 0;
                     std::vector<std::size_t> result;
@@ -500,14 +322,10 @@ namespace DGGML {
             std::cout << "Total rules mapped " << sum << "\n";
         }
 
+        //TODO: maybe not shared, but unique?
         std::shared_ptr<ModelType> model;
 
-        //actually a component table and a "join"
-        struct RuleComponentTable{
-                std::map<std::string, std::vector<std::size_t>> rule_component;
-                std::map<std::size_t, std::vector<std::string>> component_rule;
-                std::map<std::size_t, graph_type> components;
-        } compTab;
+        AnalyzedGrammar<graph_type> grammar_analysis;
 
         KeyGenerator<std::size_t> instance_key_gen;
         struct RuleInstType {

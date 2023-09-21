@@ -94,7 +94,8 @@ void approximate_ssa(T1& rule_system, T2& rule_map, T3& rule_instances, M1& mode
                 }
                 auto induced_graph = YAGL::induced_subgraph(system_graph, inducers);
                 std::map<std::size_t, std::size_t> placeholder;
-                auto rho = gamma.stochastic_rules[inst.name].propensity(induced_graph, placeholder);
+                //using at, because the [] requires they map_type to be default constructible
+                auto rho = gamma.stochastic_rules.at(inst.name).propensity(induced_graph, placeholder);
                 propensity_space.push_back({r,rho});
             }
 

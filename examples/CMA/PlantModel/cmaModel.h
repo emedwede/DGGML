@@ -103,10 +103,19 @@ namespace CMA {
             g2.addEdge(1, 3);
             g2.addEdge(3, 2);
 
-            DGGML::WithRule<GT> r1;
-            r1.name("growing").lhs(g1).rhs(g2)
-                .with([](auto& lhs, auto& m) { return 0.5; })
-                .where([](auto& lhs, auto& rhs, auto& m) { std::cout << "updating growing rule\n"; });
+
+            //TODO: I should make it so that any solving/propensity functions that need access to parameters
+            // are actually passed as functors with states!
+            DGGML::WithRule<GT> r1("growing", g1, g2,
+                                   [&](auto& lhs, auto& m)
+                {
+                    auto& node_i_data = lhs.findNode(m[0])->second.getData();
+                    auto& node_j_data = lhs.findNode(m[1])->second.getData();
+
+                    auto len = DGGML::calculate_distance(node_i_data.position, node_j_data.position);
+                    //double propensity = heaviside(len, settings.DIV_LENGTH);
+                    return 10*DGGML::sigmoid((len/settings.DIV_LENGTH) - 1.0, settings.SIGMOID_K);
+                }, [](auto& lhs, auto& rhs, auto& m) { std::cout << "updating growing rule\n"; });
 
             gamma.addRule(r1);
 
@@ -123,10 +132,9 @@ namespace CMA {
             g4.addNode({3, {Plant::Intermediate{}}});
             g4.addEdge(1, 3);
 
-            DGGML::WithRule<GT> r2;
-            r2.name("retraction").lhs(g3).rhs(g4)
-                    .with([](auto& lhs, auto& m) { std::cout << "retraction propensity\n"; return 0.5; })
-                    .where([](auto& lhs, auto& rhs, auto& m) { std::cout << "updating retraction rule\n"; });
+            DGGML::WithRule<GT> r2("retraction", g3, g4,
+                                   [](auto& lhs, auto& m) { std::cout << "retraction propensity\n"; return 0.5; },
+                                   [](auto& lhs, auto& rhs, auto& m) { std::cout << "updating retraction rule\n"; });
 
             gamma.addRule(r2);
 
@@ -152,10 +160,9 @@ namespace CMA {
             g6.addEdge(4, 5);
 
 
-            DGGML::WithRule<GT> r3;
-            r3.name("catastrophe").lhs(g5).rhs(g6)
-                    .with([](auto& lhs, auto& m) { std::cout << "catastrophe propensity\n"; return 7.5; })
-                    .where([](auto& lhs, auto& rhs, auto& m) { std::cout << "updating catastrophe rule\n"; });
+            DGGML::WithRule<GT> r3("catastrophe", g5, g6,
+                    [](auto& lhs, auto& m) { std::cout << "catastrophe propensity\n"; return 7.5; },
+                    [](auto& lhs, auto& rhs, auto& m) { std::cout << "updating catastrophe rule\n"; });
 
             gamma.addRule(r3);
 
@@ -175,12 +182,16 @@ namespace CMA {
 
             GT g8;
 
-            DGGML::WithRule<GT> r4;
-            r4.name("interaction").lhs(g7).rhs(g8)
-                    .with([](auto& lhs, auto& m) { return 7.5; })
-                    .where([](auto& lhs, auto& rhs, auto& m) { std::cout << "updating interaction rule\n"; });
+            DGGML::WithRule<GT> r4("interaction", g7, g8,
+                    [](auto& lhs, auto& m) { return 7.5; },
+                    [](auto& lhs, auto& rhs, auto& m) { std::cout << "updating interaction rule\n"; });
 
             gamma.addRule(r4);
+
+            DGGML::SolvingRule<GT> r5("solving_grow", g1, g1,
+                                      [](auto& lhs) {std::cout << "solving the grow rule\n"; return 2.0;});
+
+            gamma.addRule(r5);
 
             std::cout << "Generating the expanded cell complex\n";
             geoplex2D.init(settings.CELL_NX,
