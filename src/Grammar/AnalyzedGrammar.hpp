@@ -52,7 +52,7 @@ namespace DGGML
         std::set<std::pair<std::size_t, std::size_t>, PairComparator>
                 edge_set_left, edge_set_right, edge_set_create, edge_set_destroy;
 
-        //Rewrite() = default;
+        Rewrite() = default;
 
         Rewrite(GraphType& lhs_graph, GraphType& rhs_graph)
         {
@@ -197,7 +197,7 @@ namespace DGGML
                     bool found = false;
                     for(auto& [kj, cj] : unique_components)
                     {
-                        auto matches = YAGL::graph_isomorphism(cj, ci);
+                        auto matches = YAGL::graph_isomorphism(ci, cj);
                         if(!matches.empty()) found = true;
                         if(found)
                         {
@@ -230,7 +230,7 @@ namespace DGGML
                 {
                     std::cout << "component " << i << " of " << name << " is isomorphic to unique component " << rule_component[name][i] << "\n";
                     for(auto& [k1, k2] : ccuv_mappings[name][i])
-                        std::cout << "{ " << k1 << ", " << k2 << " }\n";
+                        std::cout << "{ " << k1 << " <- " << k2 << " }\n";
                     std::cout << "\n";
                 }
             }

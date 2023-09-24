@@ -109,12 +109,13 @@ namespace CMA {
             DGGML::WithRule<GT> r1("growing", g1, g2,
                                    [&](auto& lhs, auto& m)
                 {
-                    auto& node_i_data = lhs.findNode(m[0])->second.getData();
-                    auto& node_j_data = lhs.findNode(m[1])->second.getData();
-
-                    auto len = DGGML::calculate_distance(node_i_data.position, node_j_data.position);
-                    //double propensity = heaviside(len, settings.DIV_LENGTH);
-                    return 10*DGGML::sigmoid((len/settings.DIV_LENGTH) - 1.0, settings.SIGMOID_K);
+                    return 2.0;
+//                    auto& node_i_data = lhs.findNode(m[0])->second.getData();
+//                    auto& node_j_data = lhs.findNode(m[1])->second.getData();
+//
+//                    auto len = DGGML::calculate_distance(node_i_data.position, node_j_data.position);
+//                    //double propensity = heaviside(len, settings.DIV_LENGTH);
+//                    return 10*DGGML::sigmoid((len/settings.DIV_LENGTH) - 1.0, settings.SIGMOID_K);
                 }, [](auto& lhs, auto& rhs, auto& m) { std::cout << "updating growing rule\n"; });
 
             gamma.addRule(r1);

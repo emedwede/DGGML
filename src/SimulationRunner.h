@@ -56,6 +56,7 @@ namespace DGGML {
 
             std::cout << "Performing grammar analysis and building analyzed grammar data structure\n";
             grammar_analysis = AnalyzedGrammar<graph_type>(model->gamma);
+            std::cout << "Grammar analysis complete\n";
 
             //building rule map sets
             for(auto& [key, value] : model->geoplex2D.graph.getNodeSetRef())
@@ -89,7 +90,7 @@ namespace DGGML {
         }
 
         void run() {
-            return;
+            //return;
 
             for(auto i = 0; i <= 2; i++) {
                 auto countNd = std::count_if(rule_map.begin(), rule_map.end(),
@@ -115,7 +116,8 @@ namespace DGGML {
                     {
                         auto k = bucket.first;
                         auto start = std::chrono::high_resolution_clock::now();
-                        approximate_ssa(rule_system, rule_map, rule_instances, model, k, geocell_progress[k]);
+                        approximate_ssa(rule_system, grammar_analysis, rule_map, rule_instances, model, k, geocell_progress[k]);
+                        return;
                         auto stop = std::chrono::high_resolution_clock::now();
                         auto duration =
                                 std::chrono::duration_cast<std::chrono::milliseconds>(stop-start);
@@ -212,9 +214,13 @@ namespace DGGML {
         template<typename CellListType> //TODO: fix me the hacky template fix for a type we should know!
         void compute_all_rule_instances(CellListType& test_cell_list)
         {
-            for(auto& [name, rule] : model->gamma.stochastic_rules) {
+            for(auto& [name, rule] : grammar_analysis.with_rules) {
                 auto count = std::count_if(rule_instances.begin(), rule_instances.end(), [&](auto& iter) { return iter.second.name == name; });
-                std::cout << "So far we have found " << count << " instances of rule " << name << "\n";
+                std::cout << "So far we have found " << count << " instances of with rule " << name << "\n";
+            }
+            for(auto& [name, rule] : grammar_analysis.solving_rules) {
+                auto count = std::count_if(rule_instances.begin(), rule_instances.end(), [&](auto& iter) { return iter.second.name == name; });
+                std::cout << "So far we have found " << count << " instances of solving rule " << name << "\n";
             }
             // This is a recursive backtracking function, and it is memory efficient because it does a DFS (inorder traversal)
             // so only one vector is need for finding the result
@@ -269,6 +275,9 @@ namespace DGGML {
             {
                 for(auto& [name, pattern] : grammar_analysis.rule_component)
                 {
+                    //skip solving rules for now
+                    if(grammar_analysis.with_rules.find(name) == grammar_analysis.with_rules.end())
+                        continue;
                     int k = 0;
                     std::vector<std::size_t> result;
                     result.resize(pattern.size());
@@ -284,7 +293,7 @@ namespace DGGML {
             }
 
             auto sum  = 0;
-            for(auto& [name, rule] : model->gamma.stochastic_rules) {
+            for(auto& name : grammar_analysis.rule_names) {
                 auto count = std::count_if(rule_instances.begin(), rule_instances.end(), [&](auto& iter) { return iter.second.name == name; });
                 std::cout << "Rule " << name << " has " << count << " instances\n";
                 sum += count;

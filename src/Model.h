@@ -8,6 +8,7 @@ namespace DGGML {
         std::string name;
         GraphGrammarType gamma;
 
+        using graph_grammar_type = GraphGrammarType;
         using graph_type = typename GraphGrammarType::graph_type;
         using key_type = typename GraphGrammarType::key_type;
 
