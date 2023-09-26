@@ -195,6 +195,17 @@ void approximate_ssa(RuleSystem<T1>& rule_system, AnalyzedGrammar<T2>& grammar_a
             //Once we have updated the graph, we need to invalidated any old matches and then search for the
             //new ones!
 
+            //When it comes to match invalidation, removing a node, changing node type, or removing and edge
+            //are the actions that lead to invalidation. Why does removal not trigger a re-search? Because our
+            // pattern matcher would've already found any other sub pattern if it existed. Changing type, on the
+            // other hand, does trigger a research. Adding new a node or edge only opens up a new search path and also does.
+            //There are different apporaches to handle finding newly created matches. A potentially memory intensive
+            //method would be to remember all completed and partial search paths. My method is a bit more brute force,
+            //but only locally.
+
+            //------Idea------//
+            //adding/
+
             return;
             //zero out tau since a rule has fired
             tau = 0.0;

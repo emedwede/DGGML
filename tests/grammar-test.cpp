@@ -42,7 +42,16 @@ void define_model(DGGML::Grammar<GraphType>& gamma) {
     g2.addEdge(1, 3);
     g2.addEdge(3, 2);
 
-    DGGML::WithRule<GraphType> r1("with_growth", g1, g2, [](auto& lhs, auto& m) { return 2.0; }, [](auto& lhs, auto& rhs, auto& m) {});
+    DGGML::WithRule<GraphType> r1("with_growth", g1, g2,
+                                  [](auto& lhs, auto& m) { return 2.0; },
+                                  [](auto& lhs, auto& rhs, auto& m) {
+        std::cout << lhs[m[1]].position[0] << " " << lhs[m[1]].position[1] << " " << lhs[m[1]].position[2] << "\n";
+        std::cout << lhs[m[1]].type << "\n";
+        //auto& data1 = std::get<Plant::Intermediate>(lhs[m[1]].data);
+        std::cout << "doing some update calculations\n";
+        std::cout << lhs[m[2]].position[0] << " " << lhs[m[2]].position[1] << " " << lhs[m[2]].position[2] << "\n";
+        std::cout << lhs[m[2]].type << "\n";
+    });
     gamma.addRule(r1);
 
     GraphType g3;
@@ -174,7 +183,8 @@ TEST_CASE("Basic Rewrite Test", "[basic-rewrite-test]")
     rewrite.print_edge_sets("with_growth");
 
     std::vector<std::size_t> inst_keys; for(auto& [k, v] : m1) inst_keys.push_back(v);
-    auto lhs_match_copy = YAGL::induced_subgraph(system_graph, inst_keys);
+    auto lhs_match = YAGL::induced_subgraph(system_graph, inst_keys);
+    auto lhs_match_copy = lhs_match;
     auto rhs_rule_copy = gamma_analysis.with_rules.at("with_growth").rhs_graph;
 
     //simple key generator for newly created nodes, in the main code, something like it should be used to ensure that
@@ -182,7 +192,7 @@ TEST_CASE("Basic Rewrite Test", "[basic-rewrite-test]")
     KeyGenerator gen(200);
 
     for(auto& k : rewrite.node_set_destroy)
-        lhs_match_copy.removeNode(lhs_match_copy.findNode(k)->second);
+        lhs_match_copy.removeNode(lhs_match_copy.findNode(m1[ccuvm[k]])->second);
 
     std::cout << lhs_match_copy << "\n";
     REQUIRE(YAGL::connected_components(lhs_match_copy) == 1); //nothing has changed
@@ -239,10 +249,69 @@ TEST_CASE("Basic Rewrite Test", "[basic-rewrite-test]")
     }
     for(auto& [k1, k2] : rhs_vertex_map)
         std::cout << k1 << " " << k2 << "\n";
+    std::cout << lhs_match_copy << "\n";
     REQUIRE(YAGL::connected_components(lhs_match_copy) == 1); //two new edges added to connect up the nodes
 
     //TODO: I also need to do some work to make sure any nodes that change only type
     // are changed. This is because the node rewrite set currently finds set difference
-    // on keys not types
+    // on keys not types, below is a first attempt, but there may be a more efficient way
+    for(auto& [k, v] : lhs_match_copy.getNodeSetRef())
+        std::cout << v.getData().type << "\n";
+    for(auto& [k, _] : rhs_rule_copy.getNodeSetRef())
+    {
+        auto& v1 = lhs_match_copy[rhs_vertex_map[k]];
+
+        auto& v2 = rhs_rule_copy[k];
+
+        if(v1.type != v2.type)
+        {
+            v1.setData(v2.data);
+            //copy assignment doesn't work since it won't invoke updateing type
+            //v1.data = v2.data;
+        }
+    }
+    for(auto& [k, v] : lhs_match_copy.getNodeSetRef())
+        std::cout << v.getData().type << "\n";
+
+    //compose maps
+    decltype(ccuvm) h;
+    for(auto& [k1, v1] : ccuvm)
+    {
+        h[k1] = m1[v1];
+    }
+    for(auto& [k1, v1] : h)
+        std::cout << k1 << " --> " << v1 << "\n";
+    gamma_analysis.with_rules.at("with_growth").update(lhs_match, lhs_match_copy, h);//rhs_vertex_map);
+
+    std::cout << system_graph << "\n";
+    //update the system graph
+    for(auto& k : rewrite.node_set_destroy)
+        system_graph.removeNode(system_graph.findNode(m1[ccuvm[k]])->second);
+    std::cout << system_graph << "\n";
+    for(auto& [u, v] : rewrite.edge_set_destroy)
+        system_graph.removeEdge(m1[ccuvm[u]], m1[ccuvm[v]]);
+    std::cout << system_graph << "\n";
+
+    for(auto& [k, v] : lhs_match_copy.getNodeSetRef())
+    {
+        auto res = system_graph.findNode(k);
+        if(res != system_graph.node_list_end())
+        {
+            std::cout << "Node " << k << " was found\n";
+            //just update the data
+            res->second = v;
+        }
+        else
+        {
+            std::cout << "Node " << k << " was not found\n";
+            system_graph.addNode(v);
+        }
+    }
+    std::cout << system_graph << "\n";
+    for(auto& [u, v] : rewrite.edge_set_create)
+        system_graph.addEdge(rhs_vertex_map[u], rhs_vertex_map[v]);
+    std::cout << system_graph << "\n";
+    REQUIRE(YAGL::connected_components(system_graph) == 2);
+
 }
 
