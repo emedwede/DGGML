@@ -337,13 +337,10 @@ namespace DGGML {
         AnalyzedGrammar<graph_type> grammar_analysis;
 
         KeyGenerator<std::size_t> instance_key_gen;
-        struct RuleInstType {
-            std::string category;
-            std::string name;
-            std::vector<std::size_t> components;
-            key_type anchor;
-        };
-        std::map<std::size_t, RuleInstType> rule_instances;
+
+        //TODO: I think rule_maps could steal instances, especially since in this formulation,
+        // each instance exists in a shared memory state, the rule_instances map.
+        std::map<std::size_t, RuleInstType<key_type>> rule_instances;
         std::map<cplex_key_t, std::vector<rule_key_t>> rule_map;
         std::map<std::size_t, std::vector<typename ModelType::key_type>> ordering;
 

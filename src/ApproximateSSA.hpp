@@ -102,6 +102,7 @@ void approximate_ssa(RuleSystem<T1>& rule_system, AnalyzedGrammar<T2>& grammar_a
                     continue;
                 auto induced_graph = induce_from_set(rule_instances[r], rule_system, system_graph);
                 std::map<std::size_t, std::size_t> placeholder;
+
                 //using at, because the [] requires they map_type to be default constructible
                 auto rho = grammar_analysis.with_rules.at(inst.name).propensity(induced_graph, placeholder);
                 propensity_space.push_back({r,rho});

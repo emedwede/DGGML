@@ -153,6 +153,7 @@ namespace DGGML
 
         //storing the vertex mapping (connected component unique vertex mappings)
         std::map<std::string, std::vector<std::map<std::size_t, std::size_t>>> ccuv_mappings;
+        std::map<std::string, std::map<std::size_t, std::size_t>> rule_vertex_map;
 
         AnalyzedGrammar() = default;
 

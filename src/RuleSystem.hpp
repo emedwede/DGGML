@@ -7,8 +7,7 @@
 #include <iostream>
 #include <map>
 
-//TODO seperate rule system from plant grammar later 
-#include "PlantTypes.hpp"
+//TODO seperate rule system from plant grammar later
 #include "YAGL_Algorithms.hpp"
 #include "YAGL_Graph.hpp"
 
@@ -43,6 +42,14 @@ namespace DGGML
     };
 
     template <typename KeyType>
+    struct RuleInstType {
+        std::string category;
+        std::string name;
+        std::vector<std::size_t> components;
+        KeyType anchor;
+    };
+
+    template <typename KeyType>
     struct Instance 
     {
         using key_type = KeyType;
@@ -56,8 +63,8 @@ namespace DGGML
 
         Instance() {}
 
-        Instance(instance_type _match, Rule _type)
-            : match(_match), type(_type) 
+        Instance(instance_type _match, std::size_t _type)
+            : match(_match), type(_type)
         {
             anchor = match[0];    
         }
@@ -87,6 +94,7 @@ namespace DGGML
         using data_type = Instance<KeyType>;
         using pair_type = std::pair<data_type, key_type>;
         using gen_type = KeyGenerator<KeyType>;
+        //TODO: in the upgraded class, just use a map for container type
         using container_type = std::vector<std::pair<data_type, key_type>>;
         using index_type = std::unordered_map<key_type, std::size_t>;  
         using inverse_type = std::unordered_map<key_type, std::vector<key_type>>;
@@ -127,7 +135,9 @@ namespace DGGML
                     inverse_index[item] = {k};
             }
         }
-        
+
+        //TODO: Incorrect since I think it invalidates all matches a node participates in, but it doesn't
+        // remove those rule keys from the inverse index set for the other nodes that participate
         void invalidate(key_type k)
         {
             const auto& rules = inverse_index.find(k);
@@ -141,7 +151,7 @@ namespace DGGML
                         //but could be upgraded to allow key reclamation?
                         auto a = index[item];
                         auto b = matches.size()-1;
-                        std::swap(matches[a], matches[b]);  
+                        std::swap(matches[a], matches[b]);
                         std::swap(index[matches[a].second], index[matches[b].second]);
                         matches.pop_back();
                         index.erase(item);
@@ -151,7 +161,7 @@ namespace DGGML
             }
         }
         
-        
+        //TODO: also may not be working correctly
         void invalidate_rule(key_type k)
         {
             auto match = matches[index[k]].first; 
@@ -174,8 +184,11 @@ namespace DGGML
             std::swap(index[matches[a].second], index[matches[b].second]);
             matches.pop_back();
             index.erase(k);
-            return;
+
+            //TODO: first problem is we are looking up an inverse index of a rule not a node key
             const auto& rules = inverse_index.find(k);
+            std::cout << "here\n";
+            //TODO: see above, this check is bugged and only works if rule key is the same a node key
             if(rules != inverse_index.end())
             {
                 for(const auto& item : rules->second)
@@ -192,6 +205,7 @@ namespace DGGML
                         index.erase(item);
                     }
                 }
+                std::cout << "here\n";
                 inverse_index.erase(k);
             }
         }
