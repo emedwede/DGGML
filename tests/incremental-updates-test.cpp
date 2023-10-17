@@ -329,6 +329,9 @@ TEST_CASE("Incremental Update Test", "[incremental-update-test]")
     for(auto id : edge_component_invalidations) std::cout << id << " ";
     std::cout << "\n\n";
 
+    auto& rw = gamma_analysis.with_rewrites.at("with_interaction");
+    rw.print_node_sets("mt");
+    rw.print_edge_sets("mt");
 
     //Say we selected a rule to fire and we had to modify the system_graph by
     //adding node 200

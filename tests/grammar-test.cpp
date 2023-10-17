@@ -62,6 +62,27 @@ void define_model(DGGML::Grammar<GraphType>& gamma) {
 
     DGGML::SolvingRule<GraphType> r2("solving_growth", g3, g3,[](auto& lhs) {return 2.0;});
     gamma.addRule(r2);
+
+    GraphType g4;
+    g4.addNode({1, {Plant::Negative{}}});
+    g4.addNode({2, {Plant::Intermediate{}}});
+    g4.addNode({3, {Plant::Positive{}}});
+    g4.addEdge(1, 2);
+    g4.addEdge(2, 3);
+
+    g4.addNode({4, {Plant::Negative{}}});
+    g4.addNode({5, {Plant::Intermediate{}}});
+    g4.addNode({6, {Plant::Positive{}}});
+    g4.addEdge(4, 5);
+    g4.addEdge(5, 6);
+
+    GraphType g5;
+
+    DGGML::WithRule<GraphType> r3("with_interaction", g4, g5,
+                                  [](auto& lhs, auto& m) { return 0.0; },
+                                  [](auto& lhs, auto& rhs, auto& m) {});
+    gamma.addRule(r3);
+
 }
 
 //initializes a simple MT system for testing
@@ -124,7 +145,7 @@ TEST_CASE("Basic Grammar Analysis Test", "[basic-grammar-analysis-test]")
     REQUIRE(gamma_analysis.with_rules.at("with_growth").rhs_graph.numNodes() == 3);
     REQUIRE(gamma_analysis.with_rules.at("with_growth").rhs_graph.numEdges() == 2);
 
-    REQUIRE(gamma_analysis.unique_components.size() == 1);
+    REQUIRE(gamma_analysis.unique_components.size() == 2);
     REQUIRE(gamma_analysis.with_rewrites.at("with_growth").node_set_create.size() == 1);
     REQUIRE(gamma_analysis.with_rewrites.at("with_growth").node_set_destroy.empty());
     REQUIRE(gamma_analysis.with_rewrites.at("with_growth").edge_set_create.size() == 2);
@@ -143,12 +164,14 @@ void perform_rewrite(DGGML::RuleInstType<std::size_t>& inst,
 
     std::string rname = inst.name;
 
+    //construct a vertex map for the lhs to the rule instance
     std::map<std::size_t, std::size_t> lhs_vertex_map;
     std::vector<std::size_t> left, mid, right;
     for(auto& m : gamma_analysis.ccuv_mappings[rname]) {
         for (auto &[k, v]: m) {
             left.push_back(k);
             mid.push_back(v);
+            std::cout << k << " " << v << "\n";
         }
     }
 
@@ -156,7 +179,7 @@ void perform_rewrite(DGGML::RuleInstType<std::size_t>& inst,
     {
         for(auto& k : component_match_set[c].match)
         {
-            right.push_back(k);
+            right.push_back(k); std::cout << k << "\n";
         }
     }
     REQUIRE((right.size() == mid.size() && mid.size() == left.size()));
@@ -497,3 +520,108 @@ TEST_CASE("Basic Rewrite Test", "[basic-rewrite-test]")
 
 }
 
+TEST_CASE("Interaction Rewrite Test", "[basic-rewrite-test]")
+{
+    std::cout << "\n" << "Running interaction rewrite test" << "\n";
+    //build grammar and analyze it
+    DGGML::Grammar<GraphType> gamma;
+    define_model(gamma);
+    DGGML::AnalyzedGrammar<GraphType> gamma_analysis(gamma);
+    gamma.print();
+
+    //initialize the system graph
+    GraphType system_graph;
+    initialize_system(system_graph);
+    REQUIRE(system_graph.numNodes() == 6);
+    REQUIRE(system_graph.numEdges() == 4);
+    REQUIRE(YAGL::connected_components(system_graph) == 2);
+
+    //find matches
+    auto c1 = gamma_analysis.unique_components[0];
+    std::cout << c1.numNodes() << "\n";
+    auto end_matches = YAGL::subgraph_isomorphism2(c1, system_graph);
+    REQUIRE(end_matches.size() == 2);
+    auto c2 = gamma_analysis.unique_components[1];
+    std::cout << c2.numNodes() << "\n";
+    auto mt_matches = YAGL::subgraph_isomorphism2(c2, system_graph);
+    REQUIRE(mt_matches.size() == 2);
+
+    std::map<std::size_t, DGGML::Instance<std::size_t>> component_match_set;
+    int k = 0;
+    for(auto& item : end_matches)
+    {
+        std::vector<std::size_t> match;
+        for(auto& [key, value] : item)
+        {
+            match.emplace_back(value);
+        }
+        DGGML::Instance<std::size_t> inst;
+        inst.match = match;
+        inst.type = 0;
+        inst.anchor = match[0];
+        component_match_set.insert({k++, inst});
+        //rule_system.push_back(inst);
+    }
+    for(auto& item : mt_matches)
+    {
+        std::vector<std::size_t> match;
+        for(auto& [key, value] : item)
+        {
+            match.emplace_back(value);
+        }
+        DGGML::Instance<std::size_t> inst;
+        inst.match = match;
+        inst.type = 1;
+        inst.anchor = match[0];
+        component_match_set.insert({k++, inst});
+        //rule_system.push_back(inst);
+    }
+
+    //building the rule instances
+    int kk = 0;
+    std::map<std::size_t, DGGML::RuleInstType<std::size_t>> rule_instances;
+    for(int i = 0; i < component_match_set.size(); i++)
+    {
+        if(component_match_set[i].type == 0) {
+            rule_instances[kk];
+            rule_instances[kk].name = "with_growth";
+            rule_instances[kk].category = "stochastic";
+            rule_instances[kk].components.push_back(i);
+            rule_instances[kk].anchor = component_match_set[i].anchor;
+            kk++;
+        }
+        for(int j = 0; j < component_match_set.size(); j++)
+        {
+            if(j <= i ) continue;
+            auto& comp1 = component_match_set[i];
+            auto& comp2 = component_match_set[j];
+            auto& p1 = system_graph.findNode(comp1.anchor)->second.getData().position;
+            auto& p2 = system_graph.findNode(comp2.anchor)->second.getData().position;
+            //auto d = DGGML::calculate_distance(p1, p2);
+            if(comp1.type == 1 && comp2.type == 1)// && d <= 1.0)
+            {
+                rule_instances[kk];
+                rule_instances[kk].name = "with_interaction";
+                rule_instances[kk].category = "stochastic";
+                rule_instances[kk].components.push_back(i);
+                rule_instances[kk].components.push_back(j);
+                rule_instances[kk].anchor = comp1.anchor;
+                kk++;
+            }
+        }
+    }
+
+    //simple key generator for newly created nodes, in the main code, something like it should be used to ensure that
+    //keys are always generated uniquely in all phases of the code
+    DGGML::KeyGenerator<std::size_t> gen(200);
+    std::cout << "Here\n";
+    for(auto& r : rule_instances) {
+        std::cout << r.second.name << ": { ";
+        for (auto &item: r.second.components) std::cout << item << " ";
+        std::cout << "}\n";
+    }
+    DGGML::perform_rewrite(rule_instances[1], component_match_set, gen, gamma_analysis, system_graph);
+    std::cout << system_graph << "\n";
+    std::cout << YAGL::connected_components(system_graph) << "\n";
+    //REQUIRE(system_graph.numNodes() == 0);
+}
