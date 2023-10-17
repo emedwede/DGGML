@@ -48,7 +48,7 @@ void define_model(DGGML::Grammar<GraphType>& gamma) {
                                   [](auto& lhs, auto& m) { return 2.0; },
                                   [](auto& lhs, auto& rhs, auto& m1, auto& m2) {
         auto d = DGGML::calculate_distance(lhs[m1[1]].position, lhs[m1[2]].position);
-        std::cout << d << "\n";
+        //std::cout << d << "\n";
         //auto& data1 = std::get<Plant::Intermediate>(lhs[m[1]].data);
         std::cout << "doing some update calculations\n";
         rhs[m2[3]].position[0] = (lhs[m1[2]].position[0] - lhs[m1[1]].position[0])/2;

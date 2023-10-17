@@ -10,6 +10,7 @@
 //TODO seperate rule system from plant grammar later
 #include "YAGL_Algorithms.hpp"
 #include "YAGL_Graph.hpp"
+#include "AnalyzedGrammar.hpp"
 
 namespace DGGML
 {
@@ -246,13 +247,54 @@ namespace DGGML
         };
     };
 
+    struct RewriteUpdates
+    {
+        std::set<std::size_t> node_removals, node_updates;
+        using cmp = struct PairComparator {
+            using pair_t = std::pair<std::size_t,std::size_t>;
+            bool operator()(const pair_t& a, const pair_t& b) const {
+                int min_a = std::min(a.first, a.second);
+                int max_a = std::max(a.first, a.second);
+
+                int min_b = std::min(b.first, b.second);
+                int max_b = std::max(b.first, b.second);
+
+                if (min_a < min_b) {
+                    return true;
+                } else if (min_a > min_b) {
+                    return false;
+                } else {
+                    return max_a < max_b;
+                }
+            }
+        };
+        std::set<std::pair<std::size_t, std::size_t>, PairComparator> edge_removals, edge_updates;
+
+        void print()
+        {
+            std::cout << "Nodes to invalidate: { ";
+            for(auto& item : node_removals) std::cout << item << " ";
+            std::cout << "}\n";
+            std::cout << "Edges to invalidate: { ";
+            for(auto& item : edge_removals) std::cout << "( " << item.first << ", " << item.second  << " ) ";
+            std::cout << "}\n";
+            std::cout << "Nodes to validate: { ";
+            for(auto& item : node_updates) std::cout << item << " ";
+            std::cout << "}\n";
+            std::cout << "Edges to validate: { ";
+            for(auto& item : edge_updates) std::cout << "( " << item.first << ", " << item.second  << " ) ";
+            std::cout << "}\n";
+        }
+    };
+
     template <typename GraphType>
-    void perform_rewrite(DGGML::RuleInstType<std::size_t>& inst,
+    RewriteUpdates perform_rewrite(DGGML::RuleInstType<std::size_t>& inst,
                          std::map<std::size_t, DGGML::Instance<std::size_t>>& component_match_set,
                          KeyGenerator<std::size_t>& gen,
                          DGGML::AnalyzedGrammar<GraphType>& gamma_analysis, GraphType& system_graph)
     {
 
+        RewriteUpdates changes;
         std::string rname = inst.name;
 
         //construct a vertex map for the lhs to the rule instance
@@ -295,6 +337,7 @@ namespace DGGML
         {
             rhs_vertex_map.erase(k);
             lhs_match_copy.removeNode(lhs_match_copy.findNode(lhs_vertex_map[k])->second);
+            changes.node_removals.insert(lhs_vertex_map[k]);
         }
 
         for(auto& k : rewrite.node_set_create)
@@ -304,24 +347,25 @@ namespace DGGML
             decltype(n) node(gen.get_key(), n.getData());
             lhs_match_copy.addNode(node);
             rhs_vertex_map[k] = node.getKey();
+            changes.node_updates.insert(rhs_vertex_map[k]);
         }
 
         for(auto& [u, v] : rewrite.edge_set_destroy)
         {
             //need to use the removal list edges and map those to the correct edges for the match
             lhs_match_copy.removeEdge(lhs_vertex_map[u], lhs_vertex_map[v]);
+            changes.edge_removals.insert({lhs_vertex_map[u], lhs_vertex_map[v]});
         }
 
         // I think I need to have a vertex mapping for the rhs, which is incomplete until
         // all new nodes are created since their keys are uniquely generated
-        for(auto& [u, v] : rewrite.edge_set_create)
+        for(auto& [u, v] : rewrite.edge_set_create) {
             lhs_match_copy.addEdge(rhs_vertex_map[u], rhs_vertex_map[v]);
-
+            changes.edge_updates.insert({rhs_vertex_map[u], rhs_vertex_map[v]});
+        }
         //TODO: I also need to do some work to make sure any nodes that change only type
         // are changed. This is because the node rewrite set currently finds set difference
         // on keys not types, below is a first attempt, but there may be a more efficient way
-        for(auto& [k, v] : lhs_match_copy.getNodeSetRef())
-            std::cout << v.getData().type << "\n";
         for(auto& [k, _] : rhs_rule_copy.getNodeSetRef())
         {
             auto& v1 = lhs_match_copy[rhs_vertex_map[k]];
@@ -331,6 +375,9 @@ namespace DGGML
             if(v1.type != v2.type)
             {
                 v1.setData(v2.data);
+                //need to add both since rules containing it are invalid, and it's also a candidate since it's new
+                changes.node_removals.insert(rhs_vertex_map[k]);
+                changes.node_updates.insert(rhs_vertex_map[k]);
                 //copy assignment doesn't work since it won't invoke updating type
                 //v1.data = v2.data;
             }
@@ -357,6 +404,8 @@ namespace DGGML
 
         for(auto& [u, v] : rewrite.edge_set_create)
             system_graph.addEdge(rhs_vertex_map[u], rhs_vertex_map[v]);
+
+        return changes;
     }
 } //end namespace DGGML
 

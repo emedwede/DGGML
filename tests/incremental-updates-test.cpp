@@ -35,7 +35,15 @@ void define_model(DGGML::Grammar<GraphType>& gamma) {
 
     DGGML::WithRule<GraphType> r1("with_growth", g1, g2,
                                   [](auto& lhs, auto& m) { return 0.0; },
-                                  [](auto& lhs, auto& rhs, auto& m1, auto& m2) {});
+                                  [](auto& lhs, auto& rhs, auto& m1, auto& m2) {
+                                      auto d = DGGML::calculate_distance(lhs[m1[1]].position, lhs[m1[2]].position);
+                                      //std::cout << d << "\n";
+                                      //auto& data1 = std::get<Plant::Intermediate>(lhs[m[1]].data);
+                                      std::cout << "doing some update calculations\n";
+                                      rhs[m2[3]].position[0] = (lhs[m1[2]].position[0] + lhs[m1[1]].position[0])/2.0;
+                                      rhs[m2[3]].position[1] = (lhs[m1[2]].position[1] + lhs[m1[1]].position[1])/2.0;
+                                      rhs[m2[3]].position[2] = (lhs[m1[2]].position[2] + lhs[m1[1]].position[2])/2.0;
+                                  });
     gamma.addRule(r1);
 
     GraphType g3;
@@ -102,14 +110,14 @@ void initialize_system(GraphType& system_graph)
     system_graph.addEdge(107, 108);
 }
 
-void save_state(GraphType& system_graph, DGGML::ExpandedComplex2D<>& grid)
+void save_state(GraphType& system_graph, DGGML::ExpandedComplex2D<>& grid, std::size_t step)
 {
     DGGML::VtkFileWriter<typename DGGML::ExpandedComplex2D<>::types::graph_type> writer;
     writer.save(grid.getGraph(), "incremental_cell_complex");
     DGGML::GridFileWriter grid_writer;
     grid_writer.save({grid.reaction_grid, grid.dim_label}, "incremental_grid");
     DGGML::VtkFileWriter<GraphType> vtk_writer;
-    vtk_writer.save(system_graph, "incremental_graph");
+    vtk_writer.save(system_graph, "incremental_graph"+std::to_string(step));
 }
 
 //TODO: start with simple single component rules and then do multi-component tests later
@@ -130,7 +138,7 @@ TEST_CASE("Incremental Update Test", "[incremental-update-test]")
     initialize_system(system_graph);
 
     DGGML::ExpandedComplex2D<> grid(1, 1, 3.0, 3.0, false, 1.0);
-    save_state(system_graph, grid);
+    save_state(system_graph, grid, 0);
 
     //find matches
     auto c1 = gamma_analysis.unique_components[0];
@@ -215,7 +223,7 @@ TEST_CASE("Incremental Update Test", "[incremental-update-test]")
     {
         if(component_match_set[i].type == 0) {
             rule_instances[kk];
-            rule_instances[kk].name = "with_rule";
+            rule_instances[kk].name = "with_growth";
             rule_instances[kk].category = "stochastic";
             rule_instances[kk].components.push_back(i);
             rule_instances[kk].anchor = component_match_set[i].anchor;
@@ -232,7 +240,7 @@ TEST_CASE("Incremental Update Test", "[incremental-update-test]")
             if(comp1.type == 1 && comp2.type == 1 && d <= 1.0)
             {
                 rule_instances[kk];
-                rule_instances[kk].name = "incremental_rule";
+                rule_instances[kk].name = "with_interaction";
                 rule_instances[kk].category = "stochastic";
                 rule_instances[kk].components.push_back(i);
                 rule_instances[kk].components.push_back(j);
@@ -256,6 +264,15 @@ TEST_CASE("Incremental Update Test", "[incremental-update-test]")
         }
         std::cout << "\n";
     }
+
+    DGGML::KeyGenerator<std::size_t> gen(300);
+    auto changes = DGGML::perform_rewrite(rule_instances[0], component_match_set, gen, gamma_analysis, system_graph);
+    save_state(system_graph, grid, 1);
+    changes.print();
+    //invalidations need to be rules or nodes that change type as well, we need to generate a list of things added and
+    //removed from the rewrite
+
+    return;
     // hierarchy: (geocells) -> rule instances -> components instances -> nodes
     //Test: remove matches with node 101
     //slow, but easy case to code - assume we know nothing and must search everywhere
