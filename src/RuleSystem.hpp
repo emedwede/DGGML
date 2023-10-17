@@ -337,7 +337,7 @@ namespace DGGML
         }
 
         //I think we actually need a map for the lhs, and the rhs
-        gamma_analysis.with_rules.at(rname).update(lhs_match, lhs_match_copy, lhs_vertex_map); //h
+        gamma_analysis.with_rules.at(rname).update(lhs_match, lhs_match_copy, lhs_vertex_map, rhs_vertex_map); //h
 
         //update the system graph
         for(auto& k : rewrite.node_set_destroy)

@@ -11,6 +11,7 @@
 #include "Grammar.h"
 #include "AnalyzedGrammar.hpp"
 #include "RuleSystem.hpp"
+#include "MathUtils.hpp"
 
 #include <unordered_map> 
 
@@ -45,13 +46,14 @@ void define_model(DGGML::Grammar<GraphType>& gamma) {
 
     DGGML::WithRule<GraphType> r1("with_growth", g1, g2,
                                   [](auto& lhs, auto& m) { return 2.0; },
-                                  [](auto& lhs, auto& rhs, auto& m) {
-        std::cout << lhs[m[1]].position[0] << " " << lhs[m[1]].position[1] << " " << lhs[m[1]].position[2] << "\n";
-        std::cout << lhs[m[1]].type << "\n";
+                                  [](auto& lhs, auto& rhs, auto& m1, auto& m2) {
+        auto d = DGGML::calculate_distance(lhs[m1[1]].position, lhs[m1[2]].position);
+        std::cout << d << "\n";
         //auto& data1 = std::get<Plant::Intermediate>(lhs[m[1]].data);
         std::cout << "doing some update calculations\n";
-        std::cout << lhs[m[2]].position[0] << " " << lhs[m[2]].position[1] << " " << lhs[m[2]].position[2] << "\n";
-        std::cout << lhs[m[2]].type << "\n";
+        rhs[m2[3]].position[0] = (lhs[m1[2]].position[0] - lhs[m1[1]].position[0])/2;
+        rhs[m2[3]].position[1] = (lhs[m1[2]].position[1] - lhs[m1[1]].position[1])/2;
+        rhs[m2[3]].position[2] = (lhs[m1[2]].position[2] - lhs[m1[1]].position[2])/2;
     });
     gamma.addRule(r1);
 
@@ -80,7 +82,7 @@ void define_model(DGGML::Grammar<GraphType>& gamma) {
 
     DGGML::WithRule<GraphType> r3("with_interaction", g4, g5,
                                   [](auto& lhs, auto& m) { return 0.0; },
-                                  [](auto& lhs, auto& rhs, auto& m) {});
+                                  [](auto& lhs, auto& rhs, auto& m1, auto& m2) {});
     gamma.addRule(r3);
 
 }
@@ -271,7 +273,7 @@ void perform_rewrite(DGGML::RuleInstType<std::size_t>& inst,
         std::cout << v.getData().type << "\n";
 
     //I think we actually need a map for the lhs, and the rhs
-    gamma_analysis.with_rules.at(rname).update(lhs_match, lhs_match_copy, lhs_vertex_map); //h
+    gamma_analysis.with_rules.at(rname).update(lhs_match, lhs_match_copy, lhs_vertex_map, rhs_vertex_map); //h
 
     std::cout << system_graph << "\n";
     //update the system graph

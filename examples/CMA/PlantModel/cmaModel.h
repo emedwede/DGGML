@@ -107,7 +107,7 @@ namespace CMA {
             //TODO: I should make it so that any solving/propensity functions that need access to parameters
             // are actually passed as functors with states!
             DGGML::WithRule<GT> r1("growing", g1, g2,
-                                   [&](auto& lhs, auto& m)
+                                   [&](auto& lhs, auto& m1, auto& m2)
                 {
                     return 2.0;
 //                    auto& node_i_data = lhs.findNode(m[0])->second.getData();
@@ -135,7 +135,7 @@ namespace CMA {
 
             DGGML::WithRule<GT> r2("retraction", g3, g4,
                                    [](auto& lhs, auto& m) { std::cout << "retraction propensity\n"; return 0.5; },
-                                   [](auto& lhs, auto& rhs, auto& m) { std::cout << "updating retraction rule\n"; });
+                                   [](auto& lhs, auto& rhs, auto& m1, auto& m2) { std::cout << "updating retraction rule\n"; });
 
             gamma.addRule(r2);
 
@@ -163,7 +163,7 @@ namespace CMA {
 
             DGGML::WithRule<GT> r3("catastrophe", g5, g6,
                     [](auto& lhs, auto& m) { std::cout << "catastrophe propensity\n"; return 7.5; },
-                    [](auto& lhs, auto& rhs, auto& m) { std::cout << "updating catastrophe rule\n"; });
+                    [](auto& lhs, auto& rhs, auto& m1, auto& m2) { std::cout << "updating catastrophe rule\n"; });
 
             gamma.addRule(r3);
 
@@ -185,7 +185,7 @@ namespace CMA {
 
             DGGML::WithRule<GT> r4("interaction", g7, g8,
                     [](auto& lhs, auto& m) { return 7.5; },
-                    [](auto& lhs, auto& rhs, auto& m) { std::cout << "updating interaction rule\n"; });
+                    [](auto& lhs, auto& rhs, auto& m1, auto& m2) { std::cout << "updating interaction rule\n"; });
 
             gamma.addRule(r4);
 

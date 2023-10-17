@@ -29,7 +29,7 @@ namespace DGGML {
     {
         using GraphMapType = std::map<typename GraphType::key_type, typename GraphType::key_type>;
         using propensity_t = std::function<double(GraphType& lhs, GraphMapType& m)>;
-        using update_t =  std::function<void(GraphType& lhs, GraphType& rhs, GraphMapType& m)>;
+        using update_t =  std::function<void(GraphType& lhs, GraphType& rhs, GraphMapType& m1, GraphMapType& m2)>;
 
         propensity_t propensity;
         update_t update;

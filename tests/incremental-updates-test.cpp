@@ -35,7 +35,7 @@ void define_model(DGGML::Grammar<GraphType>& gamma) {
 
     DGGML::WithRule<GraphType> r1("with_growth", g1, g2,
                                   [](auto& lhs, auto& m) { return 0.0; },
-                                  [](auto& lhs, auto& rhs, auto& m) {});
+                                  [](auto& lhs, auto& rhs, auto& m1, auto& m2) {});
     gamma.addRule(r1);
 
     GraphType g3;
@@ -56,7 +56,7 @@ void define_model(DGGML::Grammar<GraphType>& gamma) {
 
     DGGML::WithRule<GraphType> r2("with_interaction", g3, g4,
                                   [](auto& lhs, auto& m) { return 0.0; },
-                                  [](auto& lhs, auto& rhs, auto& m) {});
+                                  [](auto& lhs, auto& rhs, auto& m1, auto& m2) {});
     gamma.addRule(r2);
 }
 
