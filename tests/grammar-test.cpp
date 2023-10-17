@@ -10,6 +10,7 @@
 #include "../examples/CMA/PlantModel/PlantTypes.hpp"
 #include "Grammar.h"
 #include "AnalyzedGrammar.hpp"
+#include "RuleSystem.hpp"
 
 #include <unordered_map> 
 
@@ -132,92 +133,63 @@ TEST_CASE("Basic Grammar Analysis Test", "[basic-grammar-analysis-test]")
 
 }
 
-TEST_CASE("Basic Rewrite Test", "[basic-rewrite-test]")
+//testable version
+void perform_rewrite(DGGML::RuleInstType<std::size_t>& inst,
+                      std::map<std::size_t, DGGML::Instance<std::size_t>>& component_match_set,
+                      KeyGenerator& gen,
+                     DGGML::AnalyzedGrammar<GraphType>& gamma_analysis, GraphType& system_graph)
 {
-    std::cout << "\n" << "Running basic rewrite test" << "\n";
-    //build grammar and analyze it
-    DGGML::Grammar<GraphType> gamma;
-    define_model(gamma);
-    DGGML::AnalyzedGrammar<GraphType> gamma_analysis(gamma);
-    gamma.print();
+    std::cout << "\n" << "Beginning rewrite code ..." << "\n";
 
-    //initialize the system graph
-    GraphType system_graph;
-    initialize_system(system_graph);
-    REQUIRE(system_graph.numNodes() == 6);
-    REQUIRE(system_graph.numEdges() == 4);
-    REQUIRE(YAGL::connected_components(system_graph) == 2);
+    std::string rname = inst.name;
 
-    //only one unique component, so we can do this
-    auto c = gamma_analysis.unique_components.begin()->second;
-    auto results = YAGL::subgraph_isomorphism2(c, system_graph);
-    REQUIRE(results.size() == 2);
-
-    //verify the matches by output
-    for(auto i = 0; i < results.size(); i++)
-    {
-        std::cout << "\nMatch " << i << ":\n";
-        for(auto& [k1, k2] : results[i])
-            std::cout << "{ " << k1 << " <- " << k2 << " }\n";
+    std::map<std::size_t, std::size_t> lhs_vertex_map;
+    std::vector<std::size_t> left, mid, right;
+    for(auto& m : gamma_analysis.ccuv_mappings[rname]) {
+        for (auto &[k, v]: m) {
+            left.push_back(k);
+            mid.push_back(v);
+        }
     }
 
-    //we'll select the first match to use for our rewrite
-    auto m1 = results[0];
-    auto ccuvm = gamma_analysis.ccuv_mappings["with_growth"][0];
+    for(auto& c : inst.components)
+    {
+        for(auto& k : component_match_set[c].match)
+        {
+            right.push_back(k);
+        }
+    }
+    REQUIRE((right.size() == mid.size() && mid.size() == left.size()));
 
     //print out the mapping info, so we know how a lhs numbering maps to an instance numbering
     std::cout << "\nMappings: { LHS Key -> Minimal Component Key -> Rule Instance Key }\n";
-    for(auto& [k, v] : gamma_analysis.lhs_connected_components.at("with_growth"))
+    for(auto i = 0; i < left.size(); i++)
     {
-        for(auto& [id, n] : v.getNodeSetRef())
-        {
-            std::cout << "{ " << id << " -> " << ccuvm[id] << " -> " << m1[ccuvm[id]] << " }\n";
-        }
+        lhs_vertex_map[left[i]] = right[i];
+        std::cout << "{ " << left[i] << " -> " << mid[i] << " -> " << right[i] << " }\n";
     }
 
-    std::cout << "\n" << "Beginning rewrite code ..." << "\n";
-
-    auto& rewrite = gamma_analysis.with_rewrites.at("with_growth");
-    rewrite.print_node_sets("with_growth");
+    auto& rewrite = gamma_analysis.with_rewrites.at(rname);
+    rewrite.print_node_sets(rname);
     std::cout << "\n";
-    rewrite.print_edge_sets("with_growth");
+    rewrite.print_edge_sets(rname);
 
-    std::vector<std::size_t> inst_keys; for(auto& [k, v] : m1) inst_keys.push_back(v);
-    auto lhs_match = YAGL::induced_subgraph(system_graph, inst_keys);
+    auto lhs_match = YAGL::induced_subgraph(system_graph, right);
     auto lhs_match_copy = lhs_match;
-    auto rhs_rule_copy = gamma_analysis.with_rules.at("with_growth").rhs_graph;
+    auto rhs_rule_copy = gamma_analysis.with_rules.at(rname).rhs_graph;
 
-    //simple key generator for newly created nodes, in the main code, something like it should be used to ensure that
-    //keys are always generated uniquely in all phases of the code
-    KeyGenerator gen(200);
+    //we can build rhs of the vertex map by making a copy of the lhs and deleting
+    auto rhs_vertex_map = lhs_vertex_map;
 
     for(auto& k : rewrite.node_set_destroy)
-        lhs_match_copy.removeNode(lhs_match_copy.findNode(m1[ccuvm[k]])->second);
+    {
+        rhs_vertex_map.erase(k);
+        lhs_match_copy.removeNode(lhs_match_copy.findNode(lhs_vertex_map[k])->second);
+    }
 
     std::cout << lhs_match_copy << "\n";
     REQUIRE(YAGL::connected_components(lhs_match_copy) == 1); //nothing has changed
-
-    decltype(ccuvm) rhs_vertex_map;
-
-    //hacky way to build, start with what's left after removal, and add in what's next
-    for(auto& [k, v] : lhs_match_copy.getNodeSetRef()) {
-        for(auto& item : m1) {
-            if (item.second == k)
-            {
-                for(auto& jtem: ccuvm)
-                {
-                    if(jtem.second == item.first)
-                    {
-                        rhs_vertex_map[jtem.first] = k;
-                        break;
-                    }
-                }
-                break;
-            }
-        }
-    }
-    for(auto& [k1, k2] : rhs_vertex_map)
-        std::cout << k1 << " " << k2 << "\n";
+    REQUIRE(rhs_vertex_map.size() == 2);
 
     for(auto& k : rewrite.node_set_create)
     {
@@ -229,6 +201,7 @@ TEST_CASE("Basic Rewrite Test", "[basic-rewrite-test]")
     }
     std::cout << lhs_match_copy << "\n";
     REQUIRE(YAGL::connected_components(lhs_match_copy) == 2); //new node added
+    REQUIRE(rhs_vertex_map.size() == 3);
 
     for(auto& [k1, k2] : rhs_vertex_map)
         std::cout << k1 << " " << k2 << "\n";
@@ -236,7 +209,7 @@ TEST_CASE("Basic Rewrite Test", "[basic-rewrite-test]")
     for(auto& [u, v] : rewrite.edge_set_destroy)
     {
         //need to use the removal list edges and map those to the correct edges for the match
-        lhs_match_copy.removeEdge(m1[ccuvm[u]], m1[ccuvm[v]]);
+        lhs_match_copy.removeEdge(lhs_vertex_map[u], lhs_vertex_map[v]);
     }
     std::cout << lhs_match_copy << "\n";
     REQUIRE(YAGL::connected_components(lhs_match_copy) == 3); //edge removed => 3 disconnected nodes
@@ -266,30 +239,24 @@ TEST_CASE("Basic Rewrite Test", "[basic-rewrite-test]")
         if(v1.type != v2.type)
         {
             v1.setData(v2.data);
-            //copy assignment doesn't work since it won't invoke updateing type
+            //copy assignment doesn't work since it won't invoke updating type
             //v1.data = v2.data;
         }
     }
+    std::cout << "Here\n";
     for(auto& [k, v] : lhs_match_copy.getNodeSetRef())
         std::cout << v.getData().type << "\n";
 
-    //compose maps
-    decltype(ccuvm) h;
-    for(auto& [k1, v1] : ccuvm)
-    {
-        h[k1] = m1[v1];
-    }
-    for(auto& [k1, v1] : h)
-        std::cout << k1 << " --> " << v1 << "\n";
-    gamma_analysis.with_rules.at("with_growth").update(lhs_match, lhs_match_copy, h);//rhs_vertex_map);
+    //I think we actually need a map for the lhs, and the rhs
+    gamma_analysis.with_rules.at(rname).update(lhs_match, lhs_match_copy, lhs_vertex_map); //h
 
     std::cout << system_graph << "\n";
     //update the system graph
     for(auto& k : rewrite.node_set_destroy)
-        system_graph.removeNode(system_graph.findNode(m1[ccuvm[k]])->second);
+        system_graph.removeNode(system_graph.findNode(lhs_vertex_map[k])->second);
     std::cout << system_graph << "\n";
     for(auto& [u, v] : rewrite.edge_set_destroy)
-        system_graph.removeEdge(m1[ccuvm[u]], m1[ccuvm[v]]);
+        system_graph.removeEdge(lhs_vertex_map[u], lhs_vertex_map[v]);
     std::cout << system_graph << "\n";
 
     for(auto& [k, v] : lhs_match_copy.getNodeSetRef())
@@ -312,6 +279,221 @@ TEST_CASE("Basic Rewrite Test", "[basic-rewrite-test]")
         system_graph.addEdge(rhs_vertex_map[u], rhs_vertex_map[v]);
     std::cout << system_graph << "\n";
     REQUIRE(YAGL::connected_components(system_graph) == 2);
+}
+
+TEST_CASE("Basic Rewrite Test", "[basic-rewrite-test]")
+{
+    std::cout << "\n" << "Running basic rewrite test" << "\n";
+    //build grammar and analyze it
+    DGGML::Grammar<GraphType> gamma;
+    define_model(gamma);
+    DGGML::AnalyzedGrammar<GraphType> gamma_analysis(gamma);
+    gamma.print();
+
+    //initialize the system graph
+    GraphType system_graph;
+    initialize_system(system_graph);
+    REQUIRE(system_graph.numNodes() == 6);
+    REQUIRE(system_graph.numEdges() == 4);
+    REQUIRE(YAGL::connected_components(system_graph) == 2);
+
+    //only one unique component, so we can do this
+    auto c = gamma_analysis.unique_components.begin()->second;
+    auto results = YAGL::subgraph_isomorphism2(c, system_graph);
+    REQUIRE(results.size() == 2);
+
+    //verify the matches by output
+    for(auto i = 0; i < results.size(); i++)
+    {
+        std::cout << "\nMatch " << i << ":\n";
+        for(auto& [k1, k2] : results[i])
+            std::cout << "{ " << k1 << " <- " << k2 << " }\n";
+    }
+
+    std::map<std::size_t, DGGML::Instance<std::size_t>> component_match_set;
+    int k = 0;
+    for(auto& item : results)
+    {
+        std::vector<std::size_t> match;
+        for(auto& [key, value] : item)
+        {
+            match.emplace_back(value);
+        }
+        DGGML::Instance<std::size_t> inst;
+        inst.match = match;
+        inst.type = 0;
+        inst.anchor = match[0];
+        component_match_set.insert({k++, inst});
+        //rule_system.push_back(inst);
+    }
+
+    std::map<std::size_t, DGGML::RuleInstType<std::size_t>> rule_instances;
+    for(int i = 0; i < component_match_set.size(); i++) {
+        rule_instances[i];
+        rule_instances[i].name = "with_growth";
+        rule_instances[i].category = "stochastic";
+        rule_instances[i].components.push_back(i);
+        rule_instances[i].anchor = component_match_set[i].anchor;
+    }
+
+    //we'll select the first match to use for our rewrite
+    auto m1 = results[0];
+
+    //simple key generator for newly created nodes, in the main code, something like it should be used to ensure that
+    //keys are always generated uniquely in all phases of the code
+    KeyGenerator gen(200);
+
+    perform_rewrite(rule_instances[0], component_match_set, gen, gamma_analysis, system_graph);
+
+//    auto ccuvm = gamma_analysis.ccuv_mappings["with_growth"][0];
+//
+//    //print out the mapping info, so we know how a lhs numbering maps to an instance numbering
+//    std::cout << "\nMappings: { LHS Key -> Minimal Component Key -> Rule Instance Key }\n";
+//    for(auto& [k, v] : gamma_analysis.lhs_connected_components.at("with_growth"))
+//    {
+//        for(auto& [id, n] : v.getNodeSetRef())
+//        {
+//            std::cout << "{ " << id << " -> " << ccuvm[id] << " -> " << m1[ccuvm[id]] << " }\n";
+//        }
+//    }
+//
+//    std::cout << "\n" << "Beginning rewrite code ..." << "\n";
+//
+//    auto& rewrite = gamma_analysis.with_rewrites.at("with_growth");
+//    rewrite.print_node_sets("with_growth");
+//    std::cout << "\n";
+//    rewrite.print_edge_sets("with_growth");
+//
+//    std::vector<std::size_t> inst_keys; for(auto& [k, v] : m1) inst_keys.push_back(v);
+//    auto lhs_match = YAGL::induced_subgraph(system_graph, inst_keys); //picks up extra edges, but should be fine
+//    auto lhs_match_copy = lhs_match;
+//    auto rhs_rule_copy = gamma_analysis.with_rules.at("with_growth").rhs_graph;
+//
+//    //simple key generator for newly created nodes, in the main code, something like it should be used to ensure that
+//    //keys are always generated uniquely in all phases of the code
+//    KeyGenerator gen(200);
+//
+//    for(auto& k : rewrite.node_set_destroy)
+//        lhs_match_copy.removeNode(lhs_match_copy.findNode(m1[ccuvm[k]])->second);
+//
+//    std::cout << lhs_match_copy << "\n";
+//    REQUIRE(YAGL::connected_components(lhs_match_copy) == 1); //nothing has changed
+//
+//    decltype(ccuvm) rhs_vertex_map;
+//
+//    //hacky way to build, start with what's left after removal, and add in what's next
+//    for(auto& [k, v] : lhs_match_copy.getNodeSetRef()) {
+//        for(auto& item : m1) {
+//            if (item.second == k)
+//            {
+//                for(auto& jtem: ccuvm)
+//                {
+//                    if(jtem.second == item.first)
+//                    {
+//                        rhs_vertex_map[jtem.first] = k;
+//                        break;
+//                    }
+//                }
+//                break;
+//            }
+//        }
+//    }
+//    for(auto& [k1, k2] : rhs_vertex_map)
+//        std::cout << k1 << " " << k2 << "\n";
+//
+//    for(auto& k : rewrite.node_set_create)
+//    {
+//        //doing this way helps cheese my way into creating the correct types
+//        auto n = rhs_rule_copy.findNode(k)->second;
+//        decltype(n) node(gen.getKey(), n.getData());
+//        lhs_match_copy.addNode(node);
+//        rhs_vertex_map[k] = node.getKey();
+//    }
+//    std::cout << lhs_match_copy << "\n";
+//    REQUIRE(YAGL::connected_components(lhs_match_copy) == 2); //new node added
+//
+//    for(auto& [k1, k2] : rhs_vertex_map)
+//        std::cout << k1 << " " << k2 << "\n";
+//
+//    for(auto& [u, v] : rewrite.edge_set_destroy)
+//    {
+//        //need to use the removal list edges and map those to the correct edges for the match
+//        lhs_match_copy.removeEdge(m1[ccuvm[u]], m1[ccuvm[v]]);
+//    }
+//    std::cout << lhs_match_copy << "\n";
+//    REQUIRE(YAGL::connected_components(lhs_match_copy) == 3); //edge removed => 3 disconnected nodes
+//
+//    for(auto& [u, v] : rewrite.edge_set_create)
+//    {
+//        // I think I need to have a vertex mapping for the rhs, which is incomplete until
+//        // all new nodes are created since their keys are uniquely generated
+//        lhs_match_copy.addEdge(rhs_vertex_map[u], rhs_vertex_map[v]);
+//    }
+//    for(auto& [k1, k2] : rhs_vertex_map)
+//        std::cout << k1 << " " << k2 << "\n";
+//    std::cout << lhs_match_copy << "\n";
+//    REQUIRE(YAGL::connected_components(lhs_match_copy) == 1); //two new edges added to connect up the nodes
+//
+//    //TODO: I also need to do some work to make sure any nodes that change only type
+//    // are changed. This is because the node rewrite set currently finds set difference
+//    // on keys not types, below is a first attempt, but there may be a more efficient way
+//    for(auto& [k, v] : lhs_match_copy.getNodeSetRef())
+//        std::cout << v.getData().type << "\n";
+//    for(auto& [k, _] : rhs_rule_copy.getNodeSetRef())
+//    {
+//        auto& v1 = lhs_match_copy[rhs_vertex_map[k]];
+//
+//        auto& v2 = rhs_rule_copy[k];
+//
+//        if(v1.type != v2.type)
+//        {
+//            v1.setData(v2.data);
+//            //copy assignment doesn't work since it won't invoke updateing type
+//            //v1.data = v2.data;
+//        }
+//    }
+//    for(auto& [k, v] : lhs_match_copy.getNodeSetRef())
+//        std::cout << v.getData().type << "\n";
+//
+//    //compose maps
+//    decltype(ccuvm) h;
+//    for(auto& [k1, v1] : ccuvm)
+//    {
+//        h[k1] = m1[v1];
+//    }
+//    for(auto& [k1, v1] : h)
+//        std::cout << k1 << " --> " << v1 << "\n";
+//    gamma_analysis.with_rules.at("with_growth").update(lhs_match, lhs_match_copy, h);//rhs_vertex_map);
+//
+//    std::cout << system_graph << "\n";
+//    //update the system graph
+//    for(auto& k : rewrite.node_set_destroy)
+//        system_graph.removeNode(system_graph.findNode(m1[ccuvm[k]])->second);
+//    std::cout << system_graph << "\n";
+//    for(auto& [u, v] : rewrite.edge_set_destroy)
+//        system_graph.removeEdge(m1[ccuvm[u]], m1[ccuvm[v]]);
+//    std::cout << system_graph << "\n";
+//
+//    for(auto& [k, v] : lhs_match_copy.getNodeSetRef())
+//    {
+//        auto res = system_graph.findNode(k);
+//        if(res != system_graph.node_list_end())
+//        {
+//            std::cout << "Node " << k << " was found\n";
+//            //just update the data
+//            res->second = v;
+//        }
+//        else
+//        {
+//            std::cout << "Node " << k << " was not found\n";
+//            system_graph.addNode(v);
+//        }
+//    }
+//    std::cout << system_graph << "\n";
+//    for(auto& [u, v] : rewrite.edge_set_create)
+//        system_graph.addEdge(rhs_vertex_map[u], rhs_vertex_map[v]);
+//    std::cout << system_graph << "\n";
+//    REQUIRE(YAGL::connected_components(system_graph) == 2);
 
 }
 
