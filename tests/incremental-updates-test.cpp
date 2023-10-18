@@ -265,37 +265,32 @@ TEST_CASE("Incremental Update Test", "[incremental-update-test]")
         std::cout << "\n";
     }
 
+    //TODO: we need to REQUIRE check the graph size changes after different rewrites
     DGGML::KeyGenerator<std::size_t> gen(300);
-    auto changes = DGGML::perform_rewrite(rule_instances[0], component_match_set, gen, gamma_analysis, system_graph);
+    auto changes = DGGML::perform_rewrite(rule_instances[2], component_match_set, gen, gamma_analysis, system_graph);
     save_state(system_graph, grid, 1);
     changes.print();
-    //invalidations need to be rules or nodes that change type as well, we need to generate a list of things added and
-    //removed from the rewrite
 
-    return;
     // hierarchy: (geocells) -> rule instances -> components instances -> nodes
-    //Test: remove matches with node 101
     //slow, but easy case to code - assume we know nothing and must search everywhere
     std::set<std::size_t> node_rule_invalidations;
     std::set<std::size_t> node_component_invalidations;
     for(auto& [k1, rinst] : rule_instances)
     {
-        bool found = false;
+        //search all components for the invalid nodes
         for(auto& k2: rinst.components)
         {
             for (auto& k3 : component_match_set[k2].match)
             {
-                if(k3 == 101) // found so must be marked for invalidation
+                if(changes.node_removals.find(k3) != changes.node_removals.end()) // found so must be marked for invalidation
                 {
                     node_rule_invalidations.insert(k1);
                     node_component_invalidations.insert(k2);
-                    found = true;
-                    break; //here we can break after first of, since rule components do not overlap
                 }
             }
-            if(found) break;
         }
     }
+
     std::cout << "Rules to invalidate: ";
     for(auto id : node_rule_invalidations) std::cout << id << " ";
     std::cout << "\n";
@@ -306,10 +301,10 @@ TEST_CASE("Incremental Update Test", "[incremental-update-test]")
     //can definitely combine these sets with the node invalidation ones
     std::set<std::size_t> edge_rule_invalidations;
     std::set<std::size_t> edge_component_invalidations;
-    //Test: search for edge (101, 102) to remove
+    //Test: search for edges to remove
     for(auto& [k1, rinst] : rule_instances)
     {
-        bool found = false;
+        //bool found = false;
         for(auto& k2 : rinst.components)
         {
             for(auto i = 0; i < component_match_set[k2].match.size(); i++)
@@ -323,20 +318,21 @@ TEST_CASE("Incremental Update Test", "[incremental-update-test]")
                     std::vector<std::size_t> ordering;
                     if(component_match_set[k2].type == 0) ordering = end_ordering;
                     else ordering = mt_ordering;
-                    if(k3 == 101 && k4 == 102 && c.adjacent(ordering[i], ordering[j]))
+                    if(changes.edge_removals.find({k3, k4}) != changes.edge_removals.end()
+                    && c.adjacent(ordering[i], ordering[j]))
                     {
                         std::cout << "{ " << end_ordering[i] << " -> " << k3 << " }\n";
                         std::cout << "{ " << end_ordering[j] << " -> " << k4 << " }\n";
                         std::cout << "rule " << k1 << ", component " << k2 << " contains the edge\n";
                         edge_rule_invalidations.insert(k1);
                         edge_component_invalidations.insert(k2);
-                        found = true;
-                        break;
+                        //found = true;
+                        //break;
                     }
                 }
-                if(found) break;
+                //if(found) break;
             }
-            if(found) break;
+            //if(found) break;
         }
     }
     std::cout << "Rules to invalidate: ";
@@ -346,30 +342,26 @@ TEST_CASE("Incremental Update Test", "[incremental-update-test]")
     for(auto id : edge_component_invalidations) std::cout << id << " ";
     std::cout << "\n\n";
 
-    auto& rw = gamma_analysis.with_rewrites.at("with_interaction");
-    rw.print_node_sets("mt");
-    rw.print_edge_sets("mt");
+    REQUIRE(rule_instances.size() == 4);
+    REQUIRE(component_match_set.size() == 6);
 
-    //Say we selected a rule to fire and we had to modify the system_graph by
-    //adding node 200
-    //removing edge 104, 105
-    //adding edge 104, 106 and edge 105, 106
-    //How does that change the rule_instance set?
-    system_graph.addNode({200,{Plant::Intermediate{0.0, 0.0, 0.0,
-                                                   0.0, 0.0, 0.0},
-                               0.5, 0.0, 0.0}});
-    system_graph.removeEdge(104, 105);
-    system_graph.addEdge(104, 200);
-    system_graph.addEdge(105, 200);
-    std::vector<std::size_t> added_nodes = {200};
-    std::vector<std::pair<std::size_t, std::size_t>> added_edges = {{104, 200}, {105, 200}};
-    //REQUIRE(YAGL::connected_components(system_graph) == 2);
+    //delete invalidated rules and components
+    for(auto& item : node_rule_invalidations)
+        rule_instances.erase(item);
+    for(auto& item : node_component_invalidations)
+        component_match_set.erase(item);
+    for(auto& item : edge_rule_invalidations)
+        rule_instances.erase(item);
+    for(auto& item : edge_component_invalidations)
+        component_match_set.erase(item);
 
-    std::cout << system_graph << "\n";
+    REQUIRE(rule_instances.size() == 2);
+    REQUIRE(component_match_set.size() == 4);
 
     //goal, take the candidate nodes, do a search the depth of the height of the tallest rooted spanning tree
     //for each candidate and create a set of nodes used to induce a graph that we will search for new components
-    std::set<std::size_t> candidate_nodes = {104, 105, 200};
+    //What should the candidate nodes be?
+    std::set<std::size_t> candidate_nodes = changes.node_updates;//{104, 105, 200};
     std::set<std::size_t> inducers;
     for(auto n : candidate_nodes)
     {
@@ -382,21 +374,24 @@ TEST_CASE("Incremental Update Test", "[incremental-update-test]")
     std::cout << candidate_graph << "\n";
 
     //search the candidate graph for components
-    auto candidate_matches = YAGL::subgraph_isomorphism2(c1, candidate_graph);
-    std::cout << candidate_matches.size() << "\n";
+    auto end_candidate_matches = YAGL::subgraph_isomorphism2(c1, candidate_graph);
+    std::cout << end_candidate_matches.size() << "\n";
+    auto mt_candidate_matches = YAGL::subgraph_isomorphism2(c2, candidate_graph);
+    std::cout << mt_candidate_matches.size() << "\n";
 
-    //now we must refine the candidate matches and reject the ones that do no contain a newly added node or edge
-    decltype(candidate_matches) accepted_matches;
-    for(auto& m : candidate_matches)
+
+    //now we must refine the candidate matches and reject the ones that do not contain a newly added node or edge
+    decltype(end_candidate_matches) end_accepted_matches;
+    for(auto& m : end_candidate_matches)
     {
         bool accepted = false;
         auto& c = gamma_analysis.unique_components[0];
         for(auto& [v1, v2] : m)
         {
-            for(auto& n : added_nodes) {
+            for(auto& n : changes.node_updates) {
                 if (v2 == n) {
                     accepted = true;
-                    accepted_matches.push_back(m);
+                    end_accepted_matches.push_back(m);
                     break;
                 }
             }
@@ -407,10 +402,46 @@ TEST_CASE("Incremental Update Test", "[incremental-update-test]")
         {
             for(auto& [u1, u2] : m)
             {
-                for(auto& [n1, n2] : added_edges) {
+                for(auto& [n1, n2] : changes.edge_updates) {
                     if (v2 == n1 && u2 == n2 && c.adjacent(v1, u1)) {
                         accepted = true;
-                        accepted_matches.push_back(m);
+                        end_accepted_matches.push_back(m);
+                        break;
+                    }
+                    if(accepted) break;
+                }
+            }
+            if(accepted) break;
+        }
+        if(accepted) continue;
+    }
+
+    //TODO: remove this copy paste coding
+    decltype(mt_candidate_matches) mt_accepted_matches;
+    for(auto& m : mt_candidate_matches)
+    {
+        bool accepted = false;
+        auto& c = gamma_analysis.unique_components[1];
+        for(auto& [v1, v2] : m)
+        {
+            for(auto& n : changes.node_updates) {
+                if (v2 == n) {
+                    accepted = true;
+                    mt_accepted_matches.push_back(m);
+                    break;
+                }
+            }
+            if(accepted) break;
+        }
+        if(accepted) continue;
+        for(auto& [v1, v2] : m)
+        {
+            for(auto& [u1, u2] : m)
+            {
+                for(auto& [n1, n2] : changes.edge_updates) {
+                    if (v2 == n1 && u2 == n2 && c.adjacent(v1, u1)) {
+                        accepted = true;
+                        mt_accepted_matches.push_back(m);
                         break;
                     }
                     if(accepted) break;
@@ -422,7 +453,7 @@ TEST_CASE("Incremental Update Test", "[incremental-update-test]")
     }
 
     std::cout << "Accepted: \n\n";
-    for(auto& m : accepted_matches)
+    for(auto& m : end_accepted_matches)
     {
         std::cout << "Match: \n";
         for(auto& [v1, v2] : m)
@@ -431,7 +462,78 @@ TEST_CASE("Incremental Update Test", "[incremental-update-test]")
         }
         std::cout << "\n";
     }
-    //given a series of new nodes/edges being added, how do we know where to search for new components?
+
+    REQUIRE(end_accepted_matches.size() == 1);
+    REQUIRE(mt_accepted_matches.empty());
+
+    std::set<std::size_t> created_components;
+    //add back in the newly found components
+    for(auto& item : end_accepted_matches)
+    {
+        std::vector<std::size_t> match;
+        for(auto& [key, value] : item)
+        {
+            match.emplace_back(value);
+        }
+        DGGML::Instance<KeyType> inst;
+        inst.match = match;
+        inst.type = 0;
+        inst.anchor = match[0];
+        component_match_set.insert({k++, inst}); //k is carried over from earlier
+        created_components.insert((k-1));
+        //rule_system.push_back(inst);
+    }
+    for(auto& item : mt_accepted_matches)
+    {
+        std::vector<std::size_t> match;
+        for(auto& [key, value] : item)
+        {
+            match.emplace_back(value);
+        }
+        DGGML::Instance<KeyType> inst;
+        inst.match = match;
+        inst.type = 1;
+        inst.anchor = match[0];
+        component_match_set.insert({k++, inst});
+        created_components.insert((k-1));
+        //rule_system.push_back(inst);
+    }
+
+    REQUIRE(component_match_set.size() == 5);
+
+    //we need to find any new multi-component matches/rebuild the rule instances
+    //building the rule instances
+    //kk picks up where we left off, but should be from a unique key generator
+    for(auto [i, comp1] : component_match_set)
+    {
+        if(comp1.type == 0 && created_components.find(i) != created_components.end()) {
+            rule_instances[kk];
+            rule_instances[kk].name = "with_growth";
+            rule_instances[kk].category = "stochastic";
+            rule_instances[kk].components.push_back(i);
+            rule_instances[kk].anchor = component_match_set[i].anchor;
+            kk++;
+        }
+        for(auto [j, comp2] : component_match_set) {
+            if (j <= i) continue;
+            if (created_components.find(i) != created_components.end() || created_components.find(j) != created_components.end()) {
+                auto &p1 = system_graph.findNode(comp1.anchor)->second.getData().position;
+                auto &p2 = system_graph.findNode(comp2.anchor)->second.getData().position;
+                auto d = DGGML::calculate_distance(p1, p2);
+                if (comp1.type == 1 && comp2.type == 1 && d <= 1.0) {
+                    rule_instances[kk];
+                    rule_instances[kk].name = "with_interaction";
+                    rule_instances[kk].category = "stochastic";
+                    rule_instances[kk].components.push_back(i);
+                    rule_instances[kk].components.push_back(j);
+                    rule_instances[kk].anchor = comp1.anchor;
+                    kk++;
+                }
+            }
+        }
+    }
+
+    REQUIRE(rule_instances.size() == 3);
 }
 
 //void print_matches(std::vector<std::vector<key_type>>& matches)
