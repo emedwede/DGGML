@@ -14,6 +14,7 @@ add_executable(sundials-test tests_main.cpp sundials-test.cpp)
 add_executable(incremental-updates-test incremental-updates-test.cpp tests_main.cpp)
 add_executable(cell-list-test cell-list-test.cpp tests_main.cpp)
 add_executable(grammar-test grammar-test.cpp tests_main.cpp)
+add_executable(phi-function-test tests_main.cpp phi-function-test.cpp)
 
 target_link_libraries(file-writer-test PRIVATE vtu11::vtu11 PUBLIC SUNDIALS::arkode SUNDIALS::nvecserial)
 target_link_libraries(cplex-test PRIVATE vtu11::vtu11 PUBLIC SUNDIALS::arkode SUNDIALS::nvecserial)
@@ -23,3 +24,4 @@ target_link_libraries(binning-and-sort-test PRIVATE vtu11::vtu11 PUBLIC SUNDIALS
 target_link_libraries(sundials-test PUBLIC SUNDIALS::arkode SUNDIALS::nvecserial)
 target_link_libraries(grid-test PRIVATE vtu11::vtu11)
 target_link_libraries(incremental-updates-test PRIVATE vtu11::vtu11)
+target_link_libraries(phi-function-test PRIVATE vtu11::vtu11)

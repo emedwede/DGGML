@@ -2,6 +2,8 @@
 #define DGGML_ANALYZEDGRAMMAR_HPP
 
 #include "Grammar.h"
+#include <unordered_set>
+#include "YAGL_Algorithms.hpp"
 
 namespace DGGML
 {
