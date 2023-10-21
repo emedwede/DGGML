@@ -112,7 +112,7 @@ namespace DGGML
                             }
                             x2 = data.position[0]; y2 = data.position[1];
                             
-                            auto gamma_epsilon = 2.0*epsilon;
+                            auto gamma_epsilon = epsilon;//TODO: fix scaling 2.0*epsilon;
                             if(x1 == x2 && x2 == x3) //x is the axis of collinearity 
                             {
                                 data.corners[lower_left][0] = x3 - gamma_epsilon;
@@ -187,7 +187,7 @@ namespace DGGML
                         //we only need to deal with expanding the interior 
                         double cx = data.position[0];
                         double cy = data.position[1];
-                        auto gamma_epsilon = 4.0*epsilon;
+                        auto gamma_epsilon = 2.0*epsilon; //TODO: fix scaling here
                         data.corners[lower_left][0] = cx - gamma_epsilon;
                         data.corners[lower_left][1] = cy - gamma_epsilon;
                         data.corners[lower_right][0] = cx + gamma_epsilon;

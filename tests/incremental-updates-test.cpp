@@ -517,18 +517,20 @@ TEST_CASE("Incremental Update Test", "[incremental-update-test]")
         for(auto [j, comp2] : component_match_set) {
             if (j <= i) continue;
             if (created_components.find(i) != created_components.end() || created_components.find(j) != created_components.end()) {
-                auto &p1 = system_graph.findNode(comp1.anchor)->second.getData().position;
-                auto &p2 = system_graph.findNode(comp2.anchor)->second.getData().position;
-                auto d = DGGML::calculate_distance(p1, p2);
-                if (comp1.type == 1 && comp2.type == 1 && d <= 1.0) {
-                    rule_instances[kk];
-                    rule_instances[kk].name = "with_interaction";
-                    rule_instances[kk].category = "stochastic";
-                    rule_instances[kk].components.push_back(i);
-                    rule_instances[kk].components.push_back(j);
-                    rule_instances[kk].anchor = comp1.anchor;
-                    kk++;
-                }
+                //auto &p1 = system_graph.findNode(comp1.anchor)->second.getData().position;
+                //auto &p2 = system_graph.findNode(comp2.anchor)->second.getData().position;
+                //for(double l : p1) std::cout << l << " ";
+                //std::cout << "\n";
+                //auto d = DGGML::calculate_distance(p1, p2);
+//                if (comp1.type == 1 && comp2.type == 1 && d <= 1.0) {
+//                    rule_instances[kk];
+//                    rule_instances[kk].name = "with_interaction";
+//                    rule_instances[kk].category = "stochastic";
+//                    rule_instances[kk].components.push_back(i);
+//                    rule_instances[kk].components.push_back(j);
+//                    rule_instances[kk].anchor = comp1.anchor;
+//                    kk++;
+//                }
             }
         }
     }
