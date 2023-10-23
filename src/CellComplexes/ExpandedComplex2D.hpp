@@ -187,7 +187,11 @@ namespace DGGML
                         //we only need to deal with expanding the interior 
                         double cx = data.position[0];
                         double cy = data.position[1];
-                        auto gamma_epsilon = 2.0*epsilon; //TODO: fix scaling here
+                        auto gamma_epsilon = 1.5*epsilon; //TODO: fix scaling here
+                        //TODO: when we do 2.0 epsilon, it's off by 1 since I think we fall onto
+                        // the boundary of the other cell and it get's labeled thanks to how cardinal cell
+                        // is included
+                        //TODO: breaks for rectangular grids, because the expansion width should vary per dimension
                         data.corners[lower_left][0] = cx - gamma_epsilon;
                         data.corners[lower_left][1] = cy - gamma_epsilon;
                         data.corners[lower_right][0] = cx + gamma_epsilon;

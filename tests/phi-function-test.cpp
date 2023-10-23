@@ -256,6 +256,8 @@ TEST_CASE("Phi Decomposition", "[Phi Test]")
     define_model(gamma);
     DGGML::AnalyzedGrammar<GraphType> gamma_analysis(gamma);
     DGGML::ExpandedComplex2D<> grid(2, 2, 4.0, 4.0, false, 1.0);
+    DGGML::VtkFileWriter<typename DGGML::ExpandedComplex2D<>::types::graph_type> writer;
+    writer.save(grid.getGraph(), "test_cell_complex");
     DGGML::GridFileWriter grid_writer;
     grid_writer.save({grid.reaction_grid, grid.dim_label}, "test_grid");
 
