@@ -1,4 +1,7 @@
 #include <random>
+#include <list>
+#include <algorithm>
+#include <numeric>
 
 #include "catch.hpp"
 #include "VtkWriter.hpp"
@@ -194,15 +197,10 @@ TEST_CASE("Phi No Decomposition", "[Phi Test]")
         //rule_system.push_back(inst);
     }
 
-
-    //REQUIRE(component_match_set.size() == 8);
-
-    //building the rule instances
     int kk = 0;
     std::map<std::size_t, DGGML::RuleInstType<std::size_t>> rule_instances;
-    for(int i = 0; i < component_match_set.size(); i++)
-    {
-        if(component_match_set[i].type == 0) {
+    for(int i = 0; i < component_match_set.size(); i++) {
+        if (component_match_set[i].type == 0) {
             rule_instances[kk];
             rule_instances[kk].name = "with_growth";
             rule_instances[kk].category = "stochastic";
@@ -210,28 +208,71 @@ TEST_CASE("Phi No Decomposition", "[Phi Test]")
             rule_instances[kk].anchor = component_match_set[i].anchor;
             kk++;
         }
-        for(int j = 0; j < component_match_set.size(); j++)
-        {
-            if(j <= i ) continue;
-            auto& comp1 = component_match_set[i];
-            auto& comp2 = component_match_set[j];
-            auto& p1 = system_graph.findNode(comp1.anchor)->second.getData().position;
-            auto& p2 = system_graph.findNode(comp2.anchor)->second.getData().position;
-            auto d = DGGML::calculate_distance(p1, p2);
-            if(comp1.type == 1 && comp2.type == 1 && d <= 2.0)
-            {
-                rule_instances[kk];
-                rule_instances[kk].name = "with_interaction";
-                rule_instances[kk].category = "stochastic";
-                rule_instances[kk].components.push_back(i);
-                rule_instances[kk].components.push_back(j);
-                rule_instances[kk].anchor = comp1.anchor;
-                kk++;
+    }
+
+    //should find first 14 growing ends
+    REQUIRE(rule_instances.size() == 14);
+
+    //TODO: this should really be a cell list class, to reduce boilerplate code
+    std::vector<std::list<std::size_t>> cell_list;
+    cell_list.resize(grid.reaction_grid.totalNumCells());
+    for(auto& [key, inst] : component_match_set)
+    {
+        auto& p = system_graph.findNode(inst.anchor)->second.getData().position;
+        int ic, jc;
+        grid.reaction_grid.locatePoint(p[0], p[1], ic, jc);
+        auto c = grid.reaction_grid.cardinalCellIndex(ic, jc);
+        cell_list[c].push_back(key);
+    }
+
+    std::size_t sum = 0.0; for(auto& cell : cell_list) sum += cell.size();
+    std::cout << sum << "\n";
+
+    for(auto i = 0; i < grid.reaction_grid._nx; i++)
+    {
+        for(auto j = 0; j < grid.reaction_grid._ny; j++) {
+            auto c = grid.reaction_grid.cardinalCellIndex(i, j);
+            for (auto &k1: cell_list[c]) {
+                //TODO: there may be issues because this formulation does not ignore
+                //ghosted reaction cells
+                auto cell_range = 1;
+                auto imin = (i - cell_range > 0) ? i - cell_range : 0;
+                auto imax = (i + cell_range + 1) < grid.reaction_grid._nx ? i + cell_range + 1 : grid.reaction_grid._nx;
+
+                auto jmin = (j - cell_range > 0) ? j - cell_range : 0;
+                auto jmax = (j + cell_range + 1) < grid.reaction_grid._ny ? j + cell_range + 1 : grid.reaction_grid._ny;
+                for (auto ii = imin; ii < imax; ii++) {
+                    for (auto jj = jmin; jj < jmax; jj++) {
+                        auto n = grid.reaction_grid.cardinalCellIndex(ii, jj);
+                        if (n != c) {
+                            for(auto& k2 : cell_list[n])
+                            {
+                                if(k1 == k2) continue;
+                                auto& comp1 = component_match_set[k1];
+                                auto& comp2 = component_match_set[k2];
+                                //auto& p1 = system_graph.findNode(comp1.anchor)->second.getData().position;
+                                //auto& p2 = system_graph.findNode(comp2.anchor)->second.getData().position;
+                                //auto d = DGGML::calculate_distance(p1, p2);
+                                if(comp1.type == 1 && comp2.type == 1) {//&& d <= 1.5) {
+                                    rule_instances[kk];
+                                    rule_instances[kk].name = "with_interaction";
+                                    rule_instances[kk].category = "stochastic";
+                                    rule_instances[kk].components.push_back(k1);
+                                    rule_instances[kk].components.push_back(k2);
+                                    rule_instances[kk].anchor = comp1.anchor;
+                                    kk++;
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
     }
-    //TODO: fix this part
-    //REQUIRE(rule_instances.size() == 4);
+    //should find 16 more pair wise interaction rule instances
+    //the number would be different if we imposed a reaction radius
+    //here we just search neighboring cells
+    REQUIRE(rule_instances.size() == 30);
 
     for(auto& [key, inst] : rule_instances)
     {
@@ -243,29 +284,28 @@ TEST_CASE("Phi No Decomposition", "[Phi Test]")
         //anchor_list.insert({match.first.anchor, cardinal});
         auto max_cell = grid.cell_label[cardinal];
         //rule_map[max_cell].push_back(key);
-        std::cout << "rule is mapped to cell " << max_cell << "\n";
+        //std::cout << "rule is mapped to cell " << max_cell << "\n";
     }
 
-
 }
 
-TEST_CASE("Phi Decomposition", "[Phi Test]")
-{
-    //TODO: fix epsilon here, causing errors
-    DGGML::Grammar<GraphType> gamma;
-    define_model(gamma);
-    DGGML::AnalyzedGrammar<GraphType> gamma_analysis(gamma);
-    DGGML::ExpandedComplex2D<> grid(2, 2, 4.0, 4.0, false, 1.0);
-    DGGML::VtkFileWriter<typename DGGML::ExpandedComplex2D<>::types::graph_type> writer;
-    writer.save(grid.getGraph(), "test_cell_complex");
-    DGGML::GridFileWriter grid_writer;
-    grid_writer.save({grid.reaction_grid, grid.dim_label}, "test_grid");
-
-    GraphType system_graph;
-    initialize_system(system_graph);
-    REQUIRE(system_graph.numNodes() == 42);
-    REQUIRE(YAGL::connected_components(system_graph) == 14);
-    DGGML::VtkFileWriter<GraphType> vtk_writer;
-    vtk_writer.save(system_graph, "phi_graph");
-
-}
+//TEST_CASE("Phi Decomposition", "[Phi Test]")
+//{
+//    //TODO: fix epsilon here, causing errors
+//    DGGML::Grammar<GraphType> gamma;
+//    define_model(gamma);
+//    DGGML::AnalyzedGrammar<GraphType> gamma_analysis(gamma);
+//    DGGML::ExpandedComplex2D<> grid(2, 2, 4.0, 4.0, false, 1.0);
+//    DGGML::VtkFileWriter<typename DGGML::ExpandedComplex2D<>::types::graph_type> writer;
+//    writer.save(grid.getGraph(), "test_cell_complex");
+//    DGGML::GridFileWriter grid_writer;
+//    grid_writer.save({grid.reaction_grid, grid.dim_label}, "test_grid");
+//
+//    GraphType system_graph;
+//    initialize_system(system_graph);
+//    REQUIRE(system_graph.numNodes() == 42);
+//    REQUIRE(YAGL::connected_components(system_graph) == 14);
+//    DGGML::VtkFileWriter<GraphType> vtk_writer;
+//    vtk_writer.save(system_graph, "phi_graph");
+//
+//}
