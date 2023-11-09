@@ -142,21 +142,50 @@ void initialize_system(GraphType& system_graph)
     create_mt(5, 0, 40, system_graph);
 }
 
+TEST_CASE("Graph sort", "[Graph sort]")
+{
+    std::random_device random_device;
+    std::mt19937 random_engine(random_device());
+    std::uniform_real_distribution<double> distribution_real(0.0, 10.0);
+    std::uniform_real_distribution<double> distribution_angle(0.0, 2.0*3.14);
+    std::uniform_real_distribution<double> distribution_local(0.5, 0.7);
+
+    YAGL::Graph<std::size_t, SpatialNode3D<int>> g;
+    for(auto i = 0; i < 20; i+=2) {
+        double x1 = distribution_real(random_engine);
+        double x2 = distribution_real(random_engine);
+        double theta = distribution_angle(random_engine);
+        double length = distribution_local(random_engine);
+        auto x3 = x1+(0.0*cos(theta) + length*sin(theta));
+        auto x4 = x2+(-0.0*sin(theta) +length*cos(theta));
+        g.addNode({i, {{0}, {x1, x2, 0.0}}});
+        g.addNode({i+1, {{0}, {x3, x4, 0.0}}});
+        g.addEdge(i, i+1);
+        auto d = sqrt((x3-x1)*(x3-x1)+(x4-x2)*(x4-x2));
+        std::cout << d << "\n";
+    }
+
+    for(auto& [k, v] : g.getNodeSetRef())
+    {
+        std::cout << k << ": { " << v.getData().position[0] << ", " << v.getData().position[1] << " }\n";
+    }
+    std::cout << YAGL::connected_components(g) << "\n";
+}
 TEST_CASE("Phi No Decomposition", "[Phi Test]")
 {
     DGGML::Grammar<GraphType> gamma;
     define_model(gamma);
     DGGML::AnalyzedGrammar<GraphType> gamma_analysis(gamma);
-    DGGML::ExpandedComplex2D<> grid(1, 1, 8.0, 8.0, false, 1.0);
+    DGGML::ExpandedComplex2D<> grid(2, 2, 12.0, 12.0, false, 1.0);
     DGGML::GridFileWriter grid_writer;
-    //grid_writer.save({grid.reaction_grid, grid.dim_label}, "test_grid");
+    grid_writer.save({grid.reaction_grid, grid.dim_label}, "test_grid");
 
     GraphType system_graph;
     initialize_system(system_graph);
     REQUIRE(system_graph.numNodes() == 42);
     REQUIRE(YAGL::connected_components(system_graph) == 14);
-    //DGGML::VtkFileWriter<GraphType> vtk_writer;
-    //vtk_writer.save(system_graph, "phi_graph");
+    DGGML::VtkFileWriter<GraphType> vtk_writer;
+    vtk_writer.save(system_graph, "phi_graph");
 
     //find matches
     auto c1 = gamma_analysis.unique_components[0];
@@ -274,6 +303,15 @@ TEST_CASE("Phi No Decomposition", "[Phi Test]")
     //here we just search neighboring cells
     REQUIRE(rule_instances.size() == 30);
 
+    using cplex_key_t = typename DGGML::CartesianComplex2D<>::graph_type::key_type;
+    std::map<cplex_key_t, std::vector<std::size_t>> rule_map;
+
+    //building rule map sets
+    for(auto& [key, value] : grid.graph.getNodeSetRef()) {
+        if(value.getData().interior)
+            rule_map.insert({key, {}});
+    }
+
     for(auto& [key, inst] : rule_instances)
     {
         auto& p = system_graph.findNode(inst.anchor)->second.getData().position;
@@ -283,8 +321,14 @@ TEST_CASE("Phi No Decomposition", "[Phi Test]")
         // here would be the anchor list reduction, plus whatever other code needs to be added
         //anchor_list.insert({match.first.anchor, cardinal});
         auto max_cell = grid.cell_label[cardinal];
-        //rule_map[max_cell].push_back(key);
+        rule_map[max_cell].push_back(key);
         //std::cout << "rule is mapped to cell " << max_cell << "\n";
+    }
+
+    for(auto& [k, v] : rule_map)
+    {
+        auto d = grid.graph.findNode(k)->second.getData().type;
+        std::cout << d << "D cell " << k << ": " << v.size() << "\n";
     }
 
 }
