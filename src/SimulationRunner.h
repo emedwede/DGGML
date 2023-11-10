@@ -95,9 +95,9 @@ namespace DGGML {
             for(auto i = 0; i <= 2; i++) {
                 auto countNd = std::count_if(rule_map.begin(), rule_map.end(),
                                              [&](auto &iter) {
-                    return model->geoplex2D.getGraph().findNode(iter.first)->second.getData().type == i;
+                    return model->geoplex2D.getGraph().findNode(iter.first)->second.getData().type == i && model->geoplex2D.getGraph().findNode(iter.first)->second.getData().interior;
                 });
-                std::cout << "Count" << (2 - i) << "D: " << countNd << "\n";
+                std::cout << "Total number of expanded " << (2 - i) << "D cells: " << countNd << "\n";
             }
 
             for(auto i = 0; i <= model->settings.NUM_STEPS; i++)
@@ -117,7 +117,6 @@ namespace DGGML {
                         auto k = bucket.first;
                         auto start = std::chrono::high_resolution_clock::now();
                         approximate_ssa(rule_system, grammar_analysis, rule_map, rule_instances, model, k, geocell_progress[k]);
-                        return;
                         auto stop = std::chrono::high_resolution_clock::now();
                         auto duration =
                                 std::chrono::duration_cast<std::chrono::milliseconds>(stop-start);
@@ -125,6 +124,7 @@ namespace DGGML {
                                   << " milliseconds and has a current tau "
                                   << geocell_progress[k].first << "\n";
                         dim_time += duration.count();
+                        break;//return;
                     }
 
                     tot_time += dim_time;
@@ -134,7 +134,7 @@ namespace DGGML {
                 }
 
                 std::cout << "Running the checkpointer\n";
-                write_system_graph(0);
+                write_system_graph(i+1);
 
                 std::cout << "Total dimensional time is " << tot_time << " milliseconds\n";
                 //time_count.push_back(tot_time);
@@ -326,6 +326,10 @@ namespace DGGML {
             auto sum = 0;
             for(auto& [key, value] : rule_map)
             {
+                if(model->geoplex2D.getGraph().findNode(key)->second.getData().interior) {
+                    auto dim = model->geoplex2D.getGraph().findNode(key)->second.getData().type;
+                    std::cout << "Rules mapped to " << (2 - dim) << "D cell " << key << ": " << value.size() << "\n";
+                }
                 sum += value.size();
             }
             std::cout << "Total rules mapped " << sum << "\n";
@@ -347,6 +351,7 @@ namespace DGGML {
         std::map<gplex_key_type, std::vector<key_type>> bucketsND[3];
         //Grammar gamma;
         RuleSystem<typename ModelType::key_type> rule_system;
+        //std::map<std::size_t, DGGML::RuleInstType<std::size_t>> rule_system;
         std::map<gplex_key_type, std::pair<double, double>> geocell_progress;
         DGGML::VtkFileWriter<typename ModelType::graph_type> vtk_writer;
         std::string results_dir_name;

@@ -70,10 +70,10 @@ namespace CMA {
                         2,
                         8.0,
                         8.0,
-                        true,
+                        false,
                         64,
-                        0.5,
-                        0.8,
+                        0.2,
+                        0.4,
                         10,
                         1.2,
                         1.0,
@@ -107,7 +107,7 @@ namespace CMA {
             //TODO: I should make it so that any solving/propensity functions that need access to parameters
             // are actually passed as functors with states!
             DGGML::WithRule<GT> r1("growing", g1, g2,
-                                   [&](auto& lhs, auto& m1, auto& m2)
+                                   [&](auto& lhs, auto& m)
                 {
                     return 2.0;
 //                    auto& node_i_data = lhs.findNode(m[0])->second.getData();
@@ -116,7 +116,15 @@ namespace CMA {
 //                    auto len = DGGML::calculate_distance(node_i_data.position, node_j_data.position);
 //                    //double propensity = heaviside(len, settings.DIV_LENGTH);
 //                    return 10*DGGML::sigmoid((len/settings.DIV_LENGTH) - 1.0, settings.SIGMOID_K);
-                }, [](auto& lhs, auto& rhs, auto& m) { std::cout << "updating growing rule\n"; });
+                }, [](auto& lhs, auto& rhs, auto& m1, auto& m2) {
+                        auto d = DGGML::calculate_distance(lhs[m1[1]].position, lhs[m1[2]].position);
+                        //std::cout << d << "\n";
+                        //auto& data1 = std::get<Plant::Intermediate>(lhs[m[1]].data);
+                        std::cout << "doing some update calculations\n";
+                        rhs[m2[3]].position[0] = (lhs[m1[2]].position[0] + lhs[m1[1]].position[0])/2.0;
+                        rhs[m2[3]].position[1] = (lhs[m1[2]].position[1] + lhs[m1[1]].position[1])/2.0;
+                        rhs[m2[3]].position[2] = (lhs[m1[2]].position[2] + lhs[m1[1]].position[2])/2.0;
+                    });
 
             gamma.addRule(r1);
 
@@ -187,7 +195,7 @@ namespace CMA {
                     [](auto& lhs, auto& m) { return 7.5; },
                     [](auto& lhs, auto& rhs, auto& m1, auto& m2) { std::cout << "updating interaction rule\n"; });
 
-            gamma.addRule(r4);
+            //gamma.addRule(r4);
 
             DGGML::SolvingRule<GT> r5("solving_grow", g1, g1,
                                       [](auto& lhs) {std::cout << "solving the grow rule\n"; return 2.0;});
@@ -204,7 +212,7 @@ namespace CMA {
             //std::cout << geoplex2D;
 
             std::cout << "Initializing the system graph\n";
-            Plant::microtubule_uniform_scatter(system_graph, geoplex2D, settings);
+            Plant::microtubule_uniform_scatter(system_graph, geoplex2D, settings, gen);
         }
 
         struct MyMetrics {

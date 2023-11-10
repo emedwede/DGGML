@@ -12,6 +12,7 @@ namespace DGGML {
         using graph_type = typename GraphGrammarType::graph_type;
         using key_type = typename GraphGrammarType::key_type;
 
+        KeyGenerator<std::size_t> gen;
         graph_type system_graph;
         ExpandedComplex2D<> geoplex2D;
 

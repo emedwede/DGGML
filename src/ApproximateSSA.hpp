@@ -67,6 +67,7 @@ void approximate_ssa(RuleSystem<T1>& rule_system, AnalyzedGrammar<T2>& grammar_a
     auto& geoplex2D = model->geoplex2D;
     auto& system_graph = model->system_graph;
     auto& settings = model->settings;
+    auto& gen = model->gen;
 
     std::cout << "Cell " << k << " has " << rule_map[k].size() << " rules\n";
 
@@ -163,34 +164,14 @@ void approximate_ssa(RuleSystem<T1>& rule_system, AnalyzedGrammar<T2>& grammar_a
 
             //TODO: perform the rewrite
             auto& rewrite = grammar_analysis.with_rewrites[fired_name];
-            rewrite.print_node_sets(fired_name);
-            rewrite.print_edge_sets(fired_name);
-            //create a copy of the old lhs
-            auto lhs_graph_copy = induce_from_set(inst, rule_system, system_graph);
-            auto rhs_graph = grammar_analysis.with_rules.at(fired_name).rhs_graph;
-           for(auto& n : lhs_graph_copy.getNodeSetRef())
-            {
-                std::cout << n.first << "\n";
-//                auto res = system_graph.findNode(n.first);
-//                std::cout << res->second.getData().position[0] << "\n";
-//                std::cout << n.second.getData().position[0] << "\n";
-//                n.second.getData().position[0] = 2.2;
-//                std::cout << res->second.getData().position[0] << "\n";
-//                std::cout << n.second.getData().position[0] << "\n";
-            }
 
-           for(auto& item : rewrite.node_set_create)
-           {
-               auto n = rhs_graph.findNode(item)->second;
-               std::cout << n.getData().type << "\n";
-               lhs_graph_copy.addNode(n);
-           }
-            //------Idea------//
-            //Step 1: Create two copies of the lhs instance, one for the prev state and the other
-            //        for the transformation (Note we could alternatively just compute this ahead of time)
-            //Step 2: Transform one of the lhs copies into a rhs through rewrites
-            //Step 3: pass a lhs copy into an update with the rhs we just created, plus the f(g(lhs)) vertex mapping
-            //Step 4: perform the rewrite on the system graph and copy in the values from the new rhs
+            //First step, I need to plug in the experimental rewrite code and clean the rest up
+            //Problem: rewrite wants a component_match_set, not the components stored in the rule system like I had
+            //done originally
+
+            auto changes = perform_rewrite(inst, rule_system, gen, grammar_analysis, system_graph);
+            changes.print();
+
 
             //TODO: incrementally update the in memory set of matches
             //Once we have updated the graph, we need to invalidated any old matches and then search for the
@@ -203,10 +184,8 @@ void approximate_ssa(RuleSystem<T1>& rule_system, AnalyzedGrammar<T2>& grammar_a
             //There are different apporaches to handle finding newly created matches. A potentially memory intensive
             //method would be to remember all completed and partial search paths. My method is a bit more brute force,
             //but only locally.
-
-            //------Idea------//
-            //adding/
-
+            // hierarchy: (geocells) -> rule instances -> components instances -> nodes
+            //slow, but easy case to code - assume we know nothing and must search everywhere
             return;
             //zero out tau since a rule has fired
             tau = 0.0;

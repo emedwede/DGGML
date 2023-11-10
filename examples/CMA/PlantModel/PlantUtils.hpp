@@ -227,8 +227,8 @@ namespace Plant
 
 namespace Plant
 {
-    template <typename GraphType, typename CplexType, typename ParamType>
-    void microtubule_uniform_scatter(GraphType& graph, CplexType& cplex, ParamType& settings) {
+    template <typename GraphType, typename CplexType, typename ParamType, typename GenType>
+    void microtubule_uniform_scatter(GraphType& graph, CplexType& cplex, ParamType& settings, GenType& gen) {
         double epsilon_min = settings.MT_MIN_SEGMENT_INIT;
         double epsilon_max = settings.MT_MAX_SEGMENT_INIT;
         std::random_device random_device;
@@ -315,17 +315,17 @@ namespace Plant
             DGGML::set_unit_vector(p1, p2, u1);
             DGGML::set_unit_vector(p3, p2, u2);
             Plant::graph_type tg;
-            node_type node_l = {i*segments,
+            node_type node_l = {gen.get_key(),//i*segments,
                         {Plant::Negative{0.0,0.0,0.0,
                                              u2[0], u2[1], u2[2]},
                          x_l, y_l, z_l}};
 
-            node_type node_c ={i*segments+1,
+            node_type node_c ={gen.get_key(),//i*segments+1,
                         {Plant::Intermediate{0.0,0.0,0.0,
                                              u1[0], u1[1], u1[2]},
                          x_c, y_c, z_c}};
 
-            node_type node_r ={i*segments+2,
+            node_type node_r ={gen.get_key(),//i*segments+2,
                         {Plant::Positive{0.0,0.0,0.0,
                                              u2[0], u2[1], u2[2]},
                          x_r, y_r, z_r}};

@@ -287,9 +287,10 @@ namespace DGGML
         }
     };
 
-    template <typename GraphType>
+    template <typename GraphType, typename MatchType>
     RewriteUpdates perform_rewrite(DGGML::RuleInstType<std::size_t>& inst,
-                         std::map<std::size_t, DGGML::Instance<std::size_t>>& component_match_set,
+                         //std::map<std::size_t, DGGML::Instance<std::size_t>>& component_match_set,
+                         MatchType& component_match_set,
                          KeyGenerator<std::size_t>& gen,
                          DGGML::AnalyzedGrammar<GraphType>& gamma_analysis, GraphType& system_graph)
     {
@@ -326,7 +327,9 @@ namespace DGGML
         std::cout << "\n";
         rewrite.print_edge_sets(rname);
 
+        //TODO: Induced subgraph may include edges we didn't expect and create a rewrite error
         auto lhs_match = YAGL::induced_subgraph(system_graph, right);
+        //TODO: potentially fix by searching the induced graph and removing edges not in the match
         auto lhs_match_copy = lhs_match;
         auto rhs_rule_copy = gamma_analysis.with_rules.at(rname).rhs_graph;
 
