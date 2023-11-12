@@ -160,7 +160,9 @@ void approximate_ssa(ComponentMap<T1>& component_matches, AnalyzedGrammar<T2>& g
             auto fired_id = propensity_space[eventFired].first;
             auto inst = rule_instances[fired_id];
             auto fired_name = inst.name;
-            std::cout << "Selected rule id " << fired_id << " of type " << fired_name << "\n";
+            std::cout << "Selected rule id " << fired_id << " of type " << fired_name  << " with components: { ";
+            for(auto& c : inst.components) std::cout << c << " ";
+            std::cout << "}\n";
 
             //First step, I need to plug in the experimental rewrite code and clean the rest up
             //Problem: rewrite wants a component_match_set, not the components stored in the rule system like I had
@@ -191,8 +193,9 @@ void approximate_ssa(ComponentMap<T1>& component_matches, AnalyzedGrammar<T2>& g
             }
             //should invalidate components and rule instances containing invalid components
             using graph_t = typename std::remove_reference<decltype(system_graph)>::type;
-           perform_invalidations<graph_t>(changes, component_matches, grammar_analysis);
-
+            auto removals = perform_invalidations<graph_t>(changes, component_matches,
+                                                           grammar_analysis, rule_instances, rule_map[k]);
+            removals.print();
             find_new_matches();
             return;
             //zero out tau since a rule has fired

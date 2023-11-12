@@ -344,8 +344,8 @@ namespace DGGML {
 
         //TODO: I think rule_maps could steal instances, especially since in this formulation,
         // each instance exists in a shared memory state, the rule_instances map.
-        std::map<std::size_t, RuleInstType<key_type>> rule_instances;
-        std::map<cplex_key_t, std::vector<rule_key_t>> rule_map;
+        std::unordered_map<std::size_t, RuleInstType<key_type>> rule_instances;
+        std::map<cplex_key_t, std::vector<rule_key_t>> rule_map; //rule keys for a cell could be a tree/map/set vs vector
         std::map<std::size_t, std::vector<typename ModelType::key_type>> ordering;
 
         std::map<gplex_key_type, std::vector<key_type>> bucketsND[3];

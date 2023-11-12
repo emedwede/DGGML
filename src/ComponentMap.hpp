@@ -153,6 +153,22 @@ namespace DGGML
         };
     };
 
+    struct Invalidations
+    {
+        std::set<std::size_t> component_invalidations;
+        std::set<std::size_t> rule_invalidations;
+
+        void print()
+        {
+            std::cout << "Invalid components: { ";
+            for(auto& item : component_invalidations) std::cout << item << " ";
+            std::cout << "}\n";
+            std::cout << "Invalid rules: { ";
+            for(auto& item : rule_invalidations) std::cout << item << " ";
+            std::cout << "}\n";
+        }
+    };
+
     struct RewriteUpdates
     {
         std::set<std::size_t> node_removals, node_updates;
@@ -317,78 +333,85 @@ namespace DGGML
         return changes;
     }
 
-    //TODO: maybe this function needs to return info on the rules it invalidated
+    //TODO: maybe this function needs to return even more info on the rules it invalidated
+    //TODO: we could accelerate the invalidations by using the cell list to prune the search space
+    // or we could create an inverse relation between components and rules, but pay the price of keeping
+    // track of it
     template<typename GraphType>
-    void perform_invalidations(RewriteUpdates& changes, ComponentMap<std::size_t>& component_matches, DGGML::AnalyzedGrammar<GraphType>& gamma_analysis)
+    Invalidations perform_invalidations(RewriteUpdates& changes,
+                                        ComponentMap<std::size_t>& component_matches,
+                                        DGGML::AnalyzedGrammar<GraphType>& gamma_analysis,
+                                        std::unordered_map<std::size_t, RuleInstType<std::size_t>>& rule_instances,
+                                        std::vector<std::size_t>& rule_map)
     {
         std::cout << "This function invalidates\n";
-        std::cout << "Components: " << component_matches.size() << "\n";
+        Invalidations removals;
         //we must first search for any components containing the nodes/edges that were invalidated
         //note: worst case we search the whole list, better case we use the cell list to speed up search
-        std::set<std::size_t> node_component_invalidations;
+        auto& component_invalidations = removals.component_invalidations;
 
-        //search all components for the invalid nodes
+        //search components for nodes and edges
         for(auto& [k1, m] : component_matches)
-        {
-            for (auto& k2 : m.match)
-            {
-                if(changes.node_removals.find(k2) != changes.node_removals.end()) // found so must be marked for invalidation
-                {
-                    node_component_invalidations.insert(k1);
-                }
-            }
-        }
-        std::cout << "Components to invalidate: ";
-        for(auto id : node_component_invalidations) std::cout << id << " ";
-        std::cout << "\n\n";
-
-        //search components for edges
-        //can definitely combine these sets with the node invalidation ones
-        std::set<std::size_t> edge_component_invalidations;
-        //Test: search for edges to remove
-        //bool found = false;
-        for(auto& [k2, m] : component_matches)
         {
             for(auto i = 0; i < m.match.size(); i++)
             {
-                auto k3 = m.match[i];
+                auto k2 = m.match[i];
+                // check for node and if found mark for invalidation
+                if(changes.node_removals.find(k2) != changes.node_removals.end())
+                {
+                    component_invalidations.insert(k1);
+                }
+                //now check for edges and if found mark for invalidation
                 for(auto j = 0; j < m.match.size(); j++)
                 {
-                    auto k4 = m.match[j];
+                    auto k3 = m.match[j];
                     auto& c = gamma_analysis.unique_components[m.type];
                     //match contains the nodes
-                    std::vector<std::size_t> ordering;
-                    //if(m.type == 0) ordering = end_ordering;
-                    //else ordering = mt_ordering;
-                    if(changes.edge_removals.find({k3, k4}) != changes.edge_removals.end()
-                            )//TODO: fix: && c.adjacent(ordering[i], ordering[j]))
+                    std::vector<std::size_t> ordering = gamma_analysis.orderings[m.type];
+                    if(changes.edge_removals.find({k2, k3}) != changes.edge_removals.end()
+                        && c.adjacent(ordering[i], ordering[j]))
                     {
-                        //std::cout << "{ " << end_ordering[i] << " -> " << k3 << " }\n";
-                        //std::cout << "{ " << end_ordering[j] << " -> " << k4 << " }\n";
-                        //std::cout << "rule " << k1 << ", component " << k2 << " contains the edge\n";
-                        edge_component_invalidations.insert(k2);
-                        //found = true;
-                        //break;
+                        //std::cout << "{ " << ordering[i] << " -> " << k2 << " }\n";
+                        //std::cout << "{ " << ordering[j] << " -> " << k3 << " }\n";
+                        //std::cout << "component " << k1 << " contains the edge\n";
+                        component_invalidations.insert(k1);
                     }
                 }
-                //if(found) break;
             }
-            //if(found) break;
         }
 
-        std::cout << "Components to invalidate: ";
-        for(auto id : edge_component_invalidations) std::cout << id << " ";
-        std::cout << "\n\n";
+        //delete invalid components from list of removable components
+        for(auto& item : component_invalidations)
+            component_matches.erase(item);
 
-        //we then remove the components and add the ids to a list of removed components
         //if a component is removed is in a boundary cell, it may participate in a rule instance of another dimension,
-        //so add it to a list for that
+        //so we could mark it for that as well
 
-        //next, we search the rule instances the cell owns for any rule instance containing the invalidated components
+        //TODO: instead of a direct search we should search the cell of which a rule instance resides and it's nbrs
+        // for any rule instance containing the invalidated components
+        auto& rule_invalidations = removals.rule_invalidations;
+        for(auto& k : rule_map)
+        {
+            auto& inst = rule_instances[k];
+            for(auto& c : inst.components)
+            {
+                if(component_invalidations.find(c) != component_invalidations.end())
+                {
+                    rule_invalidations.insert(k);
+                }
+            }
+        }
 
         //we remove these now invalid rules
+        for(auto& item : rule_invalidations) {
+            rule_instances.erase(item);
 
+            //we also need to remove the invalid rules from the rule map
+            rule_map.erase(std::find(rule_map.begin(), rule_map.end(), item));
+        }
         //return the list of boundary components invalidated
+
+        return removals;
     }
 
     void find_new_matches()

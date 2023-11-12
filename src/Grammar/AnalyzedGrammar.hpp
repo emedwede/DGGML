@@ -148,6 +148,10 @@ namespace DGGML
         std::map<std::string, std::map<std::size_t, GraphType>> lhs_connected_components;
         std::map<std::string, Rewrite<GraphType>> with_rewrites;
 
+        //path orderings for component matches, may be not needed if
+        //we decide to store component matches in CSR
+        std::map<std::size_t, std::vector<std::size_t>> orderings;
+
         //many-to-many relationship of lhs components to minimum set
         std::map<std::string, std::vector<std::size_t>> rule_component;
         std::map<std::size_t, std::vector<std::string>> component_rule;
@@ -226,6 +230,21 @@ namespace DGGML
 
             std::cout << "There are " << unique_components.size() << " unique component(s)\n";
 
+            //build up path orderings
+            for(auto& [k, g] : unique_components)
+            {
+                orderings.insert({k, {}});
+                auto path = YAGL::recursive_dfs2(g, g.node_list_begin()->first);
+                for(auto& item : path)
+                    orderings[k].push_back(item.first);
+            }
+
+            for(auto& [k, ordering] : orderings)
+            {
+                std::cout << k << ": { ";
+                for(auto i = 0; i < ordering.size(); i++) std::cout << "( " << i << " -> " << ordering[i] << " ) ";
+                std::cout << "}\n";
+            }
             //could be computed during the unique connected component loop
             for(auto& [name, components] : lhs_connected_components)
             {
