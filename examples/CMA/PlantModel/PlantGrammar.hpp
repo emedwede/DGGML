@@ -7,7 +7,7 @@
 
 #include "Utlities/MathUtils.hpp"
 
-#include "RuleSystem.hpp"
+#include "ComponentMap.hpp"
 
 #include "Grammar/Grammar.h"
 

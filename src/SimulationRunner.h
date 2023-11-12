@@ -18,7 +18,7 @@
 #include "ExpandedComplex2D.hpp"
 #include "CartesianComplex2D.hpp"
 #include "CellList.hpp"
-#include "RuleSystem.hpp"
+#include "ComponentMap.hpp"
 #include "Grammar.h"
 #include "Utlities/MathUtils.hpp"
 #include "CartesianHashFunctions.hpp"
@@ -78,7 +78,7 @@ namespace DGGML {
             // A cell list is used to accelerate the spatial geometric search, but
             // we could use other methods like a bounding volume hierarchy(ArborX), kd-trees etc
             // see books on collision detection like gpu-gems or Real-Time Collision Detection
-            CellList test_cell_list(model->geoplex2D.reaction_grid, model->system_graph, rule_system);
+            CellList test_cell_list(model->geoplex2D.reaction_grid, model->system_graph, component_matches);
 
             compute_all_rule_instances(test_cell_list);
 
@@ -116,7 +116,7 @@ namespace DGGML {
                     {
                         auto k = bucket.first;
                         auto start = std::chrono::high_resolution_clock::now();
-                        approximate_ssa(rule_system, grammar_analysis, rule_map, rule_instances, model, k, geocell_progress[k]);
+                        approximate_ssa(component_matches, grammar_analysis, rule_map, rule_instances, model, k, geocell_progress[k]);
                         auto stop = std::chrono::high_resolution_clock::now();
                         auto duration =
                                 std::chrono::duration_cast<std::chrono::milliseconds>(stop-start);
@@ -198,7 +198,7 @@ namespace DGGML {
                     inst.match = match;
                     inst.type = k;
                     inst.anchor = match[0];
-                    rule_system.push_back(inst);
+                    component_matches.insert(inst);
                 }
                 std::cout << "Found " << matches.size() << " instances\n";
             }
@@ -206,7 +206,7 @@ namespace DGGML {
             //for(auto& [k, p] : instances)
             for(auto& [k, pattern] : grammar_analysis.unique_components)
             {
-                std::cout << "Component " << k << " has " << rule_system.count(k) << " instances\n";
+                std::cout << "Component " << k << " has " << component_matches.count(k) << " instances\n";
             }
         }
 
@@ -234,7 +234,7 @@ namespace DGGML {
                             rule_instances[generated_key].name = name;
                             rule_instances[generated_key].category = "stochastic";
                             rule_instances[generated_key].components = result;
-                            rule_instances[generated_key].anchor = rule_system[result[0]].anchor;
+                            rule_instances[generated_key].anchor = component_matches[result[0]].anchor;
                         }
                         else {
                             int imin, imax, jmin, jmax;
@@ -242,17 +242,17 @@ namespace DGGML {
                             for (auto i = imin; i < imax; i++) {
                                 for (auto j = jmin; j < jmax; j++) {
                                     auto nbr_idx = cell_list.cardinalCellIndex(i, j);
-                                    for (const auto& m2: cell_list.data[nbr_idx]) {
+                                    for (const auto& m2 : cell_list.data[nbr_idx]) {
                                         bool found = false;
                                         for(auto v = 0; v < k; v++)
                                         {
-                                            if(result[v] == m2.second) found = true;
+                                            if(result[v] == m2) found = true;
                                         }
-                                        if(!found && m2.first.type == pattern[k])
+                                        if(!found && component_matches[m2].type == pattern[k])
                                         {
 
-                                            auto a1 = rule_system[result[0]].anchor;
-                                            auto a2 = m2.first.anchor;
+                                            auto a1 = component_matches[result[0]].anchor;
+                                            auto a2 = component_matches[m2].anchor;
                                             auto& p1 = model->system_graph.findNode(a1)->second.getData().position;
                                             auto& p2 = model->system_graph.findNode(a2)->second.getData().position;
                                             auto d = calculate_distance(p1, p2);
@@ -261,7 +261,7 @@ namespace DGGML {
                                             //  this is just a placeholder
                                             if(d < model->settings.MAXIMAL_REACTION_RADIUS)
                                             {
-                                                result[k] = m2.second;
+                                                result[k] = m2;
                                                 reaction_instance_backtracker(name, result, k + 1, pattern, cell_list, c);
                                             }
                                         }
@@ -271,7 +271,7 @@ namespace DGGML {
                         }
                     };
 
-            for(auto& m1 : rule_system)
+            for(auto& m1 : component_matches)
             {
                 for(auto& [name, pattern] : grammar_analysis.rule_component)
                 {
@@ -282,9 +282,9 @@ namespace DGGML {
                     std::vector<std::size_t> result;
                     result.resize(pattern.size());
 
-                    if(pattern.size() && m1.first.type == pattern.front())
+                    if(pattern.size() && m1.second.type == pattern.front())
                     {
-                        result[k] = m1.second;
+                        result[k] = m1.first;
                         k++;
                         auto c = test_cell_list.locate_cell(m1);
                         reaction_instance_backtracker(name, result, k, pattern, test_cell_list, c);
@@ -350,8 +350,7 @@ namespace DGGML {
 
         std::map<gplex_key_type, std::vector<key_type>> bucketsND[3];
         //Grammar gamma;
-        RuleSystem<typename ModelType::key_type> rule_system;
-        //std::map<std::size_t, DGGML::RuleInstType<std::size_t>> rule_system;
+        ComponentMap<typename ModelType::key_type> component_matches;
         std::map<gplex_key_type, std::pair<double, double>> geocell_progress;
         DGGML::VtkFileWriter<typename ModelType::graph_type> vtk_writer;
         std::string results_dir_name;

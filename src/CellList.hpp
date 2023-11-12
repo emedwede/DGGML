@@ -4,7 +4,7 @@
 #include <vector>
 
 #include "CartesianGrid2D.hpp"
-#include "RuleSystem.hpp"
+#include "ComponentMap.hpp"
 #include "PlantTypes.hpp"
 #include "YAGL_Graph.hpp"
 
@@ -40,19 +40,20 @@ struct CellList
 {
 
     //CellListData data;
-    using RuleSystemType = RuleSystem<typename GraphType::key_type>;
-    using CellListObjectType = typename RuleSystem<typename GraphType::key_type>::pair_type;
+    using ComponentMapType = ComponentMap<typename GraphType::key_type>;
+    using ComponentMapIter = typename ComponentMapType::iterator;
+    using CellListObjectType = typename ComponentMapType::key_type;
     using CellListDataType = std::vector<std::vector<CellListObjectType>>;
     //using GraphType = YAGL::Graph<Plant::mt_key_type, Plant::MT_NodeData>;
     CellListDataType data;
 
     CartesianGrid2D grid;
     GraphType& graph;
-    RuleSystemType rule_system;
+    ComponentMapType& component_matches;
     int cell_range;
 
-    CellList(CartesianGrid2D& _grid, GraphType& _graph, RuleSystemType& _rule_system) 
-        : grid(_grid), graph(_graph), rule_system(_rule_system), data(_grid.totalNumCells())
+    CellList(CartesianGrid2D& _grid, GraphType& _graph, ComponentMapType& _component_matches)
+        : grid(_grid), graph(_graph), component_matches(_component_matches), data(_grid.totalNumCells())
     {
         //TODO make the cell size ratio a paramater 
         double cell_ratio = 1;
@@ -60,7 +61,7 @@ struct CellList
 
         //build the cell list from the system graph 
         std::cout << "Building cell list\n";
-        for(auto& match : rule_system) insert_match(match);
+        for(auto& item : component_matches) insert_match(item);
         std::cout << "Cell list has been built\n";
         std::cout << "The cell list has " << totalNumCells() << " reaction cells\n"; 
         std::cout << "Components mapped: " << getTotalSize() << "\n";
@@ -77,22 +78,24 @@ struct CellList
         for(const auto& cell : data) sum += cell.size();
         return sum;
     }
-
-    std::size_t locate_cell(CellListObjectType& match)
+    template<typename T> //Temporary fix since ComponentMapIter throws an error
+    std::size_t locate_cell(T& comp_iter)
     {
-        auto& anchor_data = graph.findNode(match.first.anchor)->second.getData();
+        auto& match = comp_iter.second;
+        auto& anchor_data = graph.findNode(match.anchor)->second.getData();
         double xp = anchor_data.position[0];
         double yp = anchor_data.position[1];
-        auto key = match.second;
+        auto key = comp_iter.first;
         int ic, jc;
         grid.locatePoint(xp, yp, ic, jc);
         return grid.cardinalCellIndex(ic, jc);
     }
 
-    void insert_match(CellListObjectType& match)
+    template<typename T> //Temporary fix since ComponentMapIter throws an error
+    void insert_match(T& comp_iter)
     {
-        auto cardinal = locate_cell(match);
-        data[cardinal].push_back(match);
+        auto cardinal = locate_cell(comp_iter);
+        data[cardinal].push_back(comp_iter.first);
     }
     
     std::size_t totalNumCells() { return grid.totalNumCells(); }

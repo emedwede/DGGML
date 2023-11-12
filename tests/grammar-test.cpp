@@ -10,7 +10,7 @@
 #include "../examples/CMA/PlantModel/PlantTypes.hpp"
 #include "Grammar.h"
 #include "AnalyzedGrammar.hpp"
-#include "RuleSystem.hpp"
+#include "ComponentMap.hpp"
 #include "MathUtils.hpp"
 
 #include <unordered_map> 

@@ -9,7 +9,7 @@
 #include "AnalyzedGrammar.hpp"
 #include "YAGL_Algorithms.hpp"
 #include "ExpandedComplex2D.hpp"
-#include "RuleSystem.hpp"
+#include "ComponentMap.hpp"
 #include "MathUtils.hpp"
 
 #include "../examples/CMA/PlantModel/PlantTypes.hpp"

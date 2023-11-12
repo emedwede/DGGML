@@ -10,7 +10,7 @@
 
 #include "Solver.h"
 
-#include "RuleSystem.hpp"
+#include "ComponentMap.hpp"
 #include "AnalyzedGrammar.hpp"
 
 #include <chrono>
@@ -49,20 +49,20 @@ auto RandomIntsBetween = [](int low, int high)
 
 
 template<typename T1, typename T2, typename T3>
-auto induce_from_set(T1& inst, T2& rule_system, T3& system_graph)
+auto induce_from_set(T1& inst, T2& component_matches, T3& system_graph)
 {
     std::vector<std::size_t> inducers;
     for(auto& c : inst.components)
     {
-        for(auto& id : rule_system[c])
+        for(auto& id : component_matches[c])
             inducers.push_back(id);
     }
     return YAGL::induced_subgraph(system_graph, inducers);
 }
 
 template <typename T1, typename T2, typename T3, typename T4, typename M1>
-void approximate_ssa(RuleSystem<T1>& rule_system, AnalyzedGrammar<T2>& grammar_analysis, T3& rule_map, T4& rule_instances, M1& model,
-                                          std::size_t k, std::pair<double, double>& geocell_progress)
+void approximate_ssa(ComponentMap<T1>& component_matches, AnalyzedGrammar<T2>& grammar_analysis, T3& rule_map, T4& rule_instances, M1& model,
+                     std::size_t k, std::pair<double, double>& geocell_progress)
 {
     auto& geoplex2D = model->geoplex2D;
     auto& system_graph = model->system_graph;
@@ -101,7 +101,7 @@ void approximate_ssa(RuleSystem<T1>& rule_system, AnalyzedGrammar<T2>& grammar_a
                 auto& inst = rule_instances[r];
                 if(inst.category != "stochastic")
                     continue;
-                auto induced_graph = induce_from_set(rule_instances[r], rule_system, system_graph);
+                auto induced_graph = induce_from_set(rule_instances[r], component_matches, system_graph);
                 std::map<std::size_t, std::size_t> placeholder;
 
                 //using at, because the [] requires they map_type to be default constructible
@@ -162,17 +162,13 @@ void approximate_ssa(RuleSystem<T1>& rule_system, AnalyzedGrammar<T2>& grammar_a
             auto fired_name = inst.name;
             std::cout << "Selected rule id " << fired_id << " of type " << fired_name << "\n";
 
-            //TODO: perform the rewrite
-            auto& rewrite = grammar_analysis.with_rewrites[fired_name];
-
             //First step, I need to plug in the experimental rewrite code and clean the rest up
             //Problem: rewrite wants a component_match_set, not the components stored in the rule system like I had
             //done originally
 
-            auto changes = perform_rewrite(inst, rule_system, gen, grammar_analysis, system_graph);
+            //TODO: a big thing to decide is how phi partitions the match and component set
+            auto changes = perform_rewrite(inst, component_matches, gen, grammar_analysis, system_graph);
             changes.print();
-
-
             //TODO: incrementally update the in memory set of matches
             //Once we have updated the graph, we need to invalidated any old matches and then search for the
             //new ones!
@@ -186,6 +182,18 @@ void approximate_ssa(RuleSystem<T1>& rule_system, AnalyzedGrammar<T2>& grammar_a
             //but only locally.
             // hierarchy: (geocells) -> rule instances -> components instances -> nodes
             //slow, but easy case to code - assume we know nothing and must search everywhere
+
+            std::cout << "currently mapped rules to " << k << ": { ";
+            for(auto& key : rule_map[k]) std::cout << key << " "; std::cout << "}\n";
+            for(auto& key : rule_map[k])
+            {
+                std::cout << component_matches[key] << "\n";
+            }
+            //should invalidate components and rule instances containing invalid components
+            using graph_t = typename std::remove_reference<decltype(system_graph)>::type;
+           perform_invalidations<graph_t>(changes, component_matches, grammar_analysis);
+
+            find_new_matches();
             return;
             //zero out tau since a rule has fired
             tau = 0.0;

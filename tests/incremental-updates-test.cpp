@@ -5,7 +5,7 @@
 #include "YAGL_Graph.hpp"
 #include "YAGL_Algorithms.hpp"
 
-#include "RuleSystem.hpp"
+#include "ComponentMap.hpp"
 #include "Grammar.h"
 #include "AnalyzedGrammar.hpp"
 #include "ExpandedComplex2D.hpp"
@@ -160,7 +160,7 @@ TEST_CASE("Incremental Update Test", "[incremental-update-test]")
 
     //build the set of unique component matches
     // (TODO: should change name of rule_system to be something like components matches)
-    //DGGML::RuleSystem<KeyType> rule_system;
+    //DGGML::ComponentMap<KeyType> rule_system;
     std::map<std::size_t, DGGML::Instance<std::size_t>> component_match_set;
     int k = 0;
     for(auto& item : end_matches)
@@ -833,7 +833,7 @@ TEST_CASE("Incremental Update Test", "[incremental-update-test]")
 //    lambda_print(gi_inverse);
 //}
 //
-//TEST_CASE("RuleSystem Test", "[rule-system-test]")
+//TEST_CASE("ComponentMap Test", "[rule-system-test]")
 //{
 //    graph_type graph;
 //
@@ -850,7 +850,7 @@ TEST_CASE("Incremental Update Test", "[incremental-update-test]")
 //    //print_matches(matches);
 //    REQUIRE(matches.size() == n);
 //
-//    DGGML::RuleSystem<std::size_t> rule_system;
+//    DGGML::ComponentMap<std::size_t> rule_system;
 //    REQUIRE(rule_system.size() == 0);
 //
 //    for(auto& item : matches)
@@ -880,7 +880,7 @@ TEST_CASE("Incremental Update Test", "[incremental-update-test]")
 //
 //    auto selected = random_rewrite(n);
 //
-//    auto lambda_print = [](typename DGGML::RuleSystem<std::size_t>::inverse_type& gi_inverse)
+//    auto lambda_print = [](typename DGGML::ComponentMap<std::size_t>::inverse_type& gi_inverse)
 //    {
 //        for(const auto& [key, value] : gi_inverse)
 //        {
@@ -1017,7 +1017,7 @@ TEST_CASE("Incremental Update Test", "[incremental-update-test]")
 //
 //    auto matches = DGGML::Plant::microtubule_growing_end_matcher(graph, bucket);
 //
-//    DGGML::RuleSystem<std::size_t> rule_system;
+//    DGGML::ComponentMap<std::size_t> rule_system;
 //
 //    using rule_key_t = std::size_t;
 //    std::map<cplex_key_t, std::vector<rule_key_t>> rule_map;

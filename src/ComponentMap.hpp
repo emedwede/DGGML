@@ -1,5 +1,5 @@
-#ifndef RULE_SYSTEM_HPP
-#define RULE_SYSTEM_HPP
+#ifndef COMPONENT_MAP_HPP
+#define COMPONENT_MAP_HPP
 
 #include <vector> 
 #include <algorithm> 
@@ -91,146 +91,52 @@ namespace DGGML
     }
 
     template <typename KeyType>
-    struct RuleSystem 
+    struct ComponentMap
     {
         using key_type = KeyType;
         using data_type = Instance<KeyType>;
-        using pair_type = std::pair<data_type, key_type>;
         using gen_type = KeyGenerator<KeyType>;
-        //TODO: in the upgraded class, just use a map for container type
-        using container_type = std::vector<std::pair<data_type, key_type>>;
-        using index_type = std::unordered_map<key_type, std::size_t>;  
-        using inverse_type = std::unordered_map<key_type, std::vector<key_type>>;
-        using cell_list_type = std::unordered_map<key_type, key_type>;
+        using container_type = std::unordered_map<key_type, data_type>;
         using iterator = typename container_type::iterator;    
 
-        //containes the matches and rule id bundled as a pair
+        //the component matches
         container_type matches;
-        
-        //indexes the container data 
-        index_type index;
-        
-        //inversly maps the rules a node belongs too
-        inverse_type inverse_index; 
 
         //generates unique keys for the new rules 
         gen_type key_gen;
         
         //default constructor
         
-        void push_back(data_type match)
+        void insert(data_type match)
         {
             //generate a new key and add the match 
             auto k = key_gen.get_key();
-            matches.push_back({match, k});
-            
-            //build the index
-            index.insert({k, matches.size()-1});
-            
-            //build the reverse index 
-            for(const auto& item : match)
-            {
-                auto search = inverse_index.find(item);
-
-                if(search != inverse_index.end())
-                    search->second.push_back(k);
-                else 
-                    inverse_index[item] = {k};
-            }
+            matches.insert({k, match});
         }
 
-        //TODO: Incorrect since I think it invalidates all matches a node participates in, but it doesn't
-        // remove those rule keys from the inverse index set for the other nodes that participate
-        void invalidate(key_type k)
+        void erase(key_type k)
         {
-            const auto& rules = inverse_index.find(k);
-            if(rules != inverse_index.end())
-            {
-                for(const auto& item : rules->second)
-                {
-                    if(index.find(item) != index.end())
-                    {
-                        //currently uses a back swap method for the matches,
-                        //but could be upgraded to allow key reclamation?
-                        auto a = index[item];
-                        auto b = matches.size()-1;
-                        std::swap(matches[a], matches[b]);
-                        std::swap(index[matches[a].second], index[matches[b].second]);
-                        matches.pop_back();
-                        index.erase(item);
-                    }
-                }
-                inverse_index.erase(k);
-            }
-        }
-        
-        //TODO: also may not be working correctly
-        void invalidate_rule(key_type k)
-        {
-            auto match = matches[index[k]].first; 
-            for(auto& item : match)
-            {
-                auto& node_rules = inverse_index.find(item)->second;
-                for(auto i = 0; i < node_rules.size(); i++)
-                {
-                    if(node_rules[i] == k)
-                    {
-                        std::swap(node_rules[i], node_rules[node_rules.size()-1]);
-                        node_rules.pop_back();
-                        break;
-                    }
-                }
-            }
-            auto a = index[k];
-            auto b = matches.size()-1;
-            std::swap(matches[a], matches[b]);
-            std::swap(index[matches[a].second], index[matches[b].second]);
-            matches.pop_back();
-            index.erase(k);
-
-            //TODO: first problem is we are looking up an inverse index of a rule not a node key
-            const auto& rules = inverse_index.find(k);
-            std::cout << "here\n";
-            //TODO: see above, this check is bugged and only works if rule key is the same a node key
-            if(rules != inverse_index.end())
-            {
-                for(const auto& item : rules->second)
-                {
-                    if(index.find(item) != index.end())
-                    {
-                        //currently uses a back swap method for the matches,
-                        //but could be upgraded to allow key reclamation?
-                        auto a = index[item];
-                        auto b = matches.size()-1;
-                        std::swap(matches[a], matches[b]);  
-                        std::swap(index[matches[a].second], index[matches[b].second]);
-                        matches.pop_back();
-                        index.erase(item);
-                    }
-                }
-                std::cout << "here\n";
-                inverse_index.erase(k);
-            }
+            matches.erase(k);
         }
 
         data_type& operator[](key_type k)
         {
-            return matches[index[k]].first;
+            return matches[k];
         }
         
         //perhaps these should be over the index not the match container?
         iterator begin() { return matches.begin(); }
         iterator end() { return matches.end(); }
 
-        const auto size() const { return matches.size(); }
+        auto size() const { return matches.size(); }
         
         //TODO could be a template?
         auto count(std::size_t r)
         {
             auto total = 0;
-            for(auto it = matches.begin(); it != matches.end(); it++)
+            for(const auto& m : matches)
             {
-                if(it->first.type == r)
+                if(m.second.type == r)
                     total++;
             }
             return total;
@@ -238,7 +144,7 @@ namespace DGGML
 
         void print_index()
         {
-            for(const auto& [k, v] : index)
+            for(const auto& [k, v] : matches)
             {
                 std::cout << "{ Key: " << k << ", Value: " 
                     << v << " }\n";
@@ -409,6 +315,85 @@ namespace DGGML
             system_graph.addEdge(rhs_vertex_map[u], rhs_vertex_map[v]);
 
         return changes;
+    }
+
+    //TODO: maybe this function needs to return info on the rules it invalidated
+    template<typename GraphType>
+    void perform_invalidations(RewriteUpdates& changes, ComponentMap<std::size_t>& component_matches, DGGML::AnalyzedGrammar<GraphType>& gamma_analysis)
+    {
+        std::cout << "This function invalidates\n";
+        std::cout << "Components: " << component_matches.size() << "\n";
+        //we must first search for any components containing the nodes/edges that were invalidated
+        //note: worst case we search the whole list, better case we use the cell list to speed up search
+        std::set<std::size_t> node_component_invalidations;
+
+        //search all components for the invalid nodes
+        for(auto& [k1, m] : component_matches)
+        {
+            for (auto& k2 : m.match)
+            {
+                if(changes.node_removals.find(k2) != changes.node_removals.end()) // found so must be marked for invalidation
+                {
+                    node_component_invalidations.insert(k1);
+                }
+            }
+        }
+        std::cout << "Components to invalidate: ";
+        for(auto id : node_component_invalidations) std::cout << id << " ";
+        std::cout << "\n\n";
+
+        //search components for edges
+        //can definitely combine these sets with the node invalidation ones
+        std::set<std::size_t> edge_component_invalidations;
+        //Test: search for edges to remove
+        //bool found = false;
+        for(auto& [k2, m] : component_matches)
+        {
+            for(auto i = 0; i < m.match.size(); i++)
+            {
+                auto k3 = m.match[i];
+                for(auto j = 0; j < m.match.size(); j++)
+                {
+                    auto k4 = m.match[j];
+                    auto& c = gamma_analysis.unique_components[m.type];
+                    //match contains the nodes
+                    std::vector<std::size_t> ordering;
+                    //if(m.type == 0) ordering = end_ordering;
+                    //else ordering = mt_ordering;
+                    if(changes.edge_removals.find({k3, k4}) != changes.edge_removals.end()
+                            )//TODO: fix: && c.adjacent(ordering[i], ordering[j]))
+                    {
+                        //std::cout << "{ " << end_ordering[i] << " -> " << k3 << " }\n";
+                        //std::cout << "{ " << end_ordering[j] << " -> " << k4 << " }\n";
+                        //std::cout << "rule " << k1 << ", component " << k2 << " contains the edge\n";
+                        edge_component_invalidations.insert(k2);
+                        //found = true;
+                        //break;
+                    }
+                }
+                //if(found) break;
+            }
+            //if(found) break;
+        }
+
+        std::cout << "Components to invalidate: ";
+        for(auto id : edge_component_invalidations) std::cout << id << " ";
+        std::cout << "\n\n";
+
+        //we then remove the components and add the ids to a list of removed components
+        //if a component is removed is in a boundary cell, it may participate in a rule instance of another dimension,
+        //so add it to a list for that
+
+        //next, we search the rule instances the cell owns for any rule instance containing the invalidated components
+
+        //we remove these now invalid rules
+
+        //return the list of boundary components invalidated
+    }
+
+    void find_new_matches()
+    {
+        std::cout << "This function finds new matches\n";
     }
 } //end namespace DGGML
 
