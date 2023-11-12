@@ -107,11 +107,11 @@ namespace DGGML
         
         //default constructor
         
-        void insert(data_type match)
+        auto insert(data_type match)
         {
             //generate a new key and add the match 
             auto k = key_gen.get_key();
-            matches.insert({k, match});
+            return matches.insert({k, match});
         }
 
         void erase(key_type k)
@@ -214,7 +214,7 @@ namespace DGGML
                          //std::map<std::size_t, DGGML::Instance<std::size_t>>& component_match_set,
                          MatchType& component_match_set,
                          KeyGenerator<std::size_t>& gen,
-                         DGGML::AnalyzedGrammar<GraphType>& gamma_analysis, GraphType& system_graph)
+                         DGGML::AnalyzedGrammar<GraphType>& grammar_analysis, GraphType& system_graph)
     {
 
         RewriteUpdates changes;
@@ -223,7 +223,7 @@ namespace DGGML
         //construct a vertex map for the lhs to the rule instance
         std::map<std::size_t, std::size_t> lhs_vertex_map;
         std::vector<std::size_t> left, mid, right;
-        for(auto& m : gamma_analysis.ccuv_mappings[rname])
+        for(auto& m : grammar_analysis.ccuv_mappings[rname])
         {
             for (auto &[k, v]: m)
             {
@@ -244,7 +244,7 @@ namespace DGGML
             std::cout << "{ " << left[i] << " -> " << mid[i] << " -> " << right[i] << " }\n";
         }
 
-        auto& rewrite = gamma_analysis.with_rewrites.at(rname);
+        auto& rewrite = grammar_analysis.with_rewrites.at(rname);
         rewrite.print_node_sets(rname);
         std::cout << "\n";
         rewrite.print_edge_sets(rname);
@@ -253,7 +253,7 @@ namespace DGGML
         auto lhs_match = YAGL::induced_subgraph(system_graph, right);
         //TODO: potentially fix by searching the induced graph and removing edges not in the match
         auto lhs_match_copy = lhs_match;
-        auto rhs_rule_copy = gamma_analysis.with_rules.at(rname).rhs_graph;
+        auto rhs_rule_copy = grammar_analysis.with_rules.at(rname).rhs_graph;
 
         //we can build rhs of the vertex map by making a copy of the lhs and deleting
         auto rhs_vertex_map = lhs_vertex_map;
@@ -309,7 +309,7 @@ namespace DGGML
         }
 
         //I think we actually need a map for the lhs, and the rhs
-        gamma_analysis.with_rules.at(rname).update(lhs_match, lhs_match_copy, lhs_vertex_map, rhs_vertex_map); //h
+        grammar_analysis.with_rules.at(rname).update(lhs_match, lhs_match_copy, lhs_vertex_map, rhs_vertex_map); //h
 
         //update the system graph
         for(auto& k : rewrite.node_set_destroy)
@@ -340,7 +340,7 @@ namespace DGGML
     template<typename GraphType>
     Invalidations perform_invalidations(RewriteUpdates& changes,
                                         ComponentMap<std::size_t>& component_matches,
-                                        DGGML::AnalyzedGrammar<GraphType>& gamma_analysis,
+                                        DGGML::AnalyzedGrammar<GraphType>& grammar_analysis,
                                         std::unordered_map<std::size_t, RuleInstType<std::size_t>>& rule_instances,
                                         std::vector<std::size_t>& rule_map)
     {
@@ -365,9 +365,9 @@ namespace DGGML
                 for(auto j = 0; j < m.match.size(); j++)
                 {
                     auto k3 = m.match[j];
-                    auto& c = gamma_analysis.unique_components[m.type];
+                    auto& c = grammar_analysis.unique_components[m.type];
                     //match contains the nodes
-                    std::vector<std::size_t> ordering = gamma_analysis.orderings[m.type];
+                    std::vector<std::size_t> ordering = grammar_analysis.orderings[m.type];
                     if(changes.edge_removals.find({k2, k3}) != changes.edge_removals.end()
                         && c.adjacent(ordering[i], ordering[j]))
                     {
@@ -414,9 +414,106 @@ namespace DGGML
         return removals;
     }
 
-    void find_new_matches()
+    template<typename GraphType>
+    void find_new_matches(RewriteUpdates& changes,
+                          GraphType& system_graph,
+                          ComponentMap<std::size_t>& component_matches,
+                          DGGML::AnalyzedGrammar<GraphType>& grammar_analysis,
+                          std::unordered_map<std::size_t, RuleInstType<std::size_t>>& rule_instances,
+                          std::vector<std::size_t>& rule_map)
     {
         std::cout << "This function finds new matches\n";
+
+        //goal, take the candidate nodes, do a search the depth of the height of the tallest rooted spanning tree
+        //for each candidate and create a set of nodes used to induce a graph that we will search for new components
+        //What should the candidate nodes be?
+        std::set<std::size_t> candidate_nodes = changes.node_updates;
+        std::set<std::size_t> inducers;
+        for(auto n : candidate_nodes)
+        {
+            auto res = YAGL::recursive_dfs(system_graph, n, 2);
+            for(auto& item : res)
+                inducers.insert(item);
+        }
+
+        auto candidate_graph = YAGL::induced_subgraph(system_graph, inducers);
+        std::cout << candidate_graph << "\n";
+
+        //TODO: fuse the acceptance functions
+        //search the candidate graph for components, the code below finds and validates in one loop
+        std::vector<std::size_t> validated_components;
+        //TODO: I think we need to store the ordering or the rooted spanning tree
+        for(auto& [k, pattern] : grammar_analysis.unique_components) {
+            //need to actually get the ordering for the mapping
+            auto matches = YAGL::subgraph_isomorphism2(pattern, candidate_graph);
+            if (!matches.empty()) {
+                for (auto &m: matches) {
+                    bool accepted = false;
+                    for (auto& [v1, v2] : m) {
+                        for (auto& n: changes.node_updates) {
+                            if (v2 == n) {
+                                accepted = true;
+                                std::vector<typename GraphType::key_type> match;
+                                for (auto &[key, value]: m) {
+                                    match.push_back(value);
+                                }
+                                Instance<typename GraphType::key_type> inst;
+                                inst.match = match;
+                                inst.type = k;
+                                inst.anchor = match[0];
+                                auto res = component_matches.insert(inst);
+                                if (res.second)
+                                    validated_components.push_back(res.first->first);
+                                break;
+                            }
+                        }
+                        if (accepted) break;
+                    }
+                    if (accepted) continue;
+                    for (auto& [v1, v2] : m) {
+                        for (auto& [u1, u2] : m) {
+                            for (auto& [n1, n2]: changes.edge_updates) {
+                                if (v2 == n1 && u2 == n2 && pattern.adjacent(v1, u1)) {
+                                    //The accepted code is copy pasted and could be fused
+                                    accepted = true;
+                                    std::vector<typename GraphType::key_type> match;
+                                    for (auto &[key, value]: m) {
+                                        match.push_back(value);
+                                    }
+                                    Instance<typename GraphType::key_type> inst;
+                                    inst.match = match;
+                                    inst.type = k;
+                                    inst.anchor = match[0];
+                                    auto res = component_matches.insert(inst);
+                                    if (res.second)
+                                        validated_components.push_back(res.first->first);
+                                    break;
+                                }
+                                if (accepted) break;
+                            }
+                        }
+                        if (accepted) break;
+                    }
+                    if (accepted) continue;
+                }
+            }
+        }
+        std::cout << "Validated components: { ";
+        for(auto& item : validated_components)
+            std::cout << item << " ";
+        std::cout << "}\n";
+        for(auto& item : validated_components)
+        {
+            std::cout << component_matches[item] << "\n";
+        }
+
+        //new components need to be added to their cell list
+
+        //after finding components and adding them to the cell list, we need find all new rule instances
+
+        //rule istances are only accepted if they contain the new components and phi maps them to the current cell
+        //if phi maps them to a different cell, we may be able to add them to a seperate future validations
+        // list rather than do nothing with them
     }
 } //end namespace DGGML
 

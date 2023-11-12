@@ -110,6 +110,8 @@ namespace DGGML {
                 {
                     double dim_time = 0.0;
 
+                    //TODO: for 1D and 0D, we may not have to re-bin the components into cells due to diffusion
+                    // if we make the depth of reaction cells we search for 1D and 0D deeper i.e. search 2 away vs. 1
                     if(d == 1 || d == 2) continue;
                     std::cout << "Running the Hybrid ODES/SSA inner loop " << (2 - d) << "D phase\n";
                     for(auto& bucket : bucketsND[d])

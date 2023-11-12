@@ -196,7 +196,7 @@ void approximate_ssa(ComponentMap<T1>& component_matches, AnalyzedGrammar<T2>& g
             auto removals = perform_invalidations<graph_t>(changes, component_matches,
                                                            grammar_analysis, rule_instances, rule_map[k]);
             removals.print();
-            find_new_matches();
+            find_new_matches(changes, system_graph, component_matches, grammar_analysis, rule_instances, rule_map[k]);
             return;
             //zero out tau since a rule has fired
             tau = 0.0;
