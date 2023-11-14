@@ -24,12 +24,13 @@
 #include "CartesianHashFunctions.hpp"
 #include "ApproximateSSA.hpp"
 #include "AnalyzedGrammar.hpp"
-
+#include "pattern_matching.hpp"
 
 namespace DGGML {
     template<typename ModelType>
     class SimulationRunner {
     public:
+        using model_type = ModelType;
         using key_type = typename ModelType::key_type;
         using gplex_key_type = typename DGGML::ExpandedComplex2D<>::graph_type::key_type;
         //using data_type = typename ModelType::graph_type;
@@ -78,8 +79,8 @@ namespace DGGML {
             // A cell list is used to accelerate the spatial geometric search, but
             // we could use other methods like a bounding volume hierarchy(ArborX), kd-trees etc
             // see books on collision detection like gpu-gems or Real-Time Collision Detection
-            test_cell_list = CellList<graph_type>(model->geoplex2D.reaction_grid, &model->system_graph, &component_matches);
-            compute_all_rule_instances(test_cell_list);
+            cell_list = CellList<graph_type>(model->geoplex2D.reaction_grid, &model->system_graph, &component_matches);
+            compute_all_rule_instances();
 
             map_rule_instances_to_geocells();
 
@@ -119,7 +120,7 @@ namespace DGGML {
                         auto start = std::chrono::high_resolution_clock::now();
                         approximate_ssa(component_matches, grammar_analysis,
                                         rule_map, rule_instances,
-                                        model, k, geocell_progress[k], test_cell_list);
+                                        model, k, geocell_progress[k], cell_list);
                         auto stop = std::chrono::high_resolution_clock::now();
                         auto duration =
                                 std::chrono::duration_cast<std::chrono::milliseconds>(stop-start);
@@ -144,7 +145,7 @@ namespace DGGML {
                 return;
             }
         }
-    private:
+    //private:
 
         void create_save_directory()
         {
@@ -213,9 +214,7 @@ namespace DGGML {
             }
         }
 
-
-        template<typename CellListType> //TODO: fix me the hacky template fix for a type we should know!
-        void compute_all_rule_instances(CellListType& test_cell_list)
+        void compute_all_rule_instances()
         {
             for(auto& [name, rule] : grammar_analysis.with_rules) {
                 auto count = std::count_if(rule_instances.begin(), rule_instances.end(), [&](auto& iter) { return iter.second.name == name; });
@@ -227,52 +226,7 @@ namespace DGGML {
             }
             // This is a recursive backtracking function, and it is memory efficient because it does a DFS (inorder traversal)
             // so only one vector is need for finding the result
-            // TODO: Check for bugs patterns > 2, currently some permutations may not be picked up correctly
-            std::function<void(std::string, std::vector<std::size_t>&, int, std::vector<std::size_t>&, decltype(test_cell_list)&, std::size_t)> reaction_instance_backtracker =
-                    [&](std::string name, std::vector<std::size_t>& result, int k, std::vector<std::size_t>& pattern, decltype(test_cell_list)& cell_list, std::size_t c)
-                    {
-                        if( k == pattern.size())
-                        {
-                            auto generated_key = instance_key_gen.get_key();
-                            rule_instances[generated_key].name = name;
-                            rule_instances[generated_key].category = "stochastic";
-                            rule_instances[generated_key].components = result;
-                            rule_instances[generated_key].anchor = component_matches[result[0]].anchor;
-                        }
-                        else {
-                            int imin, imax, jmin, jmax;
-                            cell_list.getCells(c, imin, imax, jmin, jmax);
-                            for (auto i = imin; i < imax; i++) {
-                                for (auto j = jmin; j < jmax; j++) {
-                                    auto nbr_idx = cell_list.cardinalCellIndex(i, j);
-                                    for (const auto& m2 : cell_list.data[nbr_idx]) {
-                                        bool found = false;
-                                        for(auto v = 0; v < k; v++)
-                                        {
-                                            if(result[v] == m2) found = true;
-                                        }
-                                        if(!found && component_matches[m2].type == pattern[k])
-                                        {
 
-                                            auto a1 = component_matches[result[0]].anchor;
-                                            auto a2 = component_matches[m2].anchor;
-                                            auto& p1 = model->system_graph.findNode(a1)->second.getData().position;
-                                            auto& p2 = model->system_graph.findNode(a2)->second.getData().position;
-                                            auto d = calculate_distance(p1, p2);
-
-                                            // TODO: a constraint for nearness is needed, there are other ways to do it
-                                            //  this is just a placeholder
-                                            if(d < model->settings.MAXIMAL_REACTION_RADIUS)
-                                            {
-                                                result[k] = m2;
-                                                reaction_instance_backtracker(name, result, k + 1, pattern, cell_list, c);
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    };
 
             for(auto m1 = component_matches.begin(); m1 != component_matches.end(); m1++)
             {
@@ -289,8 +243,8 @@ namespace DGGML {
                     {
                         result[k] = m1->first;
                         k++;
-                        auto c = test_cell_list.locate_cell(m1);
-                        reaction_instance_backtracker(name, result, k, pattern, test_cell_list, c);
+                        auto c = cell_list.locate_cell(m1);
+                        reaction_instance_backtracker(*this, name, result, k, pattern, c);
                     }
                 }
             }
@@ -341,7 +295,7 @@ namespace DGGML {
         //TODO: maybe not shared, but unique?
         std::shared_ptr<ModelType> model;
 
-        CellList<graph_type> test_cell_list;
+        CellList<graph_type> cell_list;
 
         AnalyzedGrammar<graph_type> grammar_analysis;
 

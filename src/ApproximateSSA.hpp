@@ -69,6 +69,7 @@ void approximate_ssa(ComponentMap<T1>& component_matches, AnalyzedGrammar<T2>& g
     auto& system_graph = model->system_graph;
     auto& settings = model->settings;
     auto& gen = model->gen;
+    auto reaction_radius = model->settings.MAXIMAL_REACTION_RADIUS;
 
     std::cout << "Cell " << k << " has " << rule_map[k].size() << " rules\n";
 
@@ -198,8 +199,8 @@ void approximate_ssa(ComponentMap<T1>& component_matches, AnalyzedGrammar<T2>& g
                                                            grammar_analysis, rule_instances,
                                                            rule_map[k], cell_list);
             removals.print();
-            find_new_matches(changes, system_graph, component_matches,
-                             grammar_analysis, rule_instances, rule_map[k], cell_list);
+            find_new_matches(changes, system_graph, component_matches,grammar_analysis,
+                             rule_instances, rule_map[k], cell_list, reaction_radius);
             return;
             //zero out tau since a rule has fired
             tau = 0.0;

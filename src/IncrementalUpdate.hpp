@@ -295,7 +295,8 @@ namespace DGGML
                           DGGML::AnalyzedGrammar<GraphType>& grammar_analysis,
                           std::unordered_map<std::size_t, RuleInstType<std::size_t>>& rule_instances,
                           std::vector<std::size_t>& rule_map,
-                          CellList<GraphType>& cell_list)
+                          CellList<GraphType>& cell_list,
+                          double reaction_radius)
     {
         std::cout << "This function finds new matches\n";
         //goal, take the candidate nodes, do a search the depth of the height of the tallest rooted spanning tree
@@ -391,7 +392,38 @@ namespace DGGML
         std::cout << "CellList size after insertion " << cell_list.getTotalSize() << "\n";
 
         //after finding components and adding them to the cell list, we need find all new rule instances
+        //we only need to search in the cells surrounding a newly inserted component
+        //TODO: Do we need to add components one by one and search or can we add them and do an aggregate search?
+        //TODO: there is definitely a more efficient way of doing this other than searching the whole neighborhood of cells
+        // for every pattern. For example, why search for a pattern if that type of validated component isn't even in it.
+        std::vector<RuleInstType<std::size_t>> accepted_rule_instances;
+        for(auto& item : validated_components)
+        {
+            auto m1 = component_matches.find(item);
+            for(auto& [name, pattern] : grammar_analysis.rule_component)
+            {
+                //skip solving rules for now
+                if(grammar_analysis.with_rules.find(name) == grammar_analysis.with_rules.end())
+                    continue;
+                int k = 0;
+                std::vector<std::size_t> result;
+                result.resize(pattern.size());
 
+                if(pattern.size() && m1->second.type == pattern.front())
+                {
+                    result[k] = m1->first;
+                    k++;
+                    //using this cell should work since the component was just added and can't drift
+                    auto c = cell_list.locate_cell(m1);
+                    std::cout << "match " << m1->first << " is located in cell " << c << "\n";
+                    incremental_reaction_instance_backtracker(accepted_rule_instances, validated_components,
+                                                              system_graph, component_matches,
+                                                              grammar_analysis, cell_list, name,
+                                                              result, k, pattern, c, reaction_radius);
+                }
+            }
+        }
+        std::cout << "Number of accepted reaction instances: " << accepted_rule_instances.size() << "\n";
         //rule istances are only accepted if they contain the new components and phi maps them to the current cell
         //if phi maps them to a different cell, we may be able to add them to a seperate future validations
         // list rather than do nothing with them
