@@ -78,8 +78,7 @@ namespace DGGML {
             // A cell list is used to accelerate the spatial geometric search, but
             // we could use other methods like a bounding volume hierarchy(ArborX), kd-trees etc
             // see books on collision detection like gpu-gems or Real-Time Collision Detection
-            CellList test_cell_list(model->geoplex2D.reaction_grid, model->system_graph, component_matches);
-
+            test_cell_list = CellList<graph_type>(model->geoplex2D.reaction_grid, &model->system_graph, &component_matches);
             compute_all_rule_instances(test_cell_list);
 
             map_rule_instances_to_geocells();
@@ -118,7 +117,9 @@ namespace DGGML {
                     {
                         auto k = bucket.first;
                         auto start = std::chrono::high_resolution_clock::now();
-                        approximate_ssa(component_matches, grammar_analysis, rule_map, rule_instances, model, k, geocell_progress[k]);
+                        approximate_ssa(component_matches, grammar_analysis,
+                                        rule_map, rule_instances,
+                                        model, k, geocell_progress[k], test_cell_list);
                         auto stop = std::chrono::high_resolution_clock::now();
                         auto duration =
                                 std::chrono::duration_cast<std::chrono::milliseconds>(stop-start);
@@ -273,7 +274,7 @@ namespace DGGML {
                         }
                     };
 
-            for(auto& m1 : component_matches)
+            for(auto m1 = component_matches.begin(); m1 != component_matches.end(); m1++)
             {
                 for(auto& [name, pattern] : grammar_analysis.rule_component)
                 {
@@ -284,9 +285,9 @@ namespace DGGML {
                     std::vector<std::size_t> result;
                     result.resize(pattern.size());
 
-                    if(pattern.size() && m1.second.type == pattern.front())
+                    if(pattern.size() && m1->second.type == pattern.front())
                     {
-                        result[k] = m1.first;
+                        result[k] = m1->first;
                         k++;
                         auto c = test_cell_list.locate_cell(m1);
                         reaction_instance_backtracker(name, result, k, pattern, test_cell_list, c);
@@ -339,6 +340,8 @@ namespace DGGML {
 
         //TODO: maybe not shared, but unique?
         std::shared_ptr<ModelType> model;
+
+        CellList<graph_type> test_cell_list;
 
         AnalyzedGrammar<graph_type> grammar_analysis;
 

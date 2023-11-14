@@ -11,6 +11,7 @@
 #include "Solver.h"
 
 #include "ComponentMap.hpp"
+#include "IncrementalUpdate.hpp"
 #include "AnalyzedGrammar.hpp"
 
 #include <chrono>
@@ -62,7 +63,7 @@ auto induce_from_set(T1& inst, T2& component_matches, T3& system_graph)
 
 template <typename T1, typename T2, typename T3, typename T4, typename M1>
 void approximate_ssa(ComponentMap<T1>& component_matches, AnalyzedGrammar<T2>& grammar_analysis, T3& rule_map, T4& rule_instances, M1& model,
-                     std::size_t k, std::pair<double, double>& geocell_progress)
+                     std::size_t k, std::pair<double, double>& geocell_progress, CellList<T2>& cell_list)
 {
     auto& geoplex2D = model->geoplex2D;
     auto& system_graph = model->system_graph;
@@ -187,16 +188,17 @@ void approximate_ssa(ComponentMap<T1>& component_matches, AnalyzedGrammar<T2>& g
 
             std::cout << "currently mapped rules to " << k << ": { ";
             for(auto& key : rule_map[k]) std::cout << key << " "; std::cout << "}\n";
-            for(auto& key : rule_map[k])
-            {
-                std::cout << component_matches[key] << "\n";
-            }
+//            for(auto& key : rule_map[k])
+//            {
+//                std::cout << component_matches[key] << "\n";
+//            }
             //should invalidate components and rule instances containing invalid components
             using graph_t = typename std::remove_reference<decltype(system_graph)>::type;
             auto removals = perform_invalidations<graph_t>(changes, component_matches,
                                                            grammar_analysis, rule_instances, rule_map[k]);
             removals.print();
-            find_new_matches(changes, system_graph, component_matches, grammar_analysis, rule_instances, rule_map[k]);
+            find_new_matches(changes, system_graph, component_matches,
+                             grammar_analysis, rule_instances, rule_map[k], cell_list);
             return;
             //zero out tau since a rule has fired
             tau = 0.0;
