@@ -200,7 +200,7 @@ void approximate_ssa(ComponentMap<T1>& component_matches, AnalyzedGrammar<T2>& g
                                                            rule_map[k], cell_list);
             removals.print();
             find_new_matches(changes, system_graph, component_matches,grammar_analysis,
-                             rule_instances, rule_map[k], cell_list, reaction_radius);
+                             rule_instances, rule_map[k], cell_list, geoplex2D,k, reaction_radius);
             return;
             //zero out tau since a rule has fired
             tau = 0.0;

@@ -13,6 +13,8 @@ namespace DGGML
             using types = CartesianComplex2D<GraphType>;
             
             CartesianGrid2D reaction_grid;
+            //TODO: reverse the order of labels, 2D is incorrectly labeled 0D
+            // the change will effect a sign in the min_dim_phi
             std::vector<int> dim_label;
             std::vector<std::size_t> cell_label;
            ExpandedComplex2D() = default; 

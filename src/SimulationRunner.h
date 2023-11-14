@@ -25,6 +25,7 @@
 #include "ApproximateSSA.hpp"
 #include "AnalyzedGrammar.hpp"
 #include "pattern_matching.hpp"
+#include "phi_functions.hpp"
 
 namespace DGGML {
     template<typename ModelType>
@@ -266,17 +267,9 @@ namespace DGGML {
             // we've reduced the problem to sorting a whole reaction by an anchor node
             for(auto& [key, inst] : rule_instances)
             {
-                auto& node_data = model->system_graph.findNode(inst.anchor)->second.getData();
-
-                double xp = node_data.position[0];
-                double yp = node_data.position[1];
-                int ic, jc;
-
-                model->geoplex2D.reaction_grid.locatePoint(xp, yp, ic, jc);
-                auto cardinal = model->geoplex2D.reaction_grid.cardinalCellIndex(ic, jc);
-                // here would be the anchor list reduction, plus whatever other code needs to be added
-                //anchor_list.insert({match.first.anchor, cardinal});
-                auto max_cell = model->geoplex2D.cell_label[cardinal];
+                //auto max_cell = anchored_phi(inst, model->system_graph, model->geoplex2D);
+                auto max_cell = min_dim_phi(inst, model->system_graph, model->geoplex2D, component_matches);
+                std::cout << max_cell << "\n";
                 rule_map[max_cell].push_back(key);
             }
 

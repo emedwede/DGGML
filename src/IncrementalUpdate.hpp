@@ -13,6 +13,8 @@
 #include "YAGL_Graph.hpp"
 #include "AnalyzedGrammar.hpp"
 #include "CellList.hpp" //Would cause a circular dependency
+#include "pattern_matching.hpp"
+#include "phi_functions.hpp"
 
 namespace DGGML
 {
@@ -288,7 +290,7 @@ namespace DGGML
         return removals;
     }
 
-    template<typename GraphType>
+    template<typename GraphType, typename CellComplexType>
     void find_new_matches(RewriteUpdates& changes,
                           GraphType& system_graph,
                           ComponentMap<std::size_t>& component_matches,
@@ -296,6 +298,8 @@ namespace DGGML
                           std::unordered_map<std::size_t, RuleInstType<std::size_t>>& rule_instances,
                           std::vector<std::size_t>& rule_map,
                           CellList<GraphType>& cell_list,
+                          CellComplexType& geoplex2D,
+                          std::size_t cell_k,
                           double reaction_radius)
     {
         std::cout << "This function finds new matches\n";
@@ -424,9 +428,20 @@ namespace DGGML
             }
         }
         std::cout << "Number of accepted reaction instances: " << accepted_rule_instances.size() << "\n";
+
         //rule istances are only accepted if they contain the new components and phi maps them to the current cell
         //if phi maps them to a different cell, we may be able to add them to a seperate future validations
         // list rather than do nothing with them
+        for(auto& inst : accepted_rule_instances)
+        {
+            auto max_cell = min_dim_phi(inst, system_graph, geoplex2D, component_matches);
+            std::cout << "we are in cell " << cell_k << " and accepted instance maps to cell " << max_cell << "\n";
+            //this cell owns the instance so it can add it back in
+            if(max_cell == cell_k)
+            {
+                //TODO: add accepted instances back in
+            }
+        }
     }
 }
 #endif //DGGML_INCREMENTALUPDATE_HPP
