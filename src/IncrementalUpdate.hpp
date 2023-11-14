@@ -205,7 +205,8 @@ namespace DGGML
                                         ComponentMap<std::size_t>& component_matches,
                                         DGGML::AnalyzedGrammar<GraphType>& grammar_analysis,
                                         std::unordered_map<std::size_t, RuleInstType<std::size_t>>& rule_instances,
-                                        std::vector<std::size_t>& rule_map)
+                                        std::vector<std::size_t>& rule_map,
+                                        CellList<GraphType>& cell_list)
     {
         std::cout << "This function invalidates\n";
         Invalidations removals;
@@ -243,9 +244,19 @@ namespace DGGML
             }
         }
 
-        //delete invalid components from list of removable components
+        std::cout << "CellList size before invalidations " << cell_list.getTotalSize() << "\n";
+        std::cout << "ComponentMap size before invalidations " << component_matches.size() << "\n";
+        //use list of removable components to delete items from component matches and cell_list
         for(auto& item : component_invalidations)
+        {
+            //Delete from cell list first otherwise, we would need a copy of the erased component
+            //to locate its cell via it's position in the list
+            auto iter = component_matches.find(item);
+            cell_list.erase(iter);
             component_matches.erase(item);
+        }
+        std::cout << "CellList size after invalidations " << cell_list.getTotalSize() << "\n";
+        std::cout << "ComponentMap size after invalidations " << component_matches.size() << "\n";
 
         //if a component is removed is in a boundary cell, it may participate in a rule instance of another dimension,
         //so we could mark it for that as well
@@ -371,6 +382,13 @@ namespace DGGML
         }
 
         //new components need to be added back into their dynamic cell list
+        std::cout << "CellList size before insertion " << cell_list.getTotalSize() << "\n";
+        for(auto& item : validated_components)
+        {
+            auto iter = component_matches.find(item);
+            cell_list.insert_match(iter);
+        }
+        std::cout << "CellList size after insertion " << cell_list.getTotalSize() << "\n";
 
         //after finding components and adding them to the cell list, we need find all new rule instances
 
