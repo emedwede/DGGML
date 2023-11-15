@@ -6,6 +6,9 @@
 #include "YAGL_Algorithms.hpp"
 
 #include "ComponentMatchMap.hpp"
+#include "RuleMatchMap.hpp"
+#include "IncrementalUpdate.hpp"
+
 #include "Grammar.h"
 #include "AnalyzedGrammar.hpp"
 #include "ExpandedComplex2D.hpp"

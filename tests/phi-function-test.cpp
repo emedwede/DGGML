@@ -10,6 +10,7 @@
 #include "YAGL_Algorithms.hpp"
 #include "ExpandedComplex2D.hpp"
 #include "ComponentMatchMap.hpp"
+#include "RuleMatchMap.hpp"
 #include "MathUtils.hpp"
 
 #include "../examples/CMA/PlantModel/PlantTypes.hpp"

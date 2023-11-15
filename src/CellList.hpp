@@ -5,7 +5,6 @@
 
 #include "CartesianGrid2D.hpp"
 #include "ComponentMatchMap.hpp"
-#include "PlantTypes.hpp"
 #include "YAGL_Graph.hpp"
 
 namespace DGGML

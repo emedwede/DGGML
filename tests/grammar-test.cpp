@@ -11,6 +11,8 @@
 #include "Grammar.h"
 #include "AnalyzedGrammar.hpp"
 #include "ComponentMatchMap.hpp"
+#include "RuleMatchMap.hpp"
+#include "IncrementalUpdate.hpp"
 #include "MathUtils.hpp"
 
 #include <unordered_map> 
