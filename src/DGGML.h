@@ -4,6 +4,6 @@
 #include "SimulatorInterface.h"
 #include "SimulationRunner.h"
 #include "Model.h"
-#include "ComponentMap.hpp"
+#include "ComponentMatchMap.hpp"
 
 #endif //DGGML_DGGML_H

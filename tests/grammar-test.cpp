@@ -10,7 +10,7 @@
 #include "../examples/CMA/PlantModel/PlantTypes.hpp"
 #include "Grammar.h"
 #include "AnalyzedGrammar.hpp"
-#include "ComponentMap.hpp"
+#include "ComponentMatchMap.hpp"
 #include "MathUtils.hpp"
 
 #include <unordered_map> 
@@ -157,8 +157,8 @@ TEST_CASE("Basic Grammar Analysis Test", "[basic-grammar-analysis-test]")
 }
 
 //testable version
-void perform_rewrite(DGGML::RuleInstType<std::size_t>& inst,
-                      std::map<std::size_t, DGGML::Instance<std::size_t>>& component_match_set,
+void perform_rewrite(DGGML::RuleMatch<std::size_t>& inst,
+                      std::map<std::size_t, DGGML::ComponentMatch<std::size_t>>& component_match_set,
                       KeyGenerator& gen,
                      DGGML::AnalyzedGrammar<GraphType>& gamma_analysis, GraphType& system_graph)
 {
@@ -187,7 +187,7 @@ void perform_rewrite(DGGML::RuleInstType<std::size_t>& inst,
     REQUIRE((right.size() == mid.size() && mid.size() == left.size()));
 
     //print out the mapping info, so we know how a lhs numbering maps to an instance numbering
-    std::cout << "\nMappings: { LHS Key -> Minimal Component Key -> Rule Instance Key }\n";
+    std::cout << "\nMappings: { LHS Key -> Minimal Component Key -> Rule ComponentMatch Key }\n";
     for(auto i = 0; i < left.size(); i++)
     {
         lhs_vertex_map[left[i]] = right[i];
@@ -335,7 +335,7 @@ TEST_CASE("Basic Rewrite Test", "[basic-rewrite-test]")
             std::cout << "{ " << k1 << " <- " << k2 << " }\n";
     }
 
-    std::map<std::size_t, DGGML::Instance<std::size_t>> component_match_set;
+    std::map<std::size_t, DGGML::ComponentMatch<std::size_t>> component_match_set;
     int k = 0;
     for(auto& item : results)
     {
@@ -344,7 +344,7 @@ TEST_CASE("Basic Rewrite Test", "[basic-rewrite-test]")
         {
             match.emplace_back(value);
         }
-        DGGML::Instance<std::size_t> inst;
+        DGGML::ComponentMatch<std::size_t> inst;
         inst.match = match;
         inst.type = 0;
         inst.anchor = match[0];
@@ -352,13 +352,13 @@ TEST_CASE("Basic Rewrite Test", "[basic-rewrite-test]")
         //rule_system.push_back(inst);
     }
 
-    std::map<std::size_t, DGGML::RuleInstType<std::size_t>> rule_instances;
+    std::map<std::size_t, DGGML::RuleMatch<std::size_t>> rule_matches;
     for(int i = 0; i < component_match_set.size(); i++) {
-        rule_instances[i];
-        rule_instances[i].name = "with_growth";
-        rule_instances[i].category = "stochastic";
-        rule_instances[i].components.push_back(i);
-        rule_instances[i].anchor = component_match_set[i].anchor;
+        rule_matches[i];
+        rule_matches[i].name = "with_growth";
+        rule_matches[i].category = "stochastic";
+        rule_matches[i].components.push_back(i);
+        rule_matches[i].anchor = component_match_set[i].anchor;
     }
 
     //we'll select the first match to use for our rewrite
@@ -368,12 +368,12 @@ TEST_CASE("Basic Rewrite Test", "[basic-rewrite-test]")
     //keys are always generated uniquely in all phases of the code
     KeyGenerator gen(200);
 
-    perform_rewrite(rule_instances[0], component_match_set, gen, gamma_analysis, system_graph);
+    perform_rewrite(rule_matches[0], component_match_set, gen, gamma_analysis, system_graph);
 
 //    auto ccuvm = gamma_analysis.ccuv_mappings["with_growth"][0];
 //
 //    //print out the mapping info, so we know how a lhs numbering maps to an instance numbering
-//    std::cout << "\nMappings: { LHS Key -> Minimal Component Key -> Rule Instance Key }\n";
+//    std::cout << "\nMappings: { LHS Key -> Minimal Component Key -> Rule ComponentMatch Key }\n";
 //    for(auto& [k, v] : gamma_analysis.lhs_connected_components.at("with_growth"))
 //    {
 //        for(auto& [id, n] : v.getNodeSetRef())
@@ -548,7 +548,7 @@ TEST_CASE("Interaction Rewrite Test", "[basic-rewrite-test]")
     auto mt_matches = YAGL::subgraph_isomorphism2(c2, system_graph);
     REQUIRE(mt_matches.size() == 2);
 
-    std::map<std::size_t, DGGML::Instance<std::size_t>> component_match_set;
+    std::map<std::size_t, DGGML::ComponentMatch<std::size_t>> component_match_set;
     int k = 0;
     for(auto& item : end_matches)
     {
@@ -557,7 +557,7 @@ TEST_CASE("Interaction Rewrite Test", "[basic-rewrite-test]")
         {
             match.emplace_back(value);
         }
-        DGGML::Instance<std::size_t> inst;
+        DGGML::ComponentMatch<std::size_t> inst;
         inst.match = match;
         inst.type = 0;
         inst.anchor = match[0];
@@ -571,7 +571,7 @@ TEST_CASE("Interaction Rewrite Test", "[basic-rewrite-test]")
         {
             match.emplace_back(value);
         }
-        DGGML::Instance<std::size_t> inst;
+        DGGML::ComponentMatch<std::size_t> inst;
         inst.match = match;
         inst.type = 1;
         inst.anchor = match[0];
@@ -581,15 +581,15 @@ TEST_CASE("Interaction Rewrite Test", "[basic-rewrite-test]")
 
     //building the rule instances
     int kk = 0;
-    std::map<std::size_t, DGGML::RuleInstType<std::size_t>> rule_instances;
+    std::map<std::size_t, DGGML::RuleMatch<std::size_t>> rule_matches;
     for(int i = 0; i < component_match_set.size(); i++)
     {
         if(component_match_set[i].type == 0) {
-            rule_instances[kk];
-            rule_instances[kk].name = "with_growth";
-            rule_instances[kk].category = "stochastic";
-            rule_instances[kk].components.push_back(i);
-            rule_instances[kk].anchor = component_match_set[i].anchor;
+            rule_matches[kk];
+            rule_matches[kk].name = "with_growth";
+            rule_matches[kk].category = "stochastic";
+            rule_matches[kk].components.push_back(i);
+            rule_matches[kk].anchor = component_match_set[i].anchor;
             kk++;
         }
         for(int j = 0; j < component_match_set.size(); j++)
@@ -602,12 +602,12 @@ TEST_CASE("Interaction Rewrite Test", "[basic-rewrite-test]")
             //auto d = DGGML::calculate_distance(p1, p2);
             if(comp1.type == 1 && comp2.type == 1)// && d <= 1.0)
             {
-                rule_instances[kk];
-                rule_instances[kk].name = "with_interaction";
-                rule_instances[kk].category = "stochastic";
-                rule_instances[kk].components.push_back(i);
-                rule_instances[kk].components.push_back(j);
-                rule_instances[kk].anchor = comp1.anchor;
+                rule_matches[kk];
+                rule_matches[kk].name = "with_interaction";
+                rule_matches[kk].category = "stochastic";
+                rule_matches[kk].components.push_back(i);
+                rule_matches[kk].components.push_back(j);
+                rule_matches[kk].anchor = comp1.anchor;
                 kk++;
             }
         }
@@ -617,12 +617,12 @@ TEST_CASE("Interaction Rewrite Test", "[basic-rewrite-test]")
     //keys are always generated uniquely in all phases of the code
     DGGML::KeyGenerator<std::size_t> gen(200);
     std::cout << "Here\n";
-    for(auto& r : rule_instances) {
+    for(auto& r : rule_matches) {
         std::cout << r.second.name << ": { ";
         for (auto &item: r.second.components) std::cout << item << " ";
         std::cout << "}\n";
     }
-    DGGML::perform_rewrite(rule_instances[1], component_match_set, gen, gamma_analysis, system_graph);
+    DGGML::perform_rewrite(rule_matches[1], component_match_set, gen, gamma_analysis, system_graph);
     std::cout << system_graph << "\n";
     std::cout << YAGL::connected_components(system_graph) << "\n";
     //REQUIRE(system_graph.numNodes() == 0);

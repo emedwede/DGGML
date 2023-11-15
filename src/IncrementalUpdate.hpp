@@ -8,7 +8,7 @@
 #include <iostream>
 #include <map>
 
-#include "ComponentMap.hpp"
+#include "ComponentMatchMap.hpp"
 #include "YAGL_Algorithms.hpp"
 #include "YAGL_Graph.hpp"
 #include "AnalyzedGrammar.hpp"
@@ -75,8 +75,8 @@ namespace DGGML
     };
 
     template <typename GraphType, typename MatchType>
-    RewriteUpdates perform_rewrite(DGGML::RuleInstType<std::size_t>& inst,
-            //std::map<std::size_t, DGGML::Instance<std::size_t>>& component_match_set,
+    RewriteUpdates perform_rewrite(DGGML::RuleMatch<std::size_t>& inst,
+            //std::map<std::size_t, DGGML::ComponentMatch<std::size_t>>& component_match_set,
                                    MatchType& component_match_set,
                                    KeyGenerator<std::size_t>& gen,
                                    DGGML::AnalyzedGrammar<GraphType>& grammar_analysis, GraphType& system_graph)
@@ -102,7 +102,7 @@ namespace DGGML
                 right.push_back(k);
 
         //print out the mapping info, so we know how a lhs numbering maps to an instance numbering
-        std::cout << "\nMappings: { LHS Key -> Minimal Component Key -> Rule Instance Key }\n";
+        std::cout << "\nMappings: { LHS Key -> Minimal Component Key -> Rule ComponentMatch Key }\n";
         for(auto i = 0; i < left.size(); i++)
         {
             lhs_vertex_map[left[i]] = right[i];
@@ -204,9 +204,9 @@ namespace DGGML
     // track of it
     template<typename GraphType>
     Invalidations perform_invalidations(RewriteUpdates& changes,
-                                        ComponentMap<std::size_t>& component_matches,
+                                        ComponentMatchMap<std::size_t>& component_matches,
                                         DGGML::AnalyzedGrammar<GraphType>& grammar_analysis,
-                                        std::unordered_map<std::size_t, RuleInstType<std::size_t>>& rule_instances,
+                                        RuleMatchMap<std::size_t>& rule_matches,
                                         std::vector<std::size_t>& rule_map,
                                         CellList<GraphType>& cell_list)
     {
@@ -247,7 +247,7 @@ namespace DGGML
         }
 
         std::cout << "CellList size before invalidations " << cell_list.getTotalSize() << "\n";
-        std::cout << "ComponentMap size before invalidations " << component_matches.size() << "\n";
+        std::cout << "ComponentMatchMap size before invalidations " << component_matches.size() << "\n";
         //use list of removable components to delete items from component matches and cell_list
         for(auto& item : component_invalidations)
         {
@@ -258,7 +258,7 @@ namespace DGGML
             component_matches.erase(item);
         }
         std::cout << "CellList size after invalidations " << cell_list.getTotalSize() << "\n";
-        std::cout << "ComponentMap size after invalidations " << component_matches.size() << "\n";
+        std::cout << "ComponentMatchMap size after invalidations " << component_matches.size() << "\n";
 
         //if a component is removed is in a boundary cell, it may participate in a rule instance of another dimension,
         //so we could mark it for that as well
@@ -268,7 +268,7 @@ namespace DGGML
         auto& rule_invalidations = removals.rule_invalidations;
         for(auto& k : rule_map)
         {
-            auto& inst = rule_instances[k];
+            auto& inst = rule_matches[k];
             for(auto& c : inst.components)
             {
                 if(component_invalidations.find(c) != component_invalidations.end())
@@ -280,7 +280,7 @@ namespace DGGML
 
         //we remove these now invalid rules
         for(auto& item : rule_invalidations) {
-            rule_instances.erase(item);
+            rule_matches.erase(item);
 
             //we also need to remove the invalid rules from the rule map
             rule_map.erase(std::find(rule_map.begin(), rule_map.end(), item));
@@ -293,9 +293,9 @@ namespace DGGML
     template<typename GraphType, typename CellComplexType>
     void find_new_matches(RewriteUpdates& changes,
                           GraphType& system_graph,
-                          ComponentMap<std::size_t>& component_matches,
+                          ComponentMatchMap<std::size_t>& component_matches,
                           DGGML::AnalyzedGrammar<GraphType>& grammar_analysis,
-                          std::unordered_map<std::size_t, RuleInstType<std::size_t>>& rule_instances,
+                          RuleMatchMap<std::size_t>& rule_matches,
                           std::vector<std::size_t>& rule_map,
                           CellList<GraphType>& cell_list,
                           CellComplexType& geoplex2D,
@@ -336,7 +336,7 @@ namespace DGGML
                                 for (auto &[key, value]: m) {
                                     match.push_back(value);
                                 }
-                                Instance<typename GraphType::key_type> inst;
+                                ComponentMatch<typename GraphType::key_type> inst;
                                 inst.match = match;
                                 inst.type = k;
                                 inst.anchor = match[0];
@@ -359,7 +359,7 @@ namespace DGGML
                                     for (auto &[key, value]: m) {
                                         match.push_back(value);
                                     }
-                                    Instance<typename GraphType::key_type> inst;
+                                    ComponentMatch<typename GraphType::key_type> inst;
                                     inst.match = match;
                                     inst.type = k;
                                     inst.anchor = match[0];
@@ -400,7 +400,7 @@ namespace DGGML
         //TODO: Do we need to add components one by one and search or can we add them and do an aggregate search?
         //TODO: there is definitely a more efficient way of doing this other than searching the whole neighborhood of cells
         // for every pattern. For example, why search for a pattern if that type of validated component isn't even in it.
-        std::vector<RuleInstType<std::size_t>> accepted_rule_instances;
+        std::vector<RuleMatch<std::size_t>> accepted_rule_matches;
         for(auto& item : validated_components)
         {
             auto m1 = component_matches.find(item);
@@ -420,19 +420,19 @@ namespace DGGML
                     //using this cell should work since the component was just added and can't drift
                     auto c = cell_list.locate_cell(m1);
                     std::cout << "match " << m1->first << " is located in cell " << c << "\n";
-                    incremental_reaction_instance_backtracker(accepted_rule_instances, validated_components,
+                    incremental_reaction_instance_backtracker(accepted_rule_matches, validated_components,
                                                               system_graph, component_matches,
                                                               grammar_analysis, cell_list, name,
                                                               result, k, pattern, c, reaction_radius);
                 }
             }
         }
-        std::cout << "Number of accepted reaction instances: " << accepted_rule_instances.size() << "\n";
+        std::cout << "Number of accepted reaction instances: " << accepted_rule_matches.size() << "\n";
 
         //rule istances are only accepted if they contain the new components and phi maps them to the current cell
         //if phi maps them to a different cell, we may be able to add them to a seperate future validations
         // list rather than do nothing with them
-        for(auto& inst : accepted_rule_instances)
+        for(auto& inst : accepted_rule_matches)
         {
             auto max_cell = min_dim_phi(inst, system_graph, geoplex2D, component_matches);
             std::cout << "we are in cell " << cell_k << " and accepted instance maps to cell " << max_cell << "\n";

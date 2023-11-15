@@ -5,7 +5,7 @@
 #include "YAGL_Graph.hpp"
 #include "YAGL_Algorithms.hpp"
 
-#include "ComponentMap.hpp"
+#include "ComponentMatchMap.hpp"
 #include "Grammar.h"
 #include "AnalyzedGrammar.hpp"
 #include "ExpandedComplex2D.hpp"
@@ -160,8 +160,8 @@ TEST_CASE("Incremental Update Test", "[incremental-update-test]")
 
     //build the set of unique component matches
     // (TODO: should change name of rule_system to be something like components matches)
-    //DGGML::ComponentMap<KeyType> rule_system;
-    std::map<std::size_t, DGGML::Instance<std::size_t>> component_match_set;
+    //DGGML::ComponentMatchMap<KeyType> rule_system;
+    std::map<std::size_t, DGGML::ComponentMatch<std::size_t>> component_match_set;
     int k = 0;
     for(auto& item : end_matches)
     {
@@ -170,7 +170,7 @@ TEST_CASE("Incremental Update Test", "[incremental-update-test]")
         {
             match.emplace_back(value);
         }
-        DGGML::Instance<KeyType> inst;
+        DGGML::ComponentMatch<KeyType> inst;
         inst.match = match;
         inst.type = 0;
         inst.anchor = match[0];
@@ -184,7 +184,7 @@ TEST_CASE("Incremental Update Test", "[incremental-update-test]")
         {
             match.emplace_back(value);
         }
-        DGGML::Instance<KeyType> inst;
+        DGGML::ComponentMatch<KeyType> inst;
         inst.match = match;
         inst.type = 1;
         inst.anchor = match[0];
@@ -218,15 +218,15 @@ TEST_CASE("Incremental Update Test", "[incremental-update-test]")
 
     //building the rule instances
     int kk = 0;
-    std::map<std::size_t, DGGML::RuleInstType<KeyType>> rule_instances;
+    std::map<std::size_t, DGGML::RuleMatch<KeyType>> rule_matches;
     for(int i = 0; i < component_match_set.size(); i++)
     {
         if(component_match_set[i].type == 0) {
-            rule_instances[kk];
-            rule_instances[kk].name = "with_growth";
-            rule_instances[kk].category = "stochastic";
-            rule_instances[kk].components.push_back(i);
-            rule_instances[kk].anchor = component_match_set[i].anchor;
+            rule_matches[kk];
+            rule_matches[kk].name = "with_growth";
+            rule_matches[kk].category = "stochastic";
+            rule_matches[kk].components.push_back(i);
+            rule_matches[kk].anchor = component_match_set[i].anchor;
             kk++;
         }
         for(int j = 0; j < component_match_set.size(); j++)
@@ -239,20 +239,20 @@ TEST_CASE("Incremental Update Test", "[incremental-update-test]")
             auto d = DGGML::calculate_distance(p1, p2);
             if(comp1.type == 1 && comp2.type == 1 && d <= 1.0)
             {
-                rule_instances[kk];
-                rule_instances[kk].name = "with_interaction";
-                rule_instances[kk].category = "stochastic";
-                rule_instances[kk].components.push_back(i);
-                rule_instances[kk].components.push_back(j);
-                rule_instances[kk].anchor = comp1.anchor;
+                rule_matches[kk];
+                rule_matches[kk].name = "with_interaction";
+                rule_matches[kk].category = "stochastic";
+                rule_matches[kk].components.push_back(i);
+                rule_matches[kk].components.push_back(j);
+                rule_matches[kk].anchor = comp1.anchor;
                 kk++;
             }
         }
     }
 
-    REQUIRE(rule_instances.size() == 4);
+    REQUIRE(rule_matches.size() == 4);
 
-    for(auto& [key, rinst] : rule_instances)
+    for(auto& [key, rinst] : rule_matches)
     {
         std::cout << "Component keys for rule " << key << ": ";
         for(auto& comp : rinst.components)
@@ -267,7 +267,7 @@ TEST_CASE("Incremental Update Test", "[incremental-update-test]")
 
     //TODO: we need to REQUIRE check the graph size changes after different rewrites
     DGGML::KeyGenerator<std::size_t> gen(300);
-    auto changes = DGGML::perform_rewrite(rule_instances[2], component_match_set, gen, gamma_analysis, system_graph);
+    auto changes = DGGML::perform_rewrite(rule_matches[2], component_match_set, gen, gamma_analysis, system_graph);
     save_state(system_graph, grid, 1);
     changes.print();
 
@@ -275,7 +275,7 @@ TEST_CASE("Incremental Update Test", "[incremental-update-test]")
     //slow, but easy case to code - assume we know nothing and must search everywhere
     std::set<std::size_t> node_rule_invalidations;
     std::set<std::size_t> node_component_invalidations;
-    for(auto& [k1, rinst] : rule_instances)
+    for(auto& [k1, rinst] : rule_matches)
     {
         //search all components for the invalid nodes
         for(auto& k2: rinst.components)
@@ -302,7 +302,7 @@ TEST_CASE("Incremental Update Test", "[incremental-update-test]")
     std::set<std::size_t> edge_rule_invalidations;
     std::set<std::size_t> edge_component_invalidations;
     //Test: search for edges to remove
-    for(auto& [k1, rinst] : rule_instances)
+    for(auto& [k1, rinst] : rule_matches)
     {
         //bool found = false;
         for(auto& k2 : rinst.components)
@@ -342,20 +342,20 @@ TEST_CASE("Incremental Update Test", "[incremental-update-test]")
     for(auto id : edge_component_invalidations) std::cout << id << " ";
     std::cout << "\n\n";
 
-    REQUIRE(rule_instances.size() == 4);
+    REQUIRE(rule_matches.size() == 4);
     REQUIRE(component_match_set.size() == 6);
 
     //delete invalidated rules and components
     for(auto& item : node_rule_invalidations)
-        rule_instances.erase(item);
+        rule_matches.erase(item);
     for(auto& item : node_component_invalidations)
         component_match_set.erase(item);
     for(auto& item : edge_rule_invalidations)
-        rule_instances.erase(item);
+        rule_matches.erase(item);
     for(auto& item : edge_component_invalidations)
         component_match_set.erase(item);
 
-    REQUIRE(rule_instances.size() == 2);
+    REQUIRE(rule_matches.size() == 2);
     REQUIRE(component_match_set.size() == 4);
 
     //goal, take the candidate nodes, do a search the depth of the height of the tallest rooted spanning tree
@@ -475,7 +475,7 @@ TEST_CASE("Incremental Update Test", "[incremental-update-test]")
         {
             match.emplace_back(value);
         }
-        DGGML::Instance<KeyType> inst;
+        DGGML::ComponentMatch<KeyType> inst;
         inst.match = match;
         inst.type = 0;
         inst.anchor = match[0];
@@ -490,7 +490,7 @@ TEST_CASE("Incremental Update Test", "[incremental-update-test]")
         {
             match.emplace_back(value);
         }
-        DGGML::Instance<KeyType> inst;
+        DGGML::ComponentMatch<KeyType> inst;
         inst.match = match;
         inst.type = 1;
         inst.anchor = match[0];
@@ -507,11 +507,11 @@ TEST_CASE("Incremental Update Test", "[incremental-update-test]")
     for(auto [i, comp1] : component_match_set)
     {
         if(comp1.type == 0 && created_components.find(i) != created_components.end()) {
-            rule_instances[kk];
-            rule_instances[kk].name = "with_growth";
-            rule_instances[kk].category = "stochastic";
-            rule_instances[kk].components.push_back(i);
-            rule_instances[kk].anchor = component_match_set[i].anchor;
+            rule_matches[kk];
+            rule_matches[kk].name = "with_growth";
+            rule_matches[kk].category = "stochastic";
+            rule_matches[kk].components.push_back(i);
+            rule_matches[kk].anchor = component_match_set[i].anchor;
             kk++;
         }
         for(auto [j, comp2] : component_match_set) {
@@ -523,19 +523,19 @@ TEST_CASE("Incremental Update Test", "[incremental-update-test]")
                 //std::cout << "\n";
                 //auto d = DGGML::calculate_distance(p1, p2);
 //                if (comp1.type == 1 && comp2.type == 1 && d <= 1.0) {
-//                    rule_instances[kk];
-//                    rule_instances[kk].name = "with_interaction";
-//                    rule_instances[kk].category = "stochastic";
-//                    rule_instances[kk].components.push_back(i);
-//                    rule_instances[kk].components.push_back(j);
-//                    rule_instances[kk].anchor = comp1.anchor;
+//                    rule_matches[kk];
+//                    rule_matches[kk].name = "with_interaction";
+//                    rule_matches[kk].category = "stochastic";
+//                    rule_matches[kk].components.push_back(i);
+//                    rule_matches[kk].components.push_back(j);
+//                    rule_matches[kk].anchor = comp1.anchor;
 //                    kk++;
 //                }
             }
         }
     }
 
-    REQUIRE(rule_instances.size() == 3);
+    REQUIRE(rule_matches.size() == 3);
 }
 
 //void print_matches(std::vector<std::vector<key_type>>& matches)
@@ -833,7 +833,7 @@ TEST_CASE("Incremental Update Test", "[incremental-update-test]")
 //    lambda_print(gi_inverse);
 //}
 //
-//TEST_CASE("ComponentMap Test", "[rule-system-test]")
+//TEST_CASE("ComponentMatchMap Test", "[rule-system-test]")
 //{
 //    graph_type graph;
 //
@@ -850,7 +850,7 @@ TEST_CASE("Incremental Update Test", "[incremental-update-test]")
 //    //print_matches(matches);
 //    REQUIRE(matches.size() == n);
 //
-//    DGGML::ComponentMap<std::size_t> rule_system;
+//    DGGML::ComponentMatchMap<std::size_t> rule_system;
 //    REQUIRE(rule_system.size() == 0);
 //
 //    for(auto& item : matches)
@@ -880,7 +880,7 @@ TEST_CASE("Incremental Update Test", "[incremental-update-test]")
 //
 //    auto selected = random_rewrite(n);
 //
-//    auto lambda_print = [](typename DGGML::ComponentMap<std::size_t>::inverse_type& gi_inverse)
+//    auto lambda_print = [](typename DGGML::ComponentMatchMap<std::size_t>::inverse_type& gi_inverse)
 //    {
 //        for(const auto& [key, value] : gi_inverse)
 //        {
@@ -1017,7 +1017,7 @@ TEST_CASE("Incremental Update Test", "[incremental-update-test]")
 //
 //    auto matches = DGGML::Plant::microtubule_growing_end_matcher(graph, bucket);
 //
-//    DGGML::ComponentMap<std::size_t> rule_system;
+//    DGGML::ComponentMatchMap<std::size_t> rule_system;
 //
 //    using rule_key_t = std::size_t;
 //    std::map<cplex_key_t, std::vector<rule_key_t>> rule_map;

@@ -9,7 +9,7 @@
 #include "AnalyzedGrammar.hpp"
 #include "YAGL_Algorithms.hpp"
 #include "ExpandedComplex2D.hpp"
-#include "ComponentMap.hpp"
+#include "ComponentMatchMap.hpp"
 #include "MathUtils.hpp"
 
 #include "../examples/CMA/PlantModel/PlantTypes.hpp"
@@ -195,7 +195,7 @@ TEST_CASE("Phi No Decomposition", "[Phi Test]")
     auto mt_matches = YAGL::subgraph_isomorphism2(c2, system_graph);
     REQUIRE(mt_matches.size() == 14);
 
-    std::map<std::size_t, DGGML::Instance<std::size_t>> component_match_set;
+    std::map<std::size_t, DGGML::ComponentMatch<std::size_t>> component_match_set;
     int k = 0;
     for(auto& item : end_matches)
     {
@@ -204,7 +204,7 @@ TEST_CASE("Phi No Decomposition", "[Phi Test]")
         {
             match.emplace_back(value);
         }
-        DGGML::Instance<KeyType> inst;
+        DGGML::ComponentMatch<KeyType> inst;
         inst.match = match;
         inst.type = 0;
         inst.anchor = match[0];
@@ -218,7 +218,7 @@ TEST_CASE("Phi No Decomposition", "[Phi Test]")
         {
             match.emplace_back(value);
         }
-        DGGML::Instance<KeyType> inst;
+        DGGML::ComponentMatch<KeyType> inst;
         inst.match = match;
         inst.type = 1;
         inst.anchor = match[0];
@@ -227,20 +227,20 @@ TEST_CASE("Phi No Decomposition", "[Phi Test]")
     }
 
     int kk = 0;
-    std::map<std::size_t, DGGML::RuleInstType<std::size_t>> rule_instances;
+    std::map<std::size_t, DGGML::RuleMatch<std::size_t>> rule_matches;
     for(int i = 0; i < component_match_set.size(); i++) {
         if (component_match_set[i].type == 0) {
-            rule_instances[kk];
-            rule_instances[kk].name = "with_growth";
-            rule_instances[kk].category = "stochastic";
-            rule_instances[kk].components.push_back(i);
-            rule_instances[kk].anchor = component_match_set[i].anchor;
+            rule_matches[kk];
+            rule_matches[kk].name = "with_growth";
+            rule_matches[kk].category = "stochastic";
+            rule_matches[kk].components.push_back(i);
+            rule_matches[kk].anchor = component_match_set[i].anchor;
             kk++;
         }
     }
 
     //should find first 14 growing ends
-    REQUIRE(rule_instances.size() == 14);
+    REQUIRE(rule_matches.size() == 14);
 
     //TODO: this should really be a cell list class, to reduce boilerplate code
     std::vector<std::list<std::size_t>> cell_list;
@@ -283,12 +283,12 @@ TEST_CASE("Phi No Decomposition", "[Phi Test]")
                                 //auto& p2 = system_graph.findNode(comp2.anchor)->second.getData().position;
                                 //auto d = DGGML::calculate_distance(p1, p2);
                                 if(comp1.type == 1 && comp2.type == 1) {//&& d <= 1.5) {
-                                    rule_instances[kk];
-                                    rule_instances[kk].name = "with_interaction";
-                                    rule_instances[kk].category = "stochastic";
-                                    rule_instances[kk].components.push_back(k1);
-                                    rule_instances[kk].components.push_back(k2);
-                                    rule_instances[kk].anchor = comp1.anchor;
+                                    rule_matches[kk];
+                                    rule_matches[kk].name = "with_interaction";
+                                    rule_matches[kk].category = "stochastic";
+                                    rule_matches[kk].components.push_back(k1);
+                                    rule_matches[kk].components.push_back(k2);
+                                    rule_matches[kk].anchor = comp1.anchor;
                                     kk++;
                                 }
                             }
@@ -301,7 +301,7 @@ TEST_CASE("Phi No Decomposition", "[Phi Test]")
     //should find 16 more pair wise interaction rule instances
     //the number would be different if we imposed a reaction radius
     //here we just search neighboring cells
-    REQUIRE(rule_instances.size() == 30);
+    REQUIRE(rule_matches.size() == 30);
 
     using cplex_key_t = typename DGGML::CartesianComplex2D<>::graph_type::key_type;
     std::map<cplex_key_t, std::vector<std::size_t>> rule_map;
@@ -312,7 +312,7 @@ TEST_CASE("Phi No Decomposition", "[Phi Test]")
             rule_map.insert({key, {}});
     }
 
-    for(auto& [key, inst] : rule_instances)
+    for(auto& [key, inst] : rule_matches)
     {
         auto& p = system_graph.findNode(inst.anchor)->second.getData().position;
         int ic, jc;

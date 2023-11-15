@@ -1,9 +1,11 @@
 #ifndef DGGML_KEYGENERATOR_HPP
 #define DGGML_KEYGENERATOR_HPP
 
-template<typename KeyType>
-struct KeyGenerator
+namespace DGGML
 {
+
+template<typename KeyType>
+struct KeyGenerator {
     using key_type = KeyType;
 
     key_type current_key;
@@ -15,4 +17,5 @@ struct KeyGenerator
     key_type get_key() { return current_key++; }
 };
 
+}
 #endif //DGGML_KEYGENERATOR_HPP

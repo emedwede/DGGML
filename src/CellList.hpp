@@ -4,7 +4,7 @@
 #include <vector>
 
 #include "CartesianGrid2D.hpp"
-#include "ComponentMap.hpp"
+#include "ComponentMatchMap.hpp"
 #include "PlantTypes.hpp"
 #include "YAGL_Graph.hpp"
 
@@ -41,7 +41,7 @@ struct CellList
 
     //TODO: maybe we need a multidimensional iterator, to iterate over the outer and inner
     //CellListData data;
-    using ComponentMapType = ComponentMap<typename GraphType::key_type>;
+    using ComponentMapType = ComponentMatchMap<typename GraphType::key_type>;
     using ComponentMapIter = typename ComponentMapType::iterator;
     using CellListObjectType = typename ComponentMapType::key_type;
     using CellListDataType = std::vector<std::vector<CellListObjectType>>;

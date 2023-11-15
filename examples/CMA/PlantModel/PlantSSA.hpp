@@ -10,7 +10,7 @@
 
 #include "Solver.h"
 
-#include "ComponentMap.hpp"
+#include "ComponentMatchMap.hpp"
 
 #include <chrono>
 #include <random>

@@ -14,10 +14,6 @@
 
 namespace DGGML
 {
-    //forward declaration
-    template <typename GraphType>
-    struct CellList;
-
     //TODO: Please remove after the rework
     enum class Rule {G, R, I};
 
@@ -33,31 +29,23 @@ namespace DGGML
     }
 
     template <typename KeyType>
-    struct RuleInstType {
-        std::string category;
-        std::string name;
-        std::vector<std::size_t> components;
-        KeyType anchor;
-    };
-
-    template <typename KeyType>
-    struct Instance 
+    struct ComponentMatch
     {
         using key_type = KeyType;
-        using instance_type = std::vector<key_type>;
-        instance_type match;
+        using container_type = std::vector<key_type>;
+        container_type match;
         
         std::size_t type;
         key_type anchor;
 
         using iterator = typename std::vector<key_type>::iterator;
 
-        Instance() {}
+        ComponentMatch() {}
 
-        Instance(instance_type _match, std::size_t _type)
+        ComponentMatch(container_type _match, std::size_t _type)
             : match(_match), type(_type)
         {
-            anchor = match[0];    
+            anchor = match[0];
         }
 
         iterator begin() { return match.begin(); }
@@ -69,7 +57,7 @@ namespace DGGML
     };
     
     template<typename T>
-    std::ostream& operator<<(std::ostream& os, Instance<T>& match)
+    std::ostream& operator<<(std::ostream& os, ComponentMatch<T>& match)
     {
         os << "{ ";
         for(const auto& item : match)
@@ -78,11 +66,13 @@ namespace DGGML
         return os;
     }
 
+    //Could combine ComponentMatchMap and RuleMatchMap into a KeyGeneratingMap class
+    //so long as they don't end up diverging too much
     template <typename KeyType>
-    struct ComponentMap
+    struct ComponentMatchMap
     {
         using key_type = KeyType;
-        using data_type = Instance<KeyType>;
+        using data_type = ComponentMatch<KeyType>;
         using gen_type = KeyGenerator<KeyType>;
         using container_type = std::unordered_map<key_type, data_type>;
         using iterator = typename container_type::iterator;    

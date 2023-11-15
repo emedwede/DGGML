@@ -3,7 +3,7 @@
 #include <string>
 #include <vector>
 
-#include "ComponentMap.hpp"
+#include "ComponentMatchMap.hpp"
 
 //TODO: improve organization, both functions are just speacialzed versions of a combinatorial backtracking i.e.
 //void backtrack(int a[], int k, data input) {
@@ -38,10 +38,10 @@ namespace DGGML {
         //if we reach the end of the pattern it's a solution
         if (k == pattern.size()) {
             auto generated_key = sim.instance_key_gen.get_key();
-            sim.rule_instances[generated_key].name = name;
-            sim.rule_instances[generated_key].category = "stochastic";
-            sim.rule_instances[generated_key].components = result;
-            sim.rule_instances[generated_key].anchor = sim.component_matches[result[0]].anchor;
+            sim.rule_matches[generated_key].name = name;
+            sim.rule_matches[generated_key].category = "stochastic";
+            sim.rule_matches[generated_key].components = result;
+            sim.rule_matches[generated_key].anchor = sim.component_matches[result[0]].anchor;
         } else {
             //we search in all nearby cells as candidates for the next element in the pattern
             int imin, imax, jmin, jmax;
@@ -76,10 +76,10 @@ namespace DGGML {
     };
 
     template<typename GraphType>
-    void incremental_reaction_instance_backtracker(std::vector<RuleInstType<std::size_t>>& accepted_rule_instances,
+    void incremental_reaction_instance_backtracker(std::vector<RuleMatch<std::size_t>>& accepted_rule_matches,
                                                    std::vector<std::size_t>& validated_components,
                                                    GraphType& system_graph,
-                                                   ComponentMap<std::size_t>& component_matches,
+                                                   ComponentMatchMap<std::size_t>& component_matches,
                                                    DGGML::AnalyzedGrammar<GraphType>& grammar_analysis,
                                                    CellList<GraphType>& cell_list,
                                                    std::string name, std::vector<std::size_t> &result,
@@ -99,12 +99,12 @@ namespace DGGML {
             }
             if(valid) {
                 //auto generated_key = sim.instance_key_gen.get_key();
-                RuleInstType<std::size_t> inst;
+                RuleMatch<std::size_t> inst;
                 inst.name = name;
                 inst.category = "stochastic";
                 inst.components = result;
                 inst.anchor = component_matches[result[0]].anchor;
-                accepted_rule_instances.push_back(inst);
+                accepted_rule_matches.push_back(inst);
             }
         } else {
             //we search in all nearby cells as candidates for the next element in the pattern
@@ -130,7 +130,7 @@ namespace DGGML {
                             //  this is just a placeholder
                             if (d < reaction_radius) {
                                 result[k] = m2;
-                                incremental_reaction_instance_backtracker(accepted_rule_instances, validated_components,
+                                incremental_reaction_instance_backtracker(accepted_rule_matches, validated_components,
                                                                           system_graph,component_matches,
                                                                           grammar_analysis, cell_list, name,
                                                                           result, k + 1, pattern, c, reaction_radius);

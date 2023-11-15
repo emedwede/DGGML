@@ -10,7 +10,7 @@
 
 #include "Solver.h"
 
-#include "ComponentMap.hpp"
+#include "ComponentMatchMap.hpp"
 #include "IncrementalUpdate.hpp"
 #include "AnalyzedGrammar.hpp"
 
@@ -62,7 +62,7 @@ auto induce_from_set(T1& inst, T2& component_matches, T3& system_graph)
 }
 
 template <typename T1, typename T2, typename T3, typename T4, typename M1>
-void approximate_ssa(ComponentMap<T1>& component_matches, AnalyzedGrammar<T2>& grammar_analysis, T3& rule_map, T4& rule_instances, M1& model,
+void approximate_ssa(ComponentMatchMap<T1>& component_matches, AnalyzedGrammar<T2>& grammar_analysis, T3& rule_map, T4& rule_matches, M1& model,
                      std::size_t k, std::pair<double, double>& geocell_progress, CellList<T2>& cell_list)
 {
     auto& geoplex2D = model->geoplex2D;
@@ -100,10 +100,10 @@ void approximate_ssa(ComponentMap<T1>& component_matches, AnalyzedGrammar<T2>& g
                 //TODO: need to replace with key type, and need more efficient method for turning
                 // keys into compatible inputs into propensity functions
                 std::vector<std::size_t> inducers;
-                auto& inst = rule_instances[r];
+                auto& inst = rule_matches[r];
                 if(inst.category != "stochastic")
                     continue;
-                auto induced_graph = induce_from_set(rule_instances[r], component_matches, system_graph);
+                auto induced_graph = induce_from_set(rule_matches[r], component_matches, system_graph);
                 std::map<std::size_t, std::size_t> placeholder;
 
                 //using at, because the [] requires they map_type to be default constructible
@@ -117,7 +117,7 @@ void approximate_ssa(ComponentMap<T1>& component_matches, AnalyzedGrammar<T2>& g
                 auto sum = 0.0;
                 for(auto& item : propensity_space)
                 {
-                    if(rule_instances[item.first].name == name) sum += item.second;
+                    if(rule_matches[item.first].name == name) sum += item.second;
                 }
                 std::cout << "Rule " << name << " has total propensity of " << sum << "\n";
                 geocell_propensity += sum;
@@ -160,7 +160,7 @@ void approximate_ssa(ComponentMap<T1>& component_matches, AnalyzedGrammar<T2>& g
             }
 
             auto fired_id = propensity_space[eventFired].first;
-            auto inst = rule_instances[fired_id];
+            auto inst = rule_matches[fired_id];
             auto fired_name = inst.name;
             std::cout << "Selected rule id " << fired_id << " of type " << fired_name  << " with components: { ";
             for(auto& c : inst.components) std::cout << c << " ";
@@ -196,11 +196,11 @@ void approximate_ssa(ComponentMap<T1>& component_matches, AnalyzedGrammar<T2>& g
             //should invalidate components and rule instances containing invalid components
             using graph_t = typename std::remove_reference<decltype(system_graph)>::type;
             auto removals = perform_invalidations<graph_t>(changes, component_matches,
-                                                           grammar_analysis, rule_instances,
+                                                           grammar_analysis, rule_matches,
                                                            rule_map[k], cell_list);
             removals.print();
             find_new_matches(changes, system_graph, component_matches,grammar_analysis,
-                             rule_instances, rule_map[k], cell_list, geoplex2D,k, reaction_radius);
+                             rule_matches, rule_map[k], cell_list, geoplex2D,k, reaction_radius);
             return;
             //zero out tau since a rule has fired
             tau = 0.0;

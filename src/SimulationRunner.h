@@ -18,7 +18,8 @@
 #include "ExpandedComplex2D.hpp"
 #include "CartesianComplex2D.hpp"
 #include "CellList.hpp"
-#include "ComponentMap.hpp"
+#include "ComponentMatchMap.hpp"
+#include "RuleMatchMap.hpp"
 #include "Grammar.h"
 #include "Utlities/MathUtils.hpp"
 #include "CartesianHashFunctions.hpp"
@@ -81,9 +82,9 @@ namespace DGGML {
             // we could use other methods like a bounding volume hierarchy(ArborX), kd-trees etc
             // see books on collision detection like gpu-gems or Real-Time Collision Detection
             cell_list = CellList<graph_type>(model->geoplex2D.reaction_grid, &model->system_graph, &component_matches);
-            compute_all_rule_instances();
+            compute_all_rule_matches();
 
-            map_rule_instances_to_geocells();
+            map_rule_matches_to_geocells();
 
             //TODO: deprecate and refactor
             //builds a list of interior geocells to iterate
@@ -120,7 +121,7 @@ namespace DGGML {
                         auto k = bucket.first;
                         auto start = std::chrono::high_resolution_clock::now();
                         approximate_ssa(component_matches, grammar_analysis,
-                                        rule_map, rule_instances,
+                                        rule_map, rule_matches,
                                         model, k, geocell_progress[k], cell_list);
                         auto stop = std::chrono::high_resolution_clock::now();
                         auto duration =
@@ -199,7 +200,7 @@ namespace DGGML {
                     {
                         match.push_back(value);
                     }
-                    Instance<typename ModelType::key_type> inst;
+                    ComponentMatch<typename ModelType::key_type> inst;
                     inst.match = match;
                     inst.type = k;
                     inst.anchor = match[0];
@@ -215,14 +216,14 @@ namespace DGGML {
             }
         }
 
-        void compute_all_rule_instances()
+        void compute_all_rule_matches()
         {
             for(auto& [name, rule] : grammar_analysis.with_rules) {
-                auto count = std::count_if(rule_instances.begin(), rule_instances.end(), [&](auto& iter) { return iter.second.name == name; });
+                auto count = std::count_if(rule_matches.begin(), rule_matches.end(), [&](auto& iter) { return iter.second.name == name; });
                 std::cout << "So far we have found " << count << " instances of with rule " << name << "\n";
             }
             for(auto& [name, rule] : grammar_analysis.solving_rules) {
-                auto count = std::count_if(rule_instances.begin(), rule_instances.end(), [&](auto& iter) { return iter.second.name == name; });
+                auto count = std::count_if(rule_matches.begin(), rule_matches.end(), [&](auto& iter) { return iter.second.name == name; });
                 std::cout << "So far we have found " << count << " instances of solving rule " << name << "\n";
             }
             // This is a recursive backtracking function, and it is memory efficient because it does a DFS (inorder traversal)
@@ -252,24 +253,23 @@ namespace DGGML {
 
             auto sum  = 0;
             for(auto& name : grammar_analysis.rule_names) {
-                auto count = std::count_if(rule_instances.begin(), rule_instances.end(), [&](auto& iter) { return iter.second.name == name; });
+                auto count = std::count_if(rule_matches.begin(), rule_matches.end(), [&](auto& iter) { return iter.second.name == name; });
                 std::cout << "Rule " << name << " has " << count << " instances\n";
                 sum += count;
             }
             std::cout << "There are " << sum << " rule instances in total\n";
         }
 
-        void map_rule_instances_to_geocells()
+        void map_rule_matches_to_geocells()
         {
             //depending on the complexity, map anchor nodes to reaction subcells or
             // alternative map reaction instances directly using a computed position
             // or anchor node. We could also use a participation list etc, but for now
             // we've reduced the problem to sorting a whole reaction by an anchor node
-            for(auto& [key, inst] : rule_instances)
+            for(auto& [key, inst] : rule_matches)
             {
                 //auto max_cell = anchored_phi(inst, model->system_graph, model->geoplex2D);
                 auto max_cell = min_dim_phi(inst, model->system_graph, model->geoplex2D, component_matches);
-                std::cout << max_cell << "\n";
                 rule_map[max_cell].push_back(key);
             }
 
@@ -295,14 +295,15 @@ namespace DGGML {
         KeyGenerator<std::size_t> instance_key_gen;
 
         //TODO: I think rule_maps could steal instances, especially since in this formulation,
-        // each instance exists in a shared memory state, the rule_instances map.
-        std::unordered_map<std::size_t, RuleInstType<key_type>> rule_instances;
+        // each instance exists in a shared memory state, the rule_matches map.
+        RuleMatchMap<typename ModelType::key_type>  rule_matches;
+        ComponentMatchMap<typename ModelType::key_type> component_matches;
+
         std::map<cplex_key_t, std::vector<rule_key_t>> rule_map; //rule keys for a cell could be a tree/map/set vs vector
         std::map<std::size_t, std::vector<typename ModelType::key_type>> ordering;
 
         std::map<gplex_key_type, std::vector<key_type>> bucketsND[3];
-        //Grammar gamma;
-        ComponentMap<typename ModelType::key_type> component_matches;
+
         std::map<gplex_key_type, std::pair<double, double>> geocell_progress;
         DGGML::VtkFileWriter<typename ModelType::graph_type> vtk_writer;
         std::string results_dir_name;
