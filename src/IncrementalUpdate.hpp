@@ -411,34 +411,49 @@ namespace DGGML
 
         //after finding components and adding them to the cell list, we need find all new rule instances
         //we only need to search in the cells surrounding a newly inserted component
-        //TODO: Do we need to add components one by one and search or can we add them and do an aggregate search?
         //TODO: there is definitely a more efficient way of doing this other than searching the whole neighborhood of cells
         // for every pattern. For example, why search for a pattern if that type of validated component isn't even in it.
+
         std::vector<RuleMatch<std::size_t>> accepted_rule_matches;
-        //TODO: We need all the components from the inserted cells as starting components for our search
+        // We need all the components from the inserted cells and neighbors as starting components for our search
+        std::set<std::size_t> candidate_cells;
         for(auto& item : validated_components)
         {
             auto m1 = component_matches.find(item);
-            for(auto& [name, pattern] : grammar_analysis.rule_component)
-            {
-                //skip solving rules for now
-                if(grammar_analysis.with_rules.find(name) == grammar_analysis.with_rules.end())
-                    continue;
-                int k = 0;
-                std::vector<std::size_t> result;
-                result.resize(pattern.size());
-                std::cout << "searching for " << name << "\n";
-                if(pattern.size() && m1->second.type == pattern.front())
-                {
-                    result[k] = m1->first;
-                    k++;
-                    //using this cell should work since the component was just added and can't drift
-                    auto c = cell_list.locate_cell(m1);
-                    std::cout << "match " << m1->first << " is located in cell " << c << "\n";
-                    incremental_reaction_instance_backtracker(accepted_rule_matches, validated_components,
-                                                              system_graph, component_matches,
-                                                              grammar_analysis, cell_list, name,
-                                                              result, k, pattern, c, reaction_radius);
+            auto c = cell_list.locate_cell(m1);
+            int imin, imax, jmin, jmax;
+            cell_list.getCells(c, imin, imax, jmin, jmax);
+            for (auto i = imin; i < imax; i++) {
+                for (auto j = jmin; j < jmax; j++) {
+                    auto nbr_idx = cell_list.cardinalCellIndex(i, j);
+                    candidate_cells.insert(nbr_idx);
+                }
+            }
+        }
+        for(auto& cell : candidate_cells)
+        {
+            for(auto& item : cell_list.data[cell]) {
+                auto m1 = component_matches.find(item);
+
+                for (auto &[name, pattern]: grammar_analysis.rule_component) {
+                    //skip solving rules for now
+                    if (grammar_analysis.with_rules.find(name) == grammar_analysis.with_rules.end())
+                        continue;
+                    int k = 0;
+                    std::vector<std::size_t> result;
+                    result.resize(pattern.size());
+                    std::cout << "searching for " << name << "\n";
+                    if (pattern.size() && m1->second.type == pattern.front()) {
+                        result[k] = m1->first;
+                        k++;
+                        //using this cell should work since the component was just added and can't drift
+                        auto c = cell_list.locate_cell(m1);
+                        std::cout << "match " << m1->first << " is located in cell " << c << "\n";
+                        incremental_reaction_instance_backtracker(accepted_rule_matches, validated_components,
+                                                                  system_graph, component_matches,
+                                                                  grammar_analysis, cell_list, name,
+                                                                  result, k, pattern, c, reaction_radius);
+                    }
                 }
             }
         }

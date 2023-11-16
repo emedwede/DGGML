@@ -165,8 +165,8 @@ void approximate_ssa(ComponentMatchMap<T1>& component_matches, AnalyzedGrammar<T
             std::cout << "Selected rule id " << fired_id << " of type " << fired_name  << " with components: { ";
             for(auto& c : inst.components) std::cout << c << " ";
             std::cout << "}\n";
-            if(fired_name == "retraction")
-                std::cin.get();
+//            if(fired_name == "retraction")
+//                std::cin.get();
 
             //First step, I need to plug in the experimental rewrite code and clean the rest up
             //Problem: rewrite wants a component_match_set, not the components stored in the rule system like I had
@@ -207,7 +207,7 @@ void approximate_ssa(ComponentMatchMap<T1>& component_matches, AnalyzedGrammar<T
             //sample the exponential variable
             exp_sample = -log(1-uniform_sample);
         }
-        //break; //makes only one reaction occur break point
+        break; //makes only one reaction occur break point
     }
     std::cout << "Total steps taken: " << steps << "\n";
     geocell_progress.first = tau;
