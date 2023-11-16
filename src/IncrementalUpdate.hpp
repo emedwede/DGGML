@@ -322,7 +322,8 @@ namespace DGGML
         std::set<std::size_t> inducers;
         for(auto n : candidate_nodes)
         {
-            auto res = YAGL::recursive_dfs(system_graph, n, 2);
+            //TODO: depth needs to be as long as the deepest rule pattern
+            auto res = YAGL::recursive_dfs(system_graph, n, 5);
             for(auto& item : res)
                 inducers.insert(item);
         }
@@ -337,6 +338,7 @@ namespace DGGML
         for(auto& [k, pattern] : grammar_analysis.unique_components) {
             //need to actually get the ordering for the mapping
             auto matches = YAGL::subgraph_isomorphism2(pattern, candidate_graph);
+            std::cout << "Match sizes found for " << k << " " << matches.size() << "\n";
             if (!matches.empty()) {
                 for (auto &m: matches) {
                     bool accepted = false;
@@ -395,7 +397,7 @@ namespace DGGML
         std::cout << "}\n";
         for(auto& item : validated_components)
         {
-            std::cout << component_matches[item] << "\n";
+            std::cout <<  component_matches[item].type << ": " << component_matches[item] << "\n";
         }
 
         //new components need to be added back into their dynamic cell list
@@ -413,6 +415,7 @@ namespace DGGML
         //TODO: there is definitely a more efficient way of doing this other than searching the whole neighborhood of cells
         // for every pattern. For example, why search for a pattern if that type of validated component isn't even in it.
         std::vector<RuleMatch<std::size_t>> accepted_rule_matches;
+        //TODO: We need all the components from the inserted cells as starting components for our search
         for(auto& item : validated_components)
         {
             auto m1 = component_matches.find(item);
@@ -424,7 +427,7 @@ namespace DGGML
                 int k = 0;
                 std::vector<std::size_t> result;
                 result.resize(pattern.size());
-
+                std::cout << "searching for " << name << "\n";
                 if(pattern.size() && m1->second.type == pattern.front())
                 {
                     result[k] = m1->first;

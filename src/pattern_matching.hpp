@@ -38,11 +38,29 @@ namespace DGGML {
                                        std::vector<std::size_t> &pattern, std::size_t c) {
         //if we reach the end of the pattern it's a solution
         if (k == pattern.size()) {
-            RuleMatch<std::size_t> inst;
-            inst.name = name;
-            inst.category = "stochastic";
-            inst.components = result;
-            sim.rule_matches.insert(inst);
+            //a fail condition if components share any nodes
+            bool pass = true;
+            std::set<std::size_t> all_diff_check;
+            for(auto& c1 : result)
+            {
+                for(auto& c2 : sim.component_matches[c1].match)
+                {
+                    auto res = all_diff_check.insert(c2);
+                    if(!res.second)
+                    {
+                        pass = false;
+                        break;
+                    }
+                }
+                if(!pass) break;
+            }
+            if(pass) {
+                RuleMatch<std::size_t> inst;
+                inst.name = name;
+                inst.category = "stochastic";
+                inst.components = result;
+                sim.rule_matches.insert(inst);
+            }
         } else {
             //we search in all nearby cells as candidates for the next element in the pattern
             int imin, imax, jmin, jmax;
@@ -100,8 +118,23 @@ namespace DGGML {
                     break;
                 }
             }
+            //a fail condition if components share any nodes
+            bool pass = true;
             if(valid) {
-                //auto generated_key = sim.instance_key_gen.get_key();
+                std::set<std::size_t> all_diff_check;
+                for (auto &c1: result) {
+                    for (auto &c2: component_matches[c1].match) {
+                        auto res = all_diff_check.insert(c2);
+                        if (!res.second) {
+                            pass = false;
+                            break;
+                        }
+                    }
+                    if (!pass) break;
+                }
+            }
+            if(valid && pass) {
+                std::cout << "found: "; for(auto& item : result) std::cout << item << " "; std::cout << "\n";
                 RuleMatch<std::size_t> inst;
                 inst.name = name;
                 inst.category = "stochastic";

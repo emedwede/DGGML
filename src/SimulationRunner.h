@@ -144,7 +144,7 @@ namespace DGGML {
 
                 std::cout << "Total dimensional time is " << tot_time << " milliseconds\n";
                 //time_count.push_back(tot_time);
-                return;
+                if (i == 5) return;
             }
             //return;
         }

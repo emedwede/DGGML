@@ -126,7 +126,7 @@ namespace CMA {
                         rhs[m2[3]].position[2] = (lhs[m1[2]].position[2] + lhs[m1[1]].position[2])/2.0;
                     });
 
-            //gamma.addRule(r1);
+            gamma.addRule(r1);
 
             //stochastic retraction rule
             GT g3;
@@ -169,11 +169,15 @@ namespace CMA {
             g6.addEdge(4, 5);
 
 
+            //TODO: need to change it so it only fires if the positive end is actually colliding
+            // with the intermediate, only turn rule back on then. TL;DR: the pattern matcher will
+            // match them as within range if the we're not careful and an always on propensity leads
+            // to a rewrite in a case we don't want it
             DGGML::WithRule<GT> r3("catastrophe", g5, g6,
                     [](auto& lhs, auto& m) { std::cout << "catastrophe propensity\n"; return 7.5; },
                     [](auto& lhs, auto& rhs, auto& m1, auto& m2) { std::cout << "updating catastrophe rule\n"; });
 
-            gamma.addRule(r3);
+            //gamma.addRule(r3);
 
             //Testable Interaction Rule
             //collision catastrophe rule
@@ -195,7 +199,7 @@ namespace CMA {
                     [](auto& lhs, auto& m) { return 7.5; },
                     [](auto& lhs, auto& rhs, auto& m1, auto& m2) { std::cout << "updating interaction rule\n"; });
 
-            gamma.addRule(r4);
+            //gamma.addRule(r4);
 
             DGGML::SolvingRule<GT> r5("solving_grow", g1, g1,
                                       [](auto& lhs) {std::cout << "solving the grow rule\n"; return 2.0;});
