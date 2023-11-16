@@ -65,10 +65,12 @@ namespace DGGML {
 
                             // TODO: a constraint for nearness is needed, there are other ways to do it
                             //  this is just a placeholder
-                            if (d < sim.model->settings.MAXIMAL_REACTION_RADIUS) {
+                            //TODO: we can actually just accept matches outside the boundary to keep our list valid longer
+                            // they'll just be near zero with a proper propensity function
+                            //if (d < sim.model->settings.MAXIMAL_REACTION_RADIUS) {
                                 result[k] = m2;
                                 reaction_instance_backtracker(sim, name, result, k + 1, pattern, c);
-                            }
+                           // }
                         }
                     }
                 }

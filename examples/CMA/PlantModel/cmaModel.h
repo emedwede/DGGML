@@ -126,7 +126,7 @@ namespace CMA {
                         rhs[m2[3]].position[2] = (lhs[m1[2]].position[2] + lhs[m1[1]].position[2])/2.0;
                     });
 
-            gamma.addRule(r1);
+            //gamma.addRule(r1);
 
             //stochastic retraction rule
             GT g3;
