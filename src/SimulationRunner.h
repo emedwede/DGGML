@@ -146,6 +146,7 @@ namespace DGGML {
                 //time_count.push_back(tot_time);
                 return;
             }
+            //return;
         }
     //private:
 

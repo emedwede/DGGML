@@ -75,11 +75,14 @@ namespace DGGML
     };
 
     template <typename GraphType, typename MatchType>
-    RewriteUpdates perform_rewrite(DGGML::RuleMatch<std::size_t>& inst,
-            //std::map<std::size_t, DGGML::ComponentMatch<std::size_t>>& component_match_set,
-                                   MatchType& component_match_set,
-                                   KeyGenerator<std::size_t>& gen,
-                                   DGGML::AnalyzedGrammar<GraphType>& grammar_analysis, GraphType& system_graph)
+    std::pair<RewriteUpdates, Invalidations> perform_invalidations_and_rewrite(DGGML::RuleMatch<std::size_t>& inst,
+                                                     MatchType& component_match_set,
+                                                     KeyGenerator<std::size_t>& gen,
+                                                     DGGML::AnalyzedGrammar<GraphType>& grammar_analysis,
+                                                     GraphType& system_graph,
+                                                     RuleMatchMap<std::size_t>& rule_matches,
+                                                     std::vector<std::size_t>& rule_map,
+                                                     CellList<GraphType>& cell_list)
     {
 
         RewriteUpdates changes;
@@ -176,6 +179,15 @@ namespace DGGML
         //I think we actually need a map for the lhs, and the rhs
         grammar_analysis.with_rules.at(rname).update(lhs_match, lhs_match_copy, lhs_vertex_map, rhs_vertex_map); //h
 
+        std::cout << "currently mapped rules: { ";
+        for(auto& key : rule_map) std::cout << key << " "; std::cout << "}\n";
+
+        //TODO: need a better fix, currently here because the cell list uses the graph to find the anchor
+        // for a component so that we can find its cell, but if the node has already been removed by a rewrite
+        // there is nothing to find leading to an error, potential alternate fix, add an inverse mapping
+        // of components to cells
+        auto removals = perform_invalidations(changes, component_match_set, grammar_analysis,
+                                              rule_matches, rule_map, cell_list);
         //update the system graph
         for(auto& k : rewrite.node_set_destroy)
             system_graph.removeNode(system_graph.findNode(lhs_vertex_map[k])->second);
@@ -195,7 +207,7 @@ namespace DGGML
         for(auto& [u, v] : rewrite.edge_set_create)
             system_graph.addEdge(rhs_vertex_map[u], rhs_vertex_map[v]);
 
-        return changes;
+        return std::make_pair(changes, removals);
     }
 
     //TODO: maybe this function needs to return even more info on the rules it invalidated
@@ -432,6 +444,8 @@ namespace DGGML
         //rule istances are only accepted if they contain the new components and phi maps them to the current cell
         //if phi maps them to a different cell, we may be able to add them to a seperate future validations
         // list rather than do nothing with them
+        std::cout << "Size of rule instances before phi: " << rule_matches.size() << "\n";
+        std::cout << "Size of rules mapped to the geocell before phi: " << rule_map.size() << "\n";
         for(auto& inst : accepted_rule_matches)
         {
             auto max_cell = min_dim_phi(inst, system_graph, geoplex2D, component_matches);
@@ -439,9 +453,20 @@ namespace DGGML
             //this cell owns the instance so it can add it back in
             if(max_cell == cell_k)
             {
-                //TODO: add accepted instances back in
+                auto res = rule_matches.insert(inst);
+                //if successfully inserted, added to the rule_map
+                if(res.second)
+                {
+                    rule_map.push_back(res.first->first);
+                }
+            } else
+            {
+                std::cout << "####################REJECTED#################\n";
+                std::cin.get();
             }
         }
+        std::cout << "Size of rule instances after phi: " << rule_matches.size() << "\n";
+        std::cout << "Size of rules mapped to the geocell after phi: " << rule_map.size() << "\n";
     }
 }
 #endif //DGGML_INCREMENTALUPDATE_HPP

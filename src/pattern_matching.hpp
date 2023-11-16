@@ -4,6 +4,7 @@
 #include <vector>
 
 #include "ComponentMatchMap.hpp"
+#include "RuleMatchMap.hpp"
 
 //TODO: improve organization, both functions are just speacialzed versions of a combinatorial backtracking i.e.
 //void backtrack(int a[], int k, data input) {
@@ -37,11 +38,11 @@ namespace DGGML {
                                        std::vector<std::size_t> &pattern, std::size_t c) {
         //if we reach the end of the pattern it's a solution
         if (k == pattern.size()) {
-            auto generated_key = sim.instance_key_gen.get_key();
-            sim.rule_matches[generated_key].name = name;
-            sim.rule_matches[generated_key].category = "stochastic";
-            sim.rule_matches[generated_key].components = result;
-            sim.rule_matches[generated_key].anchor = sim.component_matches[result[0]].anchor;
+            RuleMatch<std::size_t> inst;
+            inst.name = name;
+            inst.category = "stochastic";
+            inst.components = result;
+            sim.rule_matches.insert(inst);
         } else {
             //we search in all nearby cells as candidates for the next element in the pattern
             int imin, imax, jmin, jmax;

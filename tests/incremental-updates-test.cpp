@@ -270,7 +270,8 @@ TEST_CASE("Incremental Update Test", "[incremental-update-test]")
 
     //TODO: we need to REQUIRE check the graph size changes after different rewrites
     DGGML::KeyGenerator<std::size_t> gen(300);
-    auto changes = DGGML::perform_rewrite(rule_matches[2], component_match_set, gen, gamma_analysis, system_graph);
+    auto changes = DGGML::perform_invalidations_and_rewrite(rule_matches[2], component_match_set, gen, gamma_analysis,
+                                                            system_graph);
     save_state(system_graph, grid, 1);
     changes.print();
 

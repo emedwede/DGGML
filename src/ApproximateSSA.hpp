@@ -165,13 +165,16 @@ void approximate_ssa(ComponentMatchMap<T1>& component_matches, AnalyzedGrammar<T
             std::cout << "Selected rule id " << fired_id << " of type " << fired_name  << " with components: { ";
             for(auto& c : inst.components) std::cout << c << " ";
             std::cout << "}\n";
+//            if(fired_name == "interaction")
+//                std::cin.get();
 
             //First step, I need to plug in the experimental rewrite code and clean the rest up
             //Problem: rewrite wants a component_match_set, not the components stored in the rule system like I had
             //done originally
 
             //TODO: a big thing to decide is how phi partitions the match and component set
-            auto changes = perform_rewrite(inst, component_matches, gen, grammar_analysis, system_graph);
+            auto [changes, removals] = perform_invalidations_and_rewrite(inst, component_matches, gen, grammar_analysis,
+                                                             system_graph, rule_matches, rule_map[k], cell_list);
             changes.print();
             //TODO: incrementally update the in memory set of matches
             //Once we have updated the graph, we need to invalidated any old matches and then search for the
@@ -187,27 +190,23 @@ void approximate_ssa(ComponentMatchMap<T1>& component_matches, AnalyzedGrammar<T
             // hierarchy: (geocells) -> rule instances -> components instances -> nodes
             //slow, but easy case to code - assume we know nothing and must search everywhere
 
-            std::cout << "currently mapped rules to " << k << ": { ";
-            for(auto& key : rule_map[k]) std::cout << key << " "; std::cout << "}\n";
-//            for(auto& key : rule_map[k])
-//            {
-//                std::cout << component_matches[key] << "\n";
-//            }
             //should invalidate components and rule instances containing invalid components
-            using graph_t = typename std::remove_reference<decltype(system_graph)>::type;
-            auto removals = perform_invalidations<graph_t>(changes, component_matches,
-                                                           grammar_analysis, rule_matches,
-                                                           rule_map[k], cell_list);
+//            using graph_t = typename std::remove_reference<decltype(system_graph)>::type;
+//            auto removals = perform_invalidations<graph_t>(changes, component_matches,
+//                                                           grammar_analysis, rule_matches,
+//                                                           rule_map[k], cell_list);
             removals.print();
+
             find_new_matches(changes, system_graph, component_matches,grammar_analysis,
                              rule_matches, rule_map[k], cell_list, geoplex2D,k, reaction_radius);
-            return;
+
             //zero out tau since a rule has fired
             tau = 0.0;
             //reset the exp waiting_time sample
             double uniform_sample = RandomRealsBetween(0.0, 1.0)();
             //sample the exponential variable
             exp_sample = -log(1-uniform_sample);
+            //return;
         }
     }
     std::cout << "Total steps taken: " << steps << "\n";

@@ -195,7 +195,7 @@ namespace CMA {
                     [](auto& lhs, auto& m) { return 7.5; },
                     [](auto& lhs, auto& rhs, auto& m1, auto& m2) { std::cout << "updating interaction rule\n"; });
 
-            //gamma.addRule(r4);
+            gamma.addRule(r4);
 
             DGGML::SolvingRule<GT> r5("solving_grow", g1, g1,
                                       [](auto& lhs) {std::cout << "solving the grow rule\n"; return 2.0;});

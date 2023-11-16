@@ -624,7 +624,7 @@ TEST_CASE("Interaction Rewrite Test", "[basic-rewrite-test]")
         for (auto &item: r.second.components) std::cout << item << " ";
         std::cout << "}\n";
     }
-    DGGML::perform_rewrite(rule_matches[1], component_match_set, gen, gamma_analysis, system_graph);
+    DGGML::perform_invalidations_and_rewrite(rule_matches[1], component_match_set, gen, gamma_analysis, system_graph);
     std::cout << system_graph << "\n";
     std::cout << YAGL::connected_components(system_graph) << "\n";
     //REQUIRE(system_graph.numNodes() == 0);
