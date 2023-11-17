@@ -57,7 +57,10 @@ namespace DGGML {
             if(pass) {
                 RuleMatch<std::size_t> inst;
                 inst.name = name;
-                inst.category = "stochastic";
+                if(auto search = sim.grammar_analysis.with_rules.find(name); search != sim.grammar_analysis.with_rules.end())
+                    inst.category = "stochastic";
+                else
+                    inst.category = "deterministic";
                 inst.components = result;
                 sim.rule_matches.insert(inst);
             }
@@ -137,7 +140,10 @@ namespace DGGML {
                 std::cout << "found: "; for(auto& item : result) std::cout << item << " "; std::cout << "\n";
                 RuleMatch<std::size_t> inst;
                 inst.name = name;
-                inst.category = "stochastic";
+                if(auto search = grammar_analysis.with_rules.find(name); search != grammar_analysis.with_rules.end())
+                    inst.category = "stochastic";
+                else
+                    inst.category = "deterministic";
                 inst.components = result;
                 inst.anchor = component_matches[result[0]].anchor;
                 accepted_rule_matches.push_back(inst);

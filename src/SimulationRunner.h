@@ -235,9 +235,6 @@ namespace DGGML {
             {
                 for(auto& [name, pattern] : grammar_analysis.rule_component)
                 {
-                    //skip solving rules for now
-                    if(grammar_analysis.with_rules.find(name) == grammar_analysis.with_rules.end())
-                        continue;
                     int k = 0;
                     std::vector<std::size_t> result;
                     result.resize(pattern.size());

@@ -143,6 +143,7 @@ namespace DGGML
         // std::get<NodeAData>(lhs[1].data).energy
         // 3 -> 1 -> 10 => lhs[m2[m1[1]]]
         std::map<std::string, WithRule<GraphType>> with_rules;
+
         std::map<std::string, SolvingRule<GraphType>> solving_rules;
         std::vector<std::string> rule_names;
         std::map<std::string, std::map<std::size_t, GraphType>> lhs_connected_components;

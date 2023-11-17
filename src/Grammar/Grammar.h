@@ -4,6 +4,7 @@
 #include <functional>
 #include <map>
 #include <set>
+#include <nvector/nvector_serial.h>
 
 namespace DGGML {
 
@@ -46,11 +47,16 @@ namespace DGGML {
     template <typename GraphType>
     struct SolvingRule : RuleBase<GraphType>
     {
-        using solving_t = std::function<double(GraphType& lhs)>;
-        solving_t ode;
+        using initial_condition_t = std::function<void(GraphType& lhs, N_Vector ydot)>;
+        using solving_t = std::function<void(GraphType& lhs, N_Vector ydot)>;
 
-        explicit SolvingRule(std::string rname, GraphType& lhs_graph, GraphType& rhs_graph, solving_t&& ode)
-                : RuleBase<GraphType>(rname, lhs_graph, rhs_graph), ode(ode) {}
+        initial_condition_t ic;
+        solving_t ode;
+        std::size_t num_eq;
+
+        explicit SolvingRule(std::string rname, GraphType& lhs_graph, GraphType& rhs_graph,
+                             std::size_t num_eq, initial_condition_t&& ic, solving_t&& ode)
+                : RuleBase<GraphType>(rname, lhs_graph, rhs_graph), num_eq(num_eq), ic(ic), ode(ode) {}
     };
 
     //TODO: we need to make sure there is a numbered graph class for rule definitions

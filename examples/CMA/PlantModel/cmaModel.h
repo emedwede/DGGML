@@ -145,7 +145,7 @@ namespace CMA {
                                    [](auto& lhs, auto& m) { std::cout << "retraction propensity\n"; return 0.5; },
                                    [](auto& lhs, auto& rhs, auto& m1, auto& m2) { std::cout << "updating retraction rule\n"; });
 
-            gamma.addRule(r2);
+            //gamma.addRule(r2);
 
             //collision catastrophe rule
             GT g5;
@@ -201,8 +201,9 @@ namespace CMA {
 
             //gamma.addRule(r4);
 
-            DGGML::SolvingRule<GT> r5("solving_grow", g1, g1,
-                                      [](auto& lhs) {std::cout << "solving the grow rule\n"; return 2.0;});
+            DGGML::SolvingRule<GT> r5("solving_grow", g1, g1, 3,
+                                      [](auto& lhs, auto y) {std::cout << "ic of the grow rule\n";},
+                                      [](auto& lhs, auto ydot) {std::cout << "solving the grow rule\n";});
 
             gamma.addRule(r5);
 

@@ -58,72 +58,68 @@ namespace DGGML {
         UserDataType user_data;
 
         Solver(UserDataType _user_data, sunindextype _num_eq = 0)
-                : user_data(_user_data)
+                : user_data(_user_data), num_eq(_num_eq)
         {
-            num_eq = _num_eq;
             t_start = RCONST(0.0);
-            dt_out = RCONST(user_data.settings.DELTA_T_MIN);
+            dt_out = RCONST(user_data.model->settings.DELTA_T_MIN);
             t = t_start;
             tout = t_start + dt_out;
-            t_final = RCONST(user_data.settings.DELTA);
+            t_final = RCONST(user_data.model->settings.DELTA);
 
             flag = SUNContext_Create(NULL, &ctx);
             if(!DGGML::SundialsUtils::check_flag(&flag, "SUNContext_Create", 1))
                 std::cout << "Passed the error check, suncontext created\n";
 
-            // the number of equations is defined by the parameters of the nodes
-            // involved in all the ode rule types
-            num_eq = 0;
-            for(const auto& r : user_data.rule_map[user_data.k])
-            {
-                const auto& inst = user_data.rule_system[r];
-                if(inst.type == Rule::G || inst.type == Rule::R)
-                    num_eq += 3;
-            }
-            num_eq++; //one extra equation for tau
-
             std::cout << "*****NumEQ="<<num_eq<<"*****\n";
             y = NULL;
             y = N_VNew_Serial(num_eq, ctx);
 
-            auto j = 0;
-            for(const auto& r : user_data.rule_map[user_data.k])
-            {
-                for(const auto& m : user_data.rule_system[r])
-                {
-                    if(user_data.rule_system[r].type != Rule::G && user_data.rule_system[r].type != Rule::R)
-                        continue;
-                    auto& node_data = user_data.system_graph.findNode(m)->second.getData();
-                    //if(node_data.type == positive || node_data.type == negative)
-                    //{
-                    //    for(int i = 0; i < 3; i++)
-                    //        NV_Ith_S(y, j++) = node_data.position[i];
-                    //}
-                }
-            }
-            NV_Ith_S(y, j) = user_data.tau;
-
-            //NV_Ith_S(y, 0) = 50.0;
-            //NV_Ith_S(y, 1) = 0.0;
-
-            //std::cout << "J: " << j << "\n";
-            arkode_mem = ERKStepCreate(rhs, t_start, y, ctx);
-            //if (!DGGML::SundialsUtils::check_flag((void *)arkode_mem, "ERKStepCreate", 1))
-            //    std::cout << "Passed the error check, stepper initialized\n";
-
-            reltol = 1.0e-4;//1.0e-6;
-            abstol = 1.0e-8;//1.0e-10;
-
-            flag = ERKStepSStolerances(arkode_mem, reltol, abstol);
-
-            //set optional inputs
-            flag = ERKStepSetUserData(arkode_mem, &user_data);
-
-            // specify the root finding function having num_roots
-            flag = ERKStepRootInit(arkode_mem, num_roots, root_func);
-
-            //ERKStepSetMinStep(arkode_mem, user_data.settings.DELTA_T_MIN/10.0);
-            ERKStepSetMaxStep(arkode_mem, dt_out);//dt_out/10.0);
+            //set the initial conditions
+//            for(auto& item : user_data.solving_rules)
+//            {
+//                auto& name = user_data.rule_matches[item].name;
+//                decltype(user_data.model->system_graph) g;
+//                user_data.grammar_analysis.solving_rules.find(name)->second.ic(g, y);
+//            }
+//
+//            auto j = 0;
+//            for(const auto& r : user_data.rule_map[user_data.k])
+//            {
+//                for(const auto& m : user_data.rule_system[r])
+//                {
+//                    if(user_data.rule_system[r].type != Rule::G && user_data.rule_system[r].type != Rule::R)
+//                        continue;
+//                    auto& node_data = user_data.system_graph.findNode(m)->second.getData();
+//                    //if(node_data.type == positive || node_data.type == negative)
+//                    //{
+//                    //    for(int i = 0; i < 3; i++)
+//                    //        NV_Ith_S(y, j++) = node_data.position[i];
+//                    //}
+//                }
+//            }
+//            NV_Ith_S(y, j) = user_data.tau;
+//
+//            //NV_Ith_S(y, 0) = 50.0;
+//            //NV_Ith_S(y, 1) = 0.0;
+//
+//            //std::cout << "J: " << j << "\n";
+//            arkode_mem = ERKStepCreate(rhs, t_start, y, ctx);
+//            //if (!DGGML::SundialsUtils::check_flag((void *)arkode_mem, "ERKStepCreate", 1))
+//            //    std::cout << "Passed the error check, stepper initialized\n";
+//
+//            reltol = 1.0e-4;//1.0e-6;
+//            abstol = 1.0e-8;//1.0e-10;
+//
+//            flag = ERKStepSStolerances(arkode_mem, reltol, abstol);
+//
+//            //set optional inputs
+//            flag = ERKStepSetUserData(arkode_mem, &user_data);
+//
+//            // specify the root finding function having num_roots
+//            flag = ERKStepRootInit(arkode_mem, num_roots, root_func);
+//
+//            //ERKStepSetMinStep(arkode_mem, user_data.settings.DELTA_T_MIN/10.0);
+//            ERKStepSetMaxStep(arkode_mem, dt_out);//dt_out/10.0);
         }
 
         void step()
@@ -299,13 +295,13 @@ namespace DGGML {
         }
         ~Solver()
         {
-            std::cout << "Starting solver destruction\n";
-            N_VDestroy(y);
-            std::cout << "Destroyed y vector\n";
-            ERKStepFree(&arkode_mem); //free the solver memory
-            std::cout << "Destroyed arkode_mem\n";
-            SUNContext_Free(&ctx); //always call prior to MPI_Finalize
-            std::cout << "Destroyed the solver\n";
+//            std::cout << "Starting solver destruction\n";
+//            N_VDestroy(y);
+//            std::cout << "Destroyed y vector\n";
+//            ERKStepFree(&arkode_mem); //free the solver memory
+//            std::cout << "Destroyed arkode_mem\n";
+//            SUNContext_Free(&ctx); //always call prior to MPI_Finalize
+//            std::cout << "Destroyed the solver\n";
 
             /* Step 13: Finalilze MPI, if used */
         }

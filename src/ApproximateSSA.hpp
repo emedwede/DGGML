@@ -86,6 +86,40 @@ void approximate_ssa(ComponentMatchMap<T1>& component_matches, AnalyzedGrammar<T
         std::cout << "Warped wating time: " << exp_sample << "\n";
     }
 
+    std::vector<std::size_t> solving_rules;
+    for(auto& item : rule_map[k])
+        if(rule_matches[item].category == "deterministic")
+            solving_rules.push_back(item);
+    std::cout << "There are " << solving_rules.size() << " solving rules\n";
+
+    // the number of equations is defined by the parameters of the nodes
+    // involved in all the ode rule types, it's up to the user to get the number per
+    // rule right
+    auto num_eq = 0;
+    for(auto& item : solving_rules)
+    {
+        auto& name = rule_matches[item].name;
+        num_eq += grammar_analysis.solving_rules.find(name)->second.num_eq;
+    }
+    num_eq++; //one extra equation for tau
+
+    //TODO: move this to a better spot
+    typedef struct
+    {
+        M1& model;
+        AnalyzedGrammar<T2>& grammar_analysis;
+        std::vector<std::size_t>& solving_rules;
+        T4& rule_matches;
+        std::size_t& k; //TODO: figure out why I'm passing a reference
+        double& geocell_propensity;
+        double& tau;
+        double waiting_time;
+    } PackType;
+
+    Solver ode_system(PackType{model, grammar_analysis, solving_rules, rule_matches,
+                               k, geocell_propensity, tau, exp_sample}, num_eq);
+
+    //return;
     while(delta_t < settings.DELTA)
     {
         //the propensities calculated for a particular rule
