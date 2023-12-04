@@ -75,6 +75,7 @@ void approximate_ssa(ComponentMatchMap<T1>& component_matches, AnalyzedGrammar<T
         AnalyzedGrammar<T2>& grammar_analysis;
         std::vector<std::size_t>& solving_rules;
         T4& rule_matches;
+        ComponentMatchMap<T1>& component_matches;
         std::size_t& k; //TODO: figure out why I'm passing a reference
         double& geocell_propensity;
         double& tau;
@@ -82,7 +83,7 @@ void approximate_ssa(ComponentMatchMap<T1>& component_matches, AnalyzedGrammar<T
     } PackType;
 
     Solver ode_system(PackType{model, grammar_analysis, solving_rules, rule_matches,
-                               k, geocell_propensity, tau, exp_sample}, num_eq);
+                               component_matches, k, geocell_propensity, tau, exp_sample}, num_eq);
 
     return;
     while(delta_t < settings.DELTA)
@@ -103,10 +104,10 @@ void approximate_ssa(ComponentMatchMap<T1>& component_matches, AnalyzedGrammar<T
                 if(inst.category != "stochastic")
                     continue;
                 auto induced_graph = induce_from_set(rule_matches[r], component_matches, system_graph);
-                std::map<std::size_t, std::size_t> placeholder;
-
+                std::map<std::size_t, std::size_t> lhs_vertex_map;
+                construct_grammar_match_map(inst, grammar_analysis, lhs_vertex_map, component_matches);
                 //using at, because the [] requires they map_type to be default constructible
-                auto rho = grammar_analysis.with_rules.at(inst.name).propensity(induced_graph, placeholder);
+                auto rho = grammar_analysis.with_rules.at(inst.name).propensity(induced_graph, lhs_vertex_map);
                 propensity_space.push_back({r,rho});
             }
 

@@ -47,7 +47,8 @@ namespace DGGML {
     template <typename GraphType>
     struct SolvingRule : RuleBase<GraphType>
     {
-        using initial_condition_t = std::function<void(GraphType& lhs, N_Vector ydot)>;
+        using GraphMapType = std::map<typename GraphType::key_type, typename GraphType::key_type>;
+        using initial_condition_t = std::function<void(GraphType& lhs, GraphMapType& m1, N_Vector ydot, std::size_t offset)>;
         using solving_t = std::function<void(GraphType& lhs, N_Vector ydot)>;
 
         initial_condition_t ic;

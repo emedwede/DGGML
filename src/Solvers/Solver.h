@@ -17,6 +17,7 @@
 #endif
 
 #include "SundialsUtils.hpp"
+#include "HelperFunctions.hpp"
 
 // TODO: Need to generalize the sovler code and we need to add in the root finding fix from
 // CajeteCMA repo
@@ -74,35 +75,31 @@ namespace DGGML {
             y = NULL;
             y = N_VNew_Serial(num_eq, ctx);
 
+            std::size_t offset = 0;
             //set the initial conditions
-//            for(auto& item : user_data.solving_rules)
-//            {
-//                auto& name = user_data.rule_matches[item].name;
-//                decltype(user_data.model->system_graph) g;
-//                user_data.grammar_analysis.solving_rules.find(name)->second.ic(g, y);
-//            }
-//
-//            auto j = 0;
-//            for(const auto& r : user_data.rule_map[user_data.k])
-//            {
-//                for(const auto& m : user_data.rule_system[r])
-//                {
-//                    if(user_data.rule_system[r].type != Rule::G && user_data.rule_system[r].type != Rule::R)
-//                        continue;
-//                    auto& node_data = user_data.system_graph.findNode(m)->second.getData();
-//                    //if(node_data.type == positive || node_data.type == negative)
-//                    //{
-//                    //    for(int i = 0; i < 3; i++)
-//                    //        NV_Ith_S(y, j++) = node_data.position[i];
-//                    //}
-//                }
-//            }
-//            NV_Ith_S(y, j) = user_data.tau;
-//
-//            //NV_Ith_S(y, 0) = 50.0;
-//            //NV_Ith_S(y, 1) = 0.0;
-//
-//            //std::cout << "J: " << j << "\n";
+            for(auto& item : user_data.solving_rules)
+            {
+                auto& inst = user_data.rule_matches[item];
+                auto& name = inst.name;
+                auto& ode = user_data.grammar_analysis.solving_rules.find(name)->second;
+                //TODO: find a more efficient way
+                //need to construct a graph from the match keys and
+                //the mapping from the orignal LHS to the match
+                auto induced_graph = induce_from_set(inst, user_data.component_matches, user_data.model->system_graph);
+                std::map<std::size_t, std::size_t> lhs_vertex_map;
+                construct_grammar_match_map(inst, user_data.grammar_analysis, lhs_vertex_map, user_data.component_matches);
+                std::cout << "for rule " << item << " we have a map: ";
+                for(auto& [k, v] : lhs_vertex_map)
+                    std::cout << "{ " << k << " -> " << v << " } ";
+                std::cout << "\n";
+                ode.ic(induced_graph, lhs_vertex_map, y, offset);
+                offset += ode.num_eq;
+            }
+            NV_Ith_S(y, offset) = user_data.tau;
+
+            for(auto i = 0; i < num_eq; i++)
+                std::cout << NV_Ith_S(y, i) << "\n";
+
 //            arkode_mem = ERKStepCreate(rhs, t_start, y, ctx);
 //            //if (!DGGML::SundialsUtils::check_flag((void *)arkode_mem, "ERKStepCreate", 1))
 //            //    std::cout << "Passed the error check, stepper initialized\n";

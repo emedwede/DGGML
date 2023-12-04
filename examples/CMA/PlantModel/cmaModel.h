@@ -202,8 +202,20 @@ namespace CMA {
             //gamma.addRule(r4);
 
             DGGML::SolvingRule<GT> r5("solving_grow", g1, g1, 3,
-                                      [](auto& lhs, auto y) {std::cout << "ic of the grow rule\n";},
-                                      [](auto& lhs, auto ydot) {std::cout << "solving the grow rule\n";});
+                    [](auto& lhs, auto& m1, auto y, auto offset)
+                    {
+                        std::cout << "ic of the grow rule\n";
+                        //fill in ICs here
+                        std::cout << "{ ";
+                        std::cout << lhs[m1[1]].position[0] << " ";
+                        std::cout << lhs[m1[1]].position[1] << " ";
+                        std::cout << lhs[m1[1]].position[2] << " }\n";
+                        for(auto i = 0; i < 3; i++)
+                            NV_Ith_S(y, offset+i) = lhs[m1[1]].position[i];
+                    },
+                    [](auto& lhs, auto ydot) {
+                        std::cout << "solving the grow rule\n";
+                    });
 
             gamma.addRule(r5);
 
