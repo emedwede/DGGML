@@ -13,9 +13,10 @@
 #include "ComponentMatchMap.hpp"
 #include "IncrementalUpdate.hpp"
 #include "AnalyzedGrammar.hpp"
+#include "HelperFunctions.hpp"
+#include "RandomFunctions.hpp"
 
 #include <chrono>
-#include <random>
 #include <algorithm>
 #include <vector>
 #include <iostream>
@@ -24,42 +25,6 @@
 
 namespace DGGML
 {
-
-//TODO: Move to it's own random class or header
-auto RandomRealsBetween = [](double low, double high)
-{
-    auto randomFunc =
-            [distribution_ = std::uniform_real_distribution<double>(low, high),
-                    random_engine_ = std::mt19937{std::random_device{}() }]() mutable
-            {
-                return distribution_(random_engine_);
-            };
-    return randomFunc;
-};
-
-auto RandomIntsBetween = [](int low, int high)
-{
-    auto randomFunc =
-            [distribution_ = std::uniform_int_distribution<int>(low, high),
-                    random_engine_ = std::mt19937{std::random_device{}() }]() mutable
-            {
-                return distribution_(random_engine_);
-            };
-    return randomFunc;
-};
-
-
-template<typename T1, typename T2, typename T3>
-auto induce_from_set(T1& inst, T2& component_matches, T3& system_graph)
-{
-    std::vector<std::size_t> inducers;
-    for(auto& c : inst.components)
-    {
-        for(auto& id : component_matches[c])
-            inducers.push_back(id);
-    }
-    return YAGL::induced_subgraph(system_graph, inducers);
-}
 
 template <typename T1, typename T2, typename T3, typename T4, typename M1>
 void approximate_ssa(ComponentMatchMap<T1>& component_matches, AnalyzedGrammar<T2>& grammar_analysis, T3& rule_map, T4& rule_matches, M1& model,
@@ -119,7 +84,7 @@ void approximate_ssa(ComponentMatchMap<T1>& component_matches, AnalyzedGrammar<T
     Solver ode_system(PackType{model, grammar_analysis, solving_rules, rule_matches,
                                k, geocell_propensity, tau, exp_sample}, num_eq);
 
-    //return;
+    return;
     while(delta_t < settings.DELTA)
     {
         //the propensities calculated for a particular rule
