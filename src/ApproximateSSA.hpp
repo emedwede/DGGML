@@ -187,12 +187,20 @@ void approximate_ssa(ComponentMatchMap<T1>& component_matches, AnalyzedGrammar<T
             find_new_matches(changes, system_graph, component_matches,grammar_analysis,
                              rule_matches, rule_map[k], cell_list, geoplex2D,k, reaction_radius);
 
+
             //zero out tau since a rule has fired
             tau = 0.0;
             //reset the exp waiting_time sample
             double uniform_sample = RandomRealsBetween(0.0, 1.0)();
             //sample the exponential variable
             exp_sample = -log(1-uniform_sample);
+            ode_system.user_data.waiting_time = exp_sample;
+            //update the solving rules
+            solving_rules.clear();
+            for(auto& item : rule_map[k])
+                if(rule_matches[item].category == "deterministic")
+                    solving_rules.push_back(item);
+            ode_system.reinit(solving_rules);
         }
         //break; //makes only one reaction occur break point
     }

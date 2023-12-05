@@ -109,13 +109,12 @@ namespace CMA {
             DGGML::WithRule<GT> r1("growing", g1, g2,
                                    [&](auto& lhs, auto& m)
                 {
-                    return 0.0*2.0;
-//                    auto& node_i_data = lhs.findNode(m[0])->second.getData();
-//                    auto& node_j_data = lhs.findNode(m[1])->second.getData();
-//
-//                    auto len = DGGML::calculate_distance(node_i_data.position, node_j_data.position);
-//                    //double propensity = heaviside(len, settings.DIV_LENGTH);
-//                    return 10*DGGML::sigmoid((len/settings.DIV_LENGTH) - 1.0, settings.SIGMOID_K);
+                    //return 0.0*2.0;
+                    auto& node_i_data = lhs.findNode(m[1])->second.getData();
+                    auto& node_j_data = lhs.findNode(m[2])->second.getData();
+                    auto len = DGGML::calculate_distance(node_i_data.position, node_j_data.position);
+                    //double propensity = heaviside(len, settings.DIV_LENGTH);
+                    return DGGML::sigmoid((len/settings.DIV_LENGTH) - 1.0, settings.SIGMOID_K);
                 }, [](auto& lhs, auto& rhs, auto& m1, auto& m2) {
                         auto d = DGGML::calculate_distance(lhs[m1[1]].position, lhs[m1[2]].position);
                         //std::cout << d << "\n";

@@ -212,8 +212,9 @@ namespace DGGML {
 
         //TODO: make this function reset the whole y vector
         //since it may change in size
-        void reinit()
+        void reinit(std::vector<std::size_t> solving_rules)
         {
+            user_data.solving_rules = solving_rules;
             //std::cout << "Reintializing...\n";
             auto pre_eq = num_eq;
             auto num_eq = 0;
@@ -235,6 +236,7 @@ namespace DGGML {
             //set the initial conditions
             for(auto& item : user_data.solving_rules)
             {
+                std::cout << "inside start\n";
                 auto& inst = user_data.rule_matches[item];
                 auto& name = inst.name;
                 auto& ode = user_data.grammar_analysis.solving_rules.find(name)->second;
@@ -242,7 +244,9 @@ namespace DGGML {
                 std::map<std::size_t, std::size_t> lhs_vertex_map;
                 construct_grammar_match_map(inst, user_data.grammar_analysis, lhs_vertex_map, user_data.component_matches);
                 ode.ic(user_data.model->system_graph, lhs_vertex_map, varset);
+                std::cout << "inside end\n";
             }
+            std::cout << "Post: " <<  num_eq << " " << varset.size() << "\n";
             NV_Ith_S(y, varset.size()) = user_data.tau;
             std::size_t idx = 0;
             for(auto item : varset)
