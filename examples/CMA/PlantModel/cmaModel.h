@@ -66,12 +66,12 @@ namespace CMA {
                         10.0,
                         2.0,
                         10,
-                        2,
-                        2,
+                        1,//2,
+                        1,//2,
                         8.0,
                         8.0,
                         false,
-                        64,
+                        4,//64,
                         0.2,
                         0.4,
                         10,
@@ -109,7 +109,7 @@ namespace CMA {
             DGGML::WithRule<GT> r1("growing", g1, g2,
                                    [&](auto& lhs, auto& m)
                 {
-                    return 2.0;
+                    return 0.0*2.0;
 //                    auto& node_i_data = lhs.findNode(m[0])->second.getData();
 //                    auto& node_j_data = lhs.findNode(m[1])->second.getData();
 //
@@ -142,7 +142,7 @@ namespace CMA {
             g4.addEdge(1, 3);
 
             DGGML::WithRule<GT> r2("retraction", g3, g4,
-                                   [](auto& lhs, auto& m) { std::cout << "retraction propensity\n"; return 0.5; },
+                                   [](auto& lhs, auto& m) { std::cout << "retraction propensity\n"; return 0.0*0.5; },
                                    [](auto& lhs, auto& rhs, auto& m1, auto& m2) { std::cout << "updating retraction rule\n"; });
 
             //gamma.addRule(r2);
@@ -202,19 +202,41 @@ namespace CMA {
             //gamma.addRule(r4);
 
             DGGML::SolvingRule<GT> r5("solving_grow", g1, g1, 3,
-                    [](auto& lhs, auto& m1, auto y, auto offset)
+                    [](auto& lhs, auto& m1, auto& varset)
                     {
                         std::cout << "ic of the grow rule\n";
-                        //fill in ICs here
-                        std::cout << "{ ";
-                        std::cout << lhs[m1[1]].position[0] << " ";
-                        std::cout << lhs[m1[1]].position[1] << " ";
-                        std::cout << lhs[m1[1]].position[2] << " }\n";
-                        for(auto i = 0; i < 3; i++)
-                            NV_Ith_S(y, offset+i) = lhs[m1[1]].position[i];
+                        //bind the variables involved
+                        varset.insert(&lhs[m1[2]].position[0]);
+                        varset.insert(&lhs[m1[2]].position[1]);
+                        varset.insert(&lhs[m1[2]].position[2]);
                     },
-                    [](auto& lhs, auto ydot) {
-                        std::cout << "solving the grow rule\n";
+                    [](auto& lhs, auto& m1, auto y, auto ydot, auto& varmap) {
+                        //std::cout << "solving the grow rule\n";
+                        //unless we know a variable wasn't used before, it's current value from it's solving
+                        //ode must be checked and used i.e. if(varmap[&lhs[m[1]].position[0]]->second = false) do
+                        //otherwise we don't have to check, but if the user is wrong, undefined behavior may ensue
+                        //growth rule params
+                        auto v_plus = 0.1;//1.0;
+                        auto d_l = 1.0;
+                        double l = 0.0;
+                        for(auto i = 0; i < 3; i++)
+                        {
+                            double diff = NV_Ith_S(y, varmap[&lhs[m1[2]].position[i]]);
+                            if(auto search = varmap.find(&lhs[m1[1]].position[i]); search != varmap.end())
+                                diff -= NV_Ith_S(y, search->second);
+                            else
+                                diff -= lhs[m1[1]].position[i];
+                            l += diff*diff;
+                        }
+                        l = sqrt(l);
+                        double length_limiter = (1.0 - (l/d_l));
+                        auto& data1 = std::get<Plant::Intermediate>(lhs[m1[1]].data);
+                        for(auto i = 0; i < 3; i++) {
+                            if (auto search = varmap.find(&data1.unit_vec[i]); search != varmap.end())
+                                NV_Ith_S(ydot, varmap[&lhs[m1[2]].position[i]]) += v_plus * NV_Ith_S(y, search->second) * length_limiter;
+                            else
+                                NV_Ith_S(ydot, varmap[&lhs[m1[2]].position[i]]) += v_plus * data1.unit_vec[i] * length_limiter;
+                        }
                     });
 
             gamma.addRule(r5);

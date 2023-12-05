@@ -4,6 +4,7 @@
 #include <functional>
 #include <map>
 #include <set>
+#include <unordered_map>
 #include <nvector/nvector_serial.h>
 
 namespace DGGML {
@@ -48,8 +49,9 @@ namespace DGGML {
     struct SolvingRule : RuleBase<GraphType>
     {
         using GraphMapType = std::map<typename GraphType::key_type, typename GraphType::key_type>;
-        using initial_condition_t = std::function<void(GraphType& lhs, GraphMapType& m1, N_Vector ydot, std::size_t offset)>;
-        using solving_t = std::function<void(GraphType& lhs, N_Vector ydot)>;
+        using initial_condition_t = std::function<void(GraphType& lhs, GraphMapType& m1, std::set<double*>& varset)>;
+        using solving_t = std::function<void(GraphType& lhs, GraphMapType& m1, N_Vector y, N_Vector ydot,
+                std::unordered_map<double*, std::size_t>& varmap)>;
 
         initial_condition_t ic;
         solving_t ode;

@@ -68,24 +68,10 @@ void approximate_ssa(ComponentMatchMap<T1>& component_matches, AnalyzedGrammar<T
     }
     num_eq++; //one extra equation for tau
 
-    //TODO: move this to a better spot
-    typedef struct
-    {
-        M1& model;
-        AnalyzedGrammar<T2>& grammar_analysis;
-        std::vector<std::size_t>& solving_rules;
-        T4& rule_matches;
-        ComponentMatchMap<T1>& component_matches;
-        std::size_t& k; //TODO: figure out why I'm passing a reference
-        double& geocell_propensity;
-        double& tau;
-        double waiting_time;
-    } PackType;
+    Solver ode_system(model, grammar_analysis, solving_rules, rule_matches, component_matches,
+                      k, geocell_propensity, tau, exp_sample, num_eq);
 
-    Solver ode_system(PackType{model, grammar_analysis, solving_rules, rule_matches,
-                               component_matches, k, geocell_propensity, tau, exp_sample}, num_eq);
-
-    return;
+    //return;
     while(delta_t < settings.DELTA)
     {
         //the propensities calculated for a particular rule
@@ -128,15 +114,16 @@ void approximate_ssa(ComponentMatchMap<T1>& component_matches, AnalyzedGrammar<T
             //settings.DELTA_T_MIN = std::min(1.0/(10.0*geocell_propensity), settings.DELTA_DELTA_T);
 
             // STEP(2) : solve the system of ODES
-            //ode_system.step();
-            //ode_system.copy_back();
-            // Alternate STEP(2) : use forward euler to solve the TAU ODE
-            tau += geocell_propensity*settings.DELTA_T_MIN;
-            std::cout << "Current tau: " << tau << "\n";
-
+            ode_system.step();
+            ode_system.copy_back();
             // STEP(3) : advance the loop timer
-            //delta_t = ode_system.t;
-            delta_t += settings.DELTA_T_MIN;
+            delta_t = ode_system.t;
+            steps++;
+            // Alternate STEP(2) : use forward euler to solve the TAU ODE
+//            tau += geocell_propensity*settings.DELTA_T_MIN;
+//            std::cout << "Current tau: " << tau << "\n";
+            //Alternate STEP(3)
+            //delta_t += settings.DELTA_T_MIN;
 
             //std::cout << "tout: " << ode_system.t << " , DT: " << delta_t << "\n";
         }
@@ -207,9 +194,10 @@ void approximate_ssa(ComponentMatchMap<T1>& component_matches, AnalyzedGrammar<T
             //sample the exponential variable
             exp_sample = -log(1-uniform_sample);
         }
-        break; //makes only one reaction occur break point
+        //break; //makes only one reaction occur break point
     }
     std::cout << "Total steps taken: " << steps << "\n";
+    ode_system.print_stats();
     geocell_progress.first = tau;
     geocell_progress.second = exp_sample;
 }
