@@ -25,16 +25,6 @@
 // CajeteCMA repo
 namespace DGGML {
 
-    int rhs_func(realtype t, N_Vector y, N_Vector ydot, void* user_data)
-    {
-        return 0;
-    }
-
-    int root_func(realtype t, N_Vector y, realtype* gout, void* user_data)
-    {
-        return 0;
-    }
-
     template <typename ModelType, typename AnalyzedGrammarType, typename RuleMatchType, typename ComponentMatchType>
     struct Solver
     {
@@ -83,6 +73,7 @@ namespace DGGML {
 
         UserDataType user_data; //TODO: should this be a pointer?
 
+        //TODO: remember, the varset/varmap is only safe so long as the map doesn't change by another thread
         Solver(ModelType& model, AnalyzedGrammarType& grammar_analysis, std::vector<std::size_t> solving_rules,
                RuleMatchType& rule_matches, ComponentMatchType& component_matches, std::size_t& k, double& geocell_propensity,
                double& tau, double waiting_time, sunindextype num_eq)
@@ -132,8 +123,8 @@ namespace DGGML {
                 idx++;
             }
             varset.clear();
-            for(auto i = 0; i < num_eq; i++)
-                std::cout << NV_Ith_S(y, i) << "\n";
+            //for(auto i = 0; i < num_eq; i++)
+                //std::cout << NV_Ith_S(y, i) << "\n";
 
             arkode_mem = ERKStepCreate(rhs, t_start, y, ctx);
             //if (!DGGML::SundialsUtils::check_flag((void *)arkode_mem, "ERKStepCreate", 1))
@@ -203,73 +194,7 @@ namespace DGGML {
                 eq.ode(local_ptr->model->system_graph, lhs_vertex_map, y, ydot, local_ptr->varmap);
             }
             NV_Ith_S(ydot, global_length-1) = local_ptr->geocell_propensity;
-//            UserDataType* local_ptr = (UserDataType *)user_data;
-//            auto k = local_ptr->k;
-//            auto i = 0;
-//            //growth rule params
-//            auto v_plus = local_ptr->settings.V_PLUS;
-//            auto d_l = local_ptr->settings.DIV_LENGTH;
-//
-//            //retraction rule params
-//            auto l_d_f = local_ptr->settings.LENGTH_DIV_FACTOR;
-//            auto d_l_r = local_ptr->settings.DIV_LENGTH_RETRACT;
-//            auto v_minus = local_ptr->settings.V_MINUS;
-//
-//
-//            //TODO: move the rules to their separate functions
-//            for(auto& instance : local_ptr->r1)
-//            {
-//                {
-//                    auto id_a = instance[0];
-//                    auto id_b = instance[1];
-//                    auto& node_i_data = local_ptr->system_graph.findNode(id_a)->second.getData();
-//                    auto& node_j_data = local_ptr->system_graph.findNode(id_b)->second.getData();
-//
-//                    double l = 0.0;
-//                    for(auto j = 0; j < 3; j++)
-//                    {
-//                        double diff = NV_Ith_S(y, i+j) - node_j_data.position[j];
-//                        l += diff*diff;
-//                    }
-//                    l = sqrt(l);
-//                    double length_limiter = (1.0 - (l/d_l));
-//                    NV_Ith_S(ydot, i) = v_plus*node_i_data.unit_vec[0]*length_limiter;
-//                    NV_Ith_S(ydot, i+1) = v_plus*node_i_data.unit_vec[1]*length_limiter;
-//                    NV_Ith_S(ydot, i+2) = v_plus*node_i_data.unit_vec[2]*length_limiter;
-//                }
-//                i += 3;
-//            }
-//
-//            for(auto& instance : local_ptr->r2)
-//            {
-//                {
-//                    auto id_a = instance[0];
-//                    auto id_b = instance[1];
-//                    auto& node_i_data = local_ptr->system_graph.findNode(id_a)->second.getData();
-//                    auto& node_j_data = local_ptr->system_graph.findNode(id_b)->second.getData();
-//
-//                    double l = 0.0;
-//                    for(auto j = 0; j < 3; j++)
-//                    {
-//                        double diff = NV_Ith_S(y, i+j) - node_j_data.position[j];
-//                        l += diff*diff;
-//                    }
-//                    l = sqrt(l);
-//
-//                    double length_limiter = l/d_l;
-//                    if(length_limiter <= d_l_r) length_limiter = 0.0;
-//
-//                    for(int j = i; j < i+3; j++)
-//                        NV_Ith_S(ydot, j) = v_minus*node_i_data.unit_vec[j-i]*length_limiter;
-//                    //std::cout << Rule::R << "\n";
-//                }
-//                i += 3;
-//            }
-//
-//            NV_Ith_S(ydot, i) = local_ptr->geocell_propensity;
-//
-//            //std::cout << "In my function for cell " << k
-//            //    << ", local rule size: " << local_ptr->rule_map[k].size() << "\n";
+
             local_ptr = nullptr;
 
             return 0;
@@ -277,22 +202,6 @@ namespace DGGML {
 
         void copy_back()
         {
-//            auto j = 0;
-//            for(const auto& r : user_data.rule_map[user_data.k])
-//            {
-//                for(const auto& m : user_data.rule_system[r])
-//                {
-//                    if(user_data.rule_system[r].type != Rule::G && user_data.rule_system[r].type != Rule::R)
-//                        continue;
-//                    auto& node_data = user_data.system_graph.findNode(m)->second.getData();
-//                    //if(node_data.type != positive && node_data.type != negative)
-//                    //    continue;
-//                    //TODO: update the current velocity here?
-//                    for(int i = 0; i < 3; i++)
-//                        node_data.position[i] = NV_Ith_S(y, j++);
-//                }
-//            }
-
             for(auto& [item, key] : user_data.varmap)
             {
                 *item = NV_Ith_S(y, key);
@@ -305,41 +214,55 @@ namespace DGGML {
         //since it may change in size
         void reinit()
         {
+            //std::cout << "Reintializing...\n";
             auto pre_eq = num_eq;
             auto num_eq = 0;
-
-            for(const auto& r : user_data.rule_map[user_data.k])
+            for(auto& item : user_data.solving_rules)
             {
-                const auto& inst = user_data.rule_system[r];
-                if(inst.type == Rule::G || inst.type == Rule::R)
-                    num_eq += 3;
+                auto& name = user_data.rule_matches[item].name;
+                num_eq += user_data.grammar_analysis.solving_rules.find(name)->second.num_eq;
             }
             num_eq++; //one extra equation for tau
 
-            std::cout << "*****NumEQ="<<num_eq<<"*****\n";
             N_VDestroy(y);
             y = N_VNew_Serial(num_eq, ctx);
 
-            auto j = 0;
-            for(const auto& r : user_data.rule_map[user_data.k])
-            {
-                for(const auto& m : user_data.rule_system[r])
-                {
-                    if(user_data.rule_system[r].type != Rule::G && user_data.rule_system[r].type != Rule::R)
-                        continue;
-                    auto& node_data = user_data.system_graph.findNode(m)->second.getData();
-//                    if(node_data.type == positive || node_data.type == negative)
-//                    {
-//                        for(int i = 0; i < 3; i++)
-//                            NV_Ith_S(y, j++) = node_data.position[i];
-//                    }
-                }
-            }
+            //clear the old varmap
+            user_data.varmap.clear();
 
-            //std::cout << num_eq << " " << pre_eq << "\n"; std::cin.get();
+            //rebuild the ic
+            std::set<double*> varset;
+            //set the initial conditions
+            for(auto& item : user_data.solving_rules)
+            {
+                auto& inst = user_data.rule_matches[item];
+                auto& name = inst.name;
+                auto& ode = user_data.grammar_analysis.solving_rules.find(name)->second;
+                //TODO: find a more efficient way
+                std::map<std::size_t, std::size_t> lhs_vertex_map;
+                construct_grammar_match_map(inst, user_data.grammar_analysis, lhs_vertex_map, user_data.component_matches);
+                ode.ic(user_data.model->system_graph, lhs_vertex_map, varset);
+            }
+            NV_Ith_S(y, varset.size()) = user_data.tau;
+            std::size_t idx = 0;
+            for(auto item : varset)
+            {
+                user_data.varmap.insert({item, idx});
+                NV_Ith_S(y, idx) = *item;
+                idx++;
+            }
+            varset.clear();
+
             user_data.tau = 0.0;
             NV_Ith_S(y, num_eq-1) = 0.0;
-            ERKStepReInit(arkode_mem, rhs, t, y);
+
+            if(num_eq == pre_eq)
+                ERKStepReInit(arkode_mem, rhs, t, y);
+            else
+            {
+                ERKStepResize(arkode_mem, y, 1.0, t, NULL, NULL);
+                ERKStepReInit(arkode_mem, rhs, t, y);
+            }
         }
 
         void print_stats()
