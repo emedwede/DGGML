@@ -206,6 +206,7 @@ void approximate_ssa(ComponentMatchMap<T1>& component_matches, AnalyzedGrammar<T
     }
     std::cout << "Total steps taken: " << steps << "\n";
     ode_system.print_stats();
+    //std::cin.get();
     geocell_progress.first = tau;
     geocell_progress.second = exp_sample;
 }

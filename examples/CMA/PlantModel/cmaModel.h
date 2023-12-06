@@ -70,7 +70,7 @@ namespace CMA {
                         1,//2,
                         8.0,
                         8.0,
-                        false,
+                        true,
                         4,//64,
                         0.2,
                         0.4,
@@ -113,16 +113,19 @@ namespace CMA {
                     auto& node_i_data = lhs.findNode(m[1])->second.getData();
                     auto& node_j_data = lhs.findNode(m[2])->second.getData();
                     auto len = DGGML::calculate_distance(node_i_data.position, node_j_data.position);
-                    //double propensity = heaviside(len, settings.DIV_LENGTH);
-                    return DGGML::sigmoid((len/settings.DIV_LENGTH) - 1.0, settings.SIGMOID_K);
+                    //double propensity = DGGML::heaviside(len, settings.DIV_LENGTH);
+                    double propensity = DGGML::sigmoid((len/settings.DIV_LENGTH) - 1.0, settings.SIGMOID_K);
+                    return propensity;
                 }, [](auto& lhs, auto& rhs, auto& m1, auto& m2) {
-                        auto d = DGGML::calculate_distance(lhs[m1[1]].position, lhs[m1[2]].position);
-                        //std::cout << d << "\n";
-                        //auto& data1 = std::get<Plant::Intermediate>(lhs[m[1]].data);
-                        std::cout << "doing some update calculations\n";
+                        //in this function we are responsible for setting all new parameters
+                        //first set the position
                         rhs[m2[3]].position[0] = (lhs[m1[2]].position[0] + lhs[m1[1]].position[0])/2.0;
                         rhs[m2[3]].position[1] = (lhs[m1[2]].position[1] + lhs[m1[1]].position[1])/2.0;
                         rhs[m2[3]].position[2] = (lhs[m1[2]].position[2] + lhs[m1[1]].position[2])/2.0;
+                        //next set the unit vector
+                        std::get<Plant::Intermediate>(rhs[m2[3]].data).unit_vec[0] = std::get<Plant::Intermediate>(lhs[m1[1]].data).unit_vec[0];
+                        std::get<Plant::Intermediate>(rhs[m2[3]].data).unit_vec[1] = std::get<Plant::Intermediate>(lhs[m1[1]].data).unit_vec[1];
+                        std::get<Plant::Intermediate>(rhs[m2[3]].data).unit_vec[2] = std::get<Plant::Intermediate>(lhs[m1[1]].data).unit_vec[2];
                     });
 
             gamma.addRule(r1);
@@ -200,10 +203,11 @@ namespace CMA {
 
             //gamma.addRule(r4);
 
+            //TODO: I think I need to add velocity back in, and make the growing solve a function of the two ODEs
             DGGML::SolvingRule<GT> r5("solving_grow", g1, g1, 3,
                     [](auto& lhs, auto& m1, auto& varset)
                     {
-                        std::cout << "ic of the grow rule\n";
+                        //std::cout << "ic of the grow rule\n";
                         //bind the variables involved
                         varset.insert(&lhs[m1[2]].position[0]);
                         varset.insert(&lhs[m1[2]].position[1]);
@@ -215,11 +219,12 @@ namespace CMA {
                         //ode must be checked and used i.e. if(varmap[&lhs[m[1]].position[0]]->second = false) do
                         //otherwise we don't have to check, but if the user is wrong, undefined behavior may ensue
                         //growth rule params
-                        auto v_plus = 0.1;//1.0;
+                        auto v_plus = 0.025;//1.0;
                         auto d_l = 1.0;
                         double l = 0.0;
                         for(auto i = 0; i < 3; i++)
                         {
+                            //TODO: set a constraint that stops solving if a boundary is reached
                             double diff = NV_Ith_S(y, varmap[&lhs[m1[2]].position[i]]);
                             if(auto search = varmap.find(&lhs[m1[1]].position[i]); search != varmap.end())
                                 diff -= NV_Ith_S(y, search->second);
