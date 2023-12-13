@@ -54,6 +54,15 @@ namespace CMA {
         double RHO_TEST_RATE; //a tunable test parameter for MT dynamics
     };
 
+    bool boundary_check_2D(Parameters& settings, double x, double y)
+    {
+        auto min_x = 0.0, min_y = 0.0;
+        auto max_x = settings.CELL_NX*settings.CELL_DX;
+        auto max_y = settings.CELL_NY*settings.CELL_DY;
+
+        return (x > min_x and x < max_x and y > min_y and y < max_y) ? false : true;
+    }
+
     using graph_grammar_t = DGGML::Grammar<Plant::graph_type>;
     class cmaModel : public DGGML::Model<graph_grammar_t> {
     public:
@@ -70,8 +79,8 @@ namespace CMA {
                         1,//2,
                         8.0,
                         8.0,
-                        true,
-                        4,//64,
+                        false,
+                        64,//64,
                         0.2,
                         0.4,
                         10,
@@ -213,7 +222,7 @@ namespace CMA {
                         varset.insert(&lhs[m1[2]].position[1]);
                         varset.insert(&lhs[m1[2]].position[2]);
                     },
-                    [](auto& lhs, auto& m1, auto y, auto ydot, auto& varmap) {
+                    [&](auto& lhs, auto& m1, auto y, auto ydot, auto& varmap) {
                         //std::cout << "solving the grow rule\n";
                         //unless we know a variable wasn't used before, it's current value from it's solving
                         //ode must be checked and used i.e. if(varmap[&lhs[m[1]].position[0]]->second = false) do
@@ -240,6 +249,18 @@ namespace CMA {
                                 NV_Ith_S(ydot, varmap[&lhs[m1[2]].position[i]]) += v_plus * NV_Ith_S(y, search->second) * length_limiter;
                             else
                                 NV_Ith_S(ydot, varmap[&lhs[m1[2]].position[i]]) += v_plus * data1.unit_vec[i] * length_limiter;
+                        }
+
+                        //TODO: see if we can make this internal to the algorithm and not user controlled
+                        // so that deactivated ODEs can be removed from the system
+                        //boundary check
+                        auto x_plus_dx = NV_Ith_S(y, varmap[&lhs[m1[2]].position[0]]) + NV_Ith_S(ydot, varmap[&lhs[m1[2]].position[0]]);
+                        auto y_plus_dy = NV_Ith_S(y, varmap[&lhs[m1[2]].position[1]]) + NV_Ith_S(ydot, varmap[&lhs[m1[2]].position[1]]);
+                        bool out_of_bounds = boundary_check_2D(settings, x_plus_dx, y_plus_dy);
+                        if(out_of_bounds) {
+                            for (auto i = 0; i < 3; i++) {
+                                NV_Ith_S(ydot, varmap[&lhs[m1[2]].position[i]]) = 0.0;
+                            }
                         }
                     });
 
