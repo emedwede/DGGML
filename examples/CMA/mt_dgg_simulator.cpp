@@ -1,4 +1,5 @@
 #include <iostream>
+#include <chrono>
 
 #include "DggFactory.hpp"
 #include "cmaModel.h"
@@ -55,12 +56,17 @@ int main()
 //    for(double & i : g3[1].getData<Plant::Negative>().velocity) i = 2.5;
 //    for(double & i : g3[2].getData<Plant::Intermediate>().velocity) i = 1.0;
 
-
+    auto start = std::chrono::high_resolution_clock::now();
     DGGML::SimulatorInterface<CMA::cmaModel> cma_simulation;
     CMA::cmaModel experiment1;
     //experiment1.set_parameters(settings_file);
     cma_simulation.setModel(experiment1);
     cma_simulation.simulate();
+    auto stop = std::chrono::high_resolution_clock::now();
+    auto duration =
+            std::chrono::duration_cast<std::chrono::milliseconds>(stop-start);
+    std::cout << "\n\nSimulation took " << duration.count() / 1000.0 << " seconds\n";
+
 }
 
 

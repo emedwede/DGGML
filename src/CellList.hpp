@@ -165,6 +165,18 @@ struct CellList
             r.outer_iterator->erase(r.inner_iterator);
     }
 
+    void rebuild()
+    {
+        std::cout << "Rebuilding cell list\n";
+        for(auto& cell : data)
+            cell.clear();
+        std::cout << "Cleared cell list mapped components: " << getTotalSize() << "\n";
+        for(auto it = component_matches->begin(); it != component_matches->end(); it++) insert_match(it);
+        std::cout << "Cell list has been built\n";
+        std::cout << "The cell list has " << totalNumCells() << " reaction cells\n";
+        std::cout << "Components mapped after reset: " << getTotalSize() << "\n";
+    }
+
     std::size_t totalNumCells() { return grid.totalNumCells(); }
     
     std::size_t cardinalCellIndex(int i, int j) { return grid.cardinalCellIndex(i, j); }

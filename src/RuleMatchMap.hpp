@@ -63,6 +63,10 @@ namespace DGGML
 
         auto size() const { return matches.size(); }
 
+        auto empty() const { return matches.empty(); }
+
+        //TODO: should this also reset the key generator?
+        void clear() const { matches.clear(); }
 
         void print_index()
         {

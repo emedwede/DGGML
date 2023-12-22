@@ -15,6 +15,7 @@
 #include "CellList.hpp" //Would cause a circular dependency
 #include "pattern_matching.hpp"
 #include "phi_functions.hpp"
+#include "HelperStructs.hpp"
 
 namespace DGGML
 {
@@ -82,7 +83,8 @@ namespace DGGML
                                                      GraphType& system_graph,
                                                      RuleMatchMap<std::size_t>& rule_matches,
                                                      std::vector<std::size_t>& rule_map,
-                                                     CellList<GraphType>& cell_list)
+                                                     CellList<GraphType>& cell_list,
+                                                     GeocellProperties<std::size_t>& geocell_properties)
     {
 
         RewriteUpdates changes;
@@ -187,7 +189,7 @@ namespace DGGML
         // there is nothing to find leading to an error, potential alternate fix, add an inverse mapping
         // of components to cells
         auto removals = perform_invalidations(changes, component_match_set, grammar_analysis,
-                                              rule_matches, rule_map, cell_list);
+                                              rule_matches, rule_map, cell_list, geocell_properties);
         //update the system graph
         for(auto& k : rewrite.node_set_destroy)
             system_graph.removeNode(system_graph.findNode(lhs_vertex_map[k])->second);
@@ -220,7 +222,7 @@ namespace DGGML
                                         DGGML::AnalyzedGrammar<GraphType>& grammar_analysis,
                                         RuleMatchMap<std::size_t>& rule_matches,
                                         std::vector<std::size_t>& rule_map,
-                                        CellList<GraphType>& cell_list)
+                                        CellList<GraphType>& cell_list, GeocellProperties<std::size_t>& geocell_properties)
     {
         std::cout << "This function invalidates\n";
         Invalidations removals;
@@ -312,7 +314,8 @@ namespace DGGML
                           CellList<GraphType>& cell_list,
                           CellComplexType& geoplex2D,
                           std::size_t cell_k,
-                          double reaction_radius)
+                          double reaction_radius,
+                          GeocellProperties<std::size_t>& geocell_properties)
     {
         std::cout << "This function finds new matches\n";
         //goal, take the candidate nodes, do a search the depth of the height of the tallest rooted spanning tree
@@ -456,8 +459,8 @@ namespace DGGML
         }
         std::cout << "Number of accepted reaction instances: " << accepted_rule_matches.size() << "\n";
 
-        //rule istances are only accepted if they contain the new components and phi maps them to the current cell
-        //if phi maps them to a different cell, we may be able to add them to a seperate future validations
+        //rule instances are only accepted if they contain the new components and phi maps them to the current cell
+        //if phi maps them to a different cell, we may be able to add them to a separate future validations
         // list rather than do nothing with them
         std::cout << "Size of rule instances before phi: " << rule_matches.size() << "\n";
         std::cout << "Size of rules mapped to the geocell before phi: " << rule_map.size() << "\n";
@@ -477,6 +480,7 @@ namespace DGGML
             } else
             {
                 std::cout << "####################REJECTED#################\n";
+                geocell_properties.rejected_rule_matches.push_back({cell_k, inst});
                 //std::cin.get();
             }
         }

@@ -27,6 +27,7 @@
 #include "AnalyzedGrammar.hpp"
 #include "pattern_matching.hpp"
 #include "phi_functions.hpp"
+#include "HelperStructs.hpp"
 
 namespace DGGML {
     template<typename ModelType>
@@ -114,7 +115,7 @@ namespace DGGML {
 
                     //TODO: for 1D and 0D, we may not have to re-bin the components into cells due to diffusion
                     // if we make the depth of reaction cells we search for 1D and 0D deeper i.e. search 2 away vs. 1
-                    if(d == 1 || d == 2) continue;
+                    //if(d == 1 || d == 2) continue;
                     std::cout << "Running the Hybrid ODES/SSA inner loop " << (2 - d) << "D phase\n";
                     for(auto& bucket : bucketsND[d])
                     {
@@ -122,17 +123,39 @@ namespace DGGML {
                         auto start = std::chrono::high_resolution_clock::now();
                         approximate_ssa(component_matches, grammar_analysis,
                                         rule_map, rule_matches,
-                                        model, k, geocell_progress[k], cell_list);
+                                        model, k, geocell_properties_list[k], cell_list);
                         auto stop = std::chrono::high_resolution_clock::now();
                         auto duration =
                                 std::chrono::duration_cast<std::chrono::milliseconds>(stop-start);
                         std::cout << "Cell " << k << " took " << duration.count()
                                   << " milliseconds and has a current tau "
-                                  << geocell_progress[k].first << "\n";
+                                  << geocell_properties_list[k].tau << "\n";
                         dim_time += duration.count();
-                        break;//return;
+                        //break;//return;
                     }
 
+                    //TODO: needs more work. First shot at adding back in rejected matches to lower dims
+                    // It only works as is because of the type of rules we have, but rejected matches could still be rejected
+                    // for a final time if they were invalidated by a rewrite after they were added to the list
+                    //TODO: one partial fix: check to see if components in a rule still exist
+                    for(auto& bucket : bucketsND[d])
+                    {
+                        auto k = bucket.first;
+                        auto& geocell_properties = geocell_properties_list[k];
+                        if(!geocell_properties.rejected_rule_matches.empty())
+                        {
+                            for(auto& [cell_id, rejected_match] : geocell_properties.rejected_rule_matches)
+                            {
+                                auto res = rule_matches.insert(rejected_match);
+                                //if successfully inserted, added to the rule_map
+                                if(res.second)
+                                {
+                                    rule_map[k].push_back(res.first->first);
+                                }
+                            }
+                            geocell_properties.rejected_rule_matches.clear();
+                        }
+                    }
                     tot_time += dim_time;
                     std::cout << (2 - d) << "D took " << dim_time << " milliseconds\n";
 
@@ -145,7 +168,19 @@ namespace DGGML {
                 std::cout << "Total dimensional time is " << tot_time << " milliseconds\n";
                 //time_count.push_back(tot_time);
                 std::cout << model->system_graph << "\n";
-                if (i == 10) return;
+
+                //rebuild the cell list for the next iteration
+                cell_list.rebuild();
+                //clear the rule map if it's not empty
+                if(!rule_map.empty())
+                {
+                    for(auto& item : rule_map)
+                        item.second.clear();
+                }
+                //remap rules to geocells
+                map_rule_matches_to_geocells();
+                //if(i == 1) std::cin.get();
+                //if(i == 10) return;
             }
             //return;
         }
@@ -163,7 +198,7 @@ namespace DGGML {
         {
             std::cout << "Setting intial cell propensities to zero\n";
             for(auto& [key, value] : model->geoplex2D.graph.getNodeSetRef())
-                geocell_progress[key] = {0.0, 0.0};
+                geocell_properties_list[key] = {0.0, 0.0};
         }
 
         void write_cell_complex()
@@ -295,15 +330,16 @@ namespace DGGML {
 
         //TODO: I think rule_maps could steal instances, especially since in this formulation,
         // each instance exists in a shared memory state, the rule_matches map.
-        RuleMatchMap<typename ModelType::key_type>  rule_matches;
-        ComponentMatchMap<typename ModelType::key_type> component_matches;
+        using node_key_type = typename ModelType::key_type;
+        RuleMatchMap<node_key_type>  rule_matches;
+        ComponentMatchMap<node_key_type> component_matches;
 
         std::map<cplex_key_t, std::vector<rule_key_t>> rule_map; //rule keys for a cell could be a tree/map/set vs vector
         std::map<std::size_t, std::vector<typename ModelType::key_type>> ordering;
 
         std::map<gplex_key_type, std::vector<key_type>> bucketsND[3];
 
-        std::map<gplex_key_type, std::pair<double, double>> geocell_progress;
+        GeocellPropertiesList<gplex_key_type, node_key_type> geocell_properties_list;
         DGGML::VtkFileWriter<typename ModelType::graph_type> vtk_writer;
         std::string results_dir_name;
     };

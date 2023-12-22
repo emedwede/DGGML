@@ -15,6 +15,7 @@
 #include "AnalyzedGrammar.hpp"
 #include "HelperFunctions.hpp"
 #include "RandomFunctions.hpp"
+#include "HelperStructs.hpp"
 
 #include <chrono>
 #include <algorithm>
@@ -28,7 +29,7 @@ namespace DGGML
 
 template <typename T1, typename T2, typename T3, typename T4, typename M1>
 void approximate_ssa(ComponentMatchMap<T1>& component_matches, AnalyzedGrammar<T2>& grammar_analysis, T3& rule_map, T4& rule_matches, M1& model,
-                     std::size_t k, std::pair<double, double>& geocell_progress, CellList<T2>& cell_list)
+                     std::size_t k, GeocellProperties<T1>& geocell_properties, CellList<T2>& cell_list)
 {
     auto& geoplex2D = model->geoplex2D;
     auto& system_graph = model->system_graph;
@@ -41,8 +42,8 @@ void approximate_ssa(ComponentMatchMap<T1>& component_matches, AnalyzedGrammar<T
     double delta_t, geocell_propensity;
     std::size_t events, steps;
     delta_t = 0.0; events = 0; steps = 0, geocell_propensity = 0.0;
-    double tau = geocell_progress.first;
-    double exp_sample = geocell_progress.second;
+    double tau = geocell_properties.tau;
+    double exp_sample = geocell_properties.exp_sample;
 
     if(exp_sample <= 0.0)
     {
@@ -161,7 +162,7 @@ void approximate_ssa(ComponentMatchMap<T1>& component_matches, AnalyzedGrammar<T
 
             //TODO: a big thing to decide is how phi partitions the match and component set
             auto [changes, removals] = perform_invalidations_and_rewrite(inst, component_matches, gen, grammar_analysis,
-                                                             system_graph, rule_matches, rule_map[k], cell_list);
+                                                             system_graph, rule_matches, rule_map[k], cell_list, geocell_properties);
             changes.print();
             //TODO: incrementally update the in memory set of matches
             //Once we have updated the graph, we need to invalidated any old matches and then search for the
@@ -185,7 +186,7 @@ void approximate_ssa(ComponentMatchMap<T1>& component_matches, AnalyzedGrammar<T
             removals.print();
 
             find_new_matches(changes, system_graph, component_matches,grammar_analysis,
-                             rule_matches, rule_map[k], cell_list, geoplex2D,k, reaction_radius);
+                             rule_matches, rule_map[k], cell_list, geoplex2D,k, reaction_radius, geocell_properties);
 
 
             //zero out tau since a rule has fired
@@ -207,8 +208,8 @@ void approximate_ssa(ComponentMatchMap<T1>& component_matches, AnalyzedGrammar<T
     std::cout << "Total steps taken: " << steps << "\n";
     ode_system.print_stats();
     //std::cin.get();
-    geocell_progress.first = tau;
-    geocell_progress.second = exp_sample;
+    geocell_properties.tau = tau;
+    geocell_properties.exp_sample = exp_sample;
 }
 
 }
