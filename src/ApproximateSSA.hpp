@@ -189,6 +189,10 @@ void approximate_ssa(ComponentMatchMap<T1>& component_matches, AnalyzedGrammar<T
                              rule_matches, rule_map[k], cell_list, geoplex2D,k, reaction_radius, geocell_properties);
 
 
+            //update the count since a rule has fired
+            geocell_properties.current_rules_fired++;
+            geocell_properties.total_rules_fired++;
+
             //zero out tau since a rule has fired
             tau = 0.0;
             //reset the exp waiting_time sample

@@ -260,6 +260,13 @@ namespace DGGML
             }
         }
 
+        //add in the components we invalidated, so we can check lower dimensions for any invalid rules
+        //TODO: we really only need to add in ones near the boundary
+        for(auto& item : component_invalidations)
+        {
+            geocell_properties.invalidated_components.push_back(item);
+        }
+
         std::cout << "CellList size before invalidations " << cell_list.getTotalSize() << "\n";
         std::cout << "ComponentMatchMap size before invalidations " << component_matches.size() << "\n";
         //use list of removable components to delete items from component matches and cell_list

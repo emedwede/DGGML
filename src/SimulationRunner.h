@@ -142,18 +142,34 @@ namespace DGGML {
                     {
                         auto k = bucket.first;
                         auto& geocell_properties = geocell_properties_list[k];
+                        geocell_properties.print();
+                        //reset the rules fired counter
+                        geocell_properties.current_rules_fired = 0;
                         if(!geocell_properties.rejected_rule_matches.empty())
                         {
                             for(auto& [cell_id, rejected_match] : geocell_properties.rejected_rule_matches)
                             {
-                                auto res = rule_matches.insert(rejected_match);
-                                //if successfully inserted, added to the rule_map
-                                if(res.second)
+                                //determine if any of the components of the match are not found, if yes, it's invalid
+                                //since they were deleted by some other rule firing after the fact
+                                bool valid = true;
+                                for(auto& comp : rejected_match.components)
                                 {
-                                    rule_map[k].push_back(res.first->first);
+                                    if(component_matches.find(comp) == component_matches.end())
+                                    {
+                                       valid = false;
+                                    }
+                                }
+                                if(valid) {
+                                    auto res = rule_matches.insert(rejected_match);
+                                    //if successfully inserted, added to the rule_map
+                                    if (res.second) {
+                                        rule_map[k].push_back(res.first->first);
+                                    }
                                 }
                             }
                             geocell_properties.rejected_rule_matches.clear();
+
+                            //TODO: check to see if lower dimension have any rules containing invalidated components
                         }
                     }
                     tot_time += dim_time;
@@ -179,8 +195,9 @@ namespace DGGML {
                 }
                 //remap rules to geocells
                 map_rule_matches_to_geocells();
-                //if(i == 1) std::cin.get();
-                //if(i == 10) return;
+                //if(i == 1)
+                    std::cin.get();
+                if(i == 3) return;
             }
             //return;
         }
@@ -198,7 +215,7 @@ namespace DGGML {
         {
             std::cout << "Setting intial cell propensities to zero\n";
             for(auto& [key, value] : model->geoplex2D.graph.getNodeSetRef())
-                geocell_properties_list[key] = {0.0, 0.0};
+                geocell_properties_list[key];
         }
 
         void write_cell_complex()
