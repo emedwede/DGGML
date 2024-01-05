@@ -32,7 +32,6 @@ namespace CMA {
         std::string EXPERIMENT_NAME;
         double DELTA;
         double DELTA_DELTA_T;
-        int NUM_INTERNAL_STEPS;
         std::size_t CELL_NX;
         std::size_t CELL_NY;
         double CELL_DX;
@@ -70,31 +69,7 @@ namespace CMA {
         {
             std::cout << "Initializing the plant model simulation\n";
 
-            settings = {
-                    "treadmilling",
-                        10.0,
-                        2.0,
-                        10,
-                        1,//2,
-                        1,//2,
-                        8.0,
-                        8.0,
-                        false,
-                        64,//64,
-                        0.2,
-                        0.4,
-                        10,
-                        1.2,
-                        1.0,
-                        0.125,
-                        1.0, 0.25,
-                        10.0,
-                        5.0,
-                        1.0,
-                        1.0,
-                        10.0
-            };
-
+            set_parameters();
             name = settings.EXPERIMENT_NAME;
             std::cout << "Creating the grammar\n";
             using GT = Plant::graph_type;
@@ -122,12 +97,13 @@ namespace CMA {
                     auto& node_i_data = lhs.findNode(m[1])->second.getData();
                     auto& node_j_data = lhs.findNode(m[2])->second.getData();
                     auto len = DGGML::calculate_distance(node_i_data.position, node_j_data.position);
-                    //double propensity = DGGML::heaviside(len, settings.DIV_LENGTH);
-                    double propensity = DGGML::sigmoid((len/settings.DIV_LENGTH) - 1.0, settings.SIGMOID_K);
+                    double propensity = 10.0*DGGML::heaviside(len, settings.DIV_LENGTH);
+                    //double propensity = DGGML::sigmoid((len/settings.DIV_LENGTH) - 1.0, settings.SIGMOID_K);
                     return propensity;
                 }, [](auto& lhs, auto& rhs, auto& m1, auto& m2) {
                         //in this function we are responsible for setting all new parameters
                         //first set the position
+                        //TODO: modify this rule s.t. new node is placed just behind the growing end not halfway
                         rhs[m2[3]].position[0] = (lhs[m1[2]].position[0] + lhs[m1[1]].position[0])/2.0;
                         rhs[m2[3]].position[1] = (lhs[m1[2]].position[1] + lhs[m1[1]].position[1])/2.0;
                         rhs[m2[3]].position[2] = (lhs[m1[2]].position[2] + lhs[m1[1]].position[2])/2.0;
@@ -342,6 +318,50 @@ namespace CMA {
             print_numpy_array_stats(metrics.time_count, "time_count");
         }
 
+        void set_parameters() {
+            settings.EXPERIMENT_NAME = "treadmilling";
+
+            //1x1 micrometer domain
+            settings.CELL_NX = 1;
+            settings.CELL_NY = 1;
+            settings.CELL_DX = 1.0;
+            settings.CELL_DY = 1.0;
+
+            //non ghosted complex
+            settings.GHOSTED = false;
+
+            //number of microtubules in the simulation
+            settings.NUM_MT = 100;
+
+            //starting size of the MTs
+            settings.MT_MIN_SEGMENT_INIT = 0.005;
+            settings.MT_MAX_SEGMENT_INIT = 0.01;
+
+            settings.LENGTH_DIV_FACTOR = 1.2;
+            settings.DIV_LENGTH = 0.026;
+            settings.DIV_LENGTH_RETRACT = 0.125;
+
+            //growing and shrinking velocities in micrometers per second
+            settings.V_PLUS = 0.0583;
+            settings.V_MINUS = 0.00883;
+
+            settings.SIGMOID_K = 10.0;
+
+            //0.05 micrometers = 50 nanometers
+            settings.MAXIMAL_REACTION_RADIUS = 0.05;
+
+            //simulation time in seconds
+            settings.TOTAL_TIME = 60.0;
+            settings.DELTA = 0.5; //unit of seconds
+
+            //The internal step of the solver should be at least smaller than delta
+            settings.DELTA_DELTA_T = settings.DELTA / 20.0;
+            settings.DELTA_T_MIN = settings.DELTA_DELTA_T;
+            settings.NUM_STEPS = settings.TOTAL_TIME / settings.DELTA;
+
+            settings.RHO_TEST_RATE = 10.0;
+        }
+
         void set_parameters(simdjson::ondemand::document& interface)
         {
             std::string_view temp = interface["META"]["EXPERIMENT"];
@@ -373,13 +393,12 @@ namespace CMA {
 
             //Simulate until the specified unit time
             settings.TOTAL_TIME = double(interface["SETTINGS"]["TOTAL_TIME"]);
-            settings.NUM_INTERNAL_STEPS = 5;
             //Delta should be big, but not to big. In this case, the maximum amount of time it would
             //take one MT to grow a single unit of MT
-            settings.DELTA =
-                    0.25*settings.MAXIMAL_REACTION_RADIUS / std::max(settings.V_PLUS, settings.V_MINUS);
-            //The internal step of the solver should be at least this small
-            settings.DELTA_DELTA_T = settings.DELTA / settings.NUM_INTERNAL_STEPS;
+            //e.g. something like: 0.25*settings.MAXIMAL_REACTION_RADIUS / std::max(settings.V_PLUS, settings.V_MINUS);
+            settings.DELTA = double(interface["SETTINGS"]["DELTA"]);
+            //The internal step of the solver should be at least smaller than delta
+            settings.DELTA_DELTA_T = settings.DELTA / 20.0;// / settings.NUM_INTERNAL_STEPS;
             settings.DELTA_T_MIN = settings.DELTA_DELTA_T;
             settings.NUM_STEPS = settings.TOTAL_TIME / settings.DELTA;
 

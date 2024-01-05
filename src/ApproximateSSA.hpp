@@ -116,6 +116,8 @@ void approximate_ssa(ComponentMatchMap<T1>& component_matches, AnalyzedGrammar<T
 
             // STEP(2) : solve the system of ODES
             ode_system.step();
+            //TODO: make sure the step is adaptively solving to the event, meaning many events can happen between a
+            // delta_delta_t
             ode_system.copy_back();
             // STEP(3) : advance the loop timer
             delta_t = ode_system.t;

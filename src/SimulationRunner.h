@@ -168,9 +168,15 @@ namespace DGGML {
                                 }
                             }
                             geocell_properties.rejected_rule_matches.clear();
-
-                            //TODO: check to see if lower dimension have any rules containing invalidated components
                         }
+                        //TODO: check to see if lower dimension have any rules containing invalidated components
+                        ExpandedComplex2D<>& geoplex2D = model->geoplex2D;
+                        std::cout << "geocell " << k << " has nbrs: { ";
+                        for(auto& nbr : geoplex2D.graph.out_neighbors(k))
+                        {
+                            std::cout << nbr << " ";
+                        }
+                        std::cout << " }\n";
                     }
                     tot_time += dim_time;
                     std::cout << (2 - d) << "D took " << dim_time << " milliseconds\n";
@@ -196,8 +202,8 @@ namespace DGGML {
                 //remap rules to geocells
                 map_rule_matches_to_geocells();
                 //if(i == 1)
-                    std::cin.get();
-                if(i == 3) return;
+                    //std::cin.get();
+                //if(i == 3) return;
             }
             //return;
         }
