@@ -138,21 +138,21 @@ struct CellList
                 for(auto j = jmin; j < jmax; j++)
                 {
                     auto d = grid.cardinalCellIndex(i, j);
+                    std::cout << "Searching in cell " << d << "\n";
                     //if(d == c) continue;
                     for(auto k = 0; k < data[d].size(); k++)
                     {
-                        if(comp_iter->first == data[c][k]) {
+                        if(comp_iter->first == data[d][k]) {
                             found = true;
-                            std::cout << "Found component " << comp_iter->first << " in cell " << c << " at index " << k << "\n";
-                            auto outIter = data.begin()+c;
-                            auto inIter = outIter->begin()+i;
+                            std::cout << "Found component " << comp_iter->first << " in cell " << d << " at index " << k << "\n";
+                            auto outIter = data.begin()+d;
+                            auto inIter = outIter->begin()+k;
                             return iterator_pair{outIter, inIter};
                         }
                     }
                 }
             }
         }
-        //else we return that we didn't find anything
         auto outIter = data.end();
         auto inIter = outIter->end();
         return iterator_pair {outIter, inIter};
