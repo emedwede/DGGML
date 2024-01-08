@@ -228,7 +228,7 @@ namespace DGGML {
                 num_eq += user_data.grammar_analysis.solving_rules.find(name)->second.num_eq;
             }
             num_eq++; //one extra equation for tau
-
+            std::cout << "Reinit # of eq: " << num_eq << "\n";
             N_VDestroy(y);
             y = N_VNew_Serial(num_eq, ctx);
 

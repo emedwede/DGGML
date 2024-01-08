@@ -329,6 +329,12 @@ namespace DGGML
         //for each candidate and create a set of nodes used to induce a graph that we will search for new components
         //What should the candidate nodes be?
         std::set<std::size_t> candidate_nodes = changes.node_updates;
+        //candidate nodes are nodes updated/added or and nodes part of an edge pair
+        for(auto& edge : changes.edge_updates)
+        {
+            candidate_nodes.insert(edge.first);
+            candidate_nodes.insert(edge.second);
+        }
         std::set<std::size_t> inducers;
         for(auto n : candidate_nodes)
         {
@@ -444,7 +450,8 @@ namespace DGGML
         {
             for(auto& item : cell_list.data[cell]) {
                 auto m1 = component_matches.find(item);
-
+                if(m1 == component_matches.end())
+                    std::cout << "did not find " << item << "\n";
                 for (auto &[name, pattern]: grammar_analysis.rule_component) {
                     int k = 0;
                     std::vector<std::size_t> result;
