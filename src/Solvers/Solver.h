@@ -221,13 +221,14 @@ namespace DGGML {
             user_data.solving_rules = solving_rules;
             //std::cout << "Reintializing...\n";
             auto pre_eq = num_eq;
-            auto num_eq = 0;
+            num_eq = 0;
             for(auto& item : user_data.solving_rules)
             {
                 auto& name = user_data.rule_matches[item].name;
                 num_eq += user_data.grammar_analysis.solving_rules.find(name)->second.num_eq;
             }
             num_eq++; //one extra equation for tau
+            std::cout << "Previo # of eq: " << pre_eq << "\n";
             std::cout << "Reinit # of eq: " << num_eq << "\n";
             N_VDestroy(y);
             y = N_VNew_Serial(num_eq, ctx);
@@ -250,6 +251,9 @@ namespace DGGML {
             }
             NV_Ith_S(y, varset.size()) = user_data.tau;
             std::size_t idx = 0;
+            std::cout << "Global length: " << N_VGetLength(y) << "\n";
+            std::cout << "Local length: " << N_VGetLocalLength(y) << "\n";
+            std::cout << "Varset length: " << varset.size() << "\n";
             for(auto item : varset)
             {
                 user_data.varmap.insert({item, idx});
@@ -289,6 +293,9 @@ namespace DGGML {
         ~Solver()
         {
             //std::cout << "Starting solver destruction\n";
+            std::cout << "Global length: " << N_VGetLength(y) << "\n";
+            std::cout << "Local length: " << N_VGetLocalLength(y) << "\n";
+            std::cout << "Varset length: " << user_data.varmap.size() << "\n";
             N_VDestroy(y);
             //std::cout << "Destroyed y vector\n";
             ERKStepFree(&arkode_mem); //free the solver memory
