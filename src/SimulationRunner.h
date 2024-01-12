@@ -172,11 +172,62 @@ namespace DGGML {
                         //TODO: check to see if lower dimension have any rules containing invalidated components
                         ExpandedComplex2D<>& geoplex2D = model->geoplex2D;
                         std::cout << "geocell " << k << " has nbrs: { ";
-                        for(auto& nbr : geoplex2D.graph.out_neighbors(k))
+                        //for(auto& nbr : geoplex2D.graph.out_neighbors(k))
+                        for(auto& [nbr, value] : model->geoplex2D.graph.getNodeSetRef())
                         {
                             std::cout << nbr << " ";
+                            std::vector<std::size_t> invalid_rids; //rule ids
+                            std::vector<std::size_t> invalid_idxs; //indices
+                            for(auto idx = 0; idx < rule_map[nbr].size(); idx++)
+                            {
+                                auto rid = rule_map[nbr][idx];
+                                if(auto search = rule_matches.find(rid); search != rule_matches.end())
+                                {
+                                    for(auto& comp : search->second.components)
+                                    {
+                                        if(geocell_properties.invalidated_components.find(comp) != geocell_properties.invalidated_components.end())
+                                        {
+                                            //the rule is invalid
+                                            std::cout << "rule id " << rid << " in cell " << nbr << " contains component " << comp << "\n";
+
+                                            invalid_rids.push_back(rid);
+                                            invalid_idxs.push_back(idx);
+                                            break; // we're done on the first of
+                                        }
+                                    }
+                                }
+                            }
+                            //first sort the invalid_idxs in descending order since we will remove from the
+                            //back first
+                            auto cpy = rule_map[nbr];
+                            std::sort(invalid_idxs.begin(), invalid_idxs.end(), std::greater<std::size_t>());
+                            for(auto iter = 0; iter < invalid_rids.size(); iter++)
+                            {
+                                rule_matches.erase(invalid_rids[iter]);
+                                //erase back to front
+//                                auto id = std::find(rule_map[nbr].begin(), rule_map[nbr].end(), invalid_rids[iter]);
+//                                if(id != rule_map[nbr].end())
+//                                    rule_map[nbr].erase(id);
+                                if(rule_map.find(nbr) == rule_map.end())
+                                    std::cout << "nbr " << nbr << " does not exists\n";
+                                if(invalid_idxs[iter] >= rule_map[nbr].size()) {
+                                    std::cout << "index " << invalid_idxs[iter] << " dne\n";
+                                    std::cout << "max size is " << rule_map[nbr].size() << "\n";
+                                    std::cout << "originally: ";
+                                    std::cout << "max size was " << cpy.size() << "and we had rules: \n";
+                                    for(auto ii = 0; ii < cpy.size(); ii++)
+                                        std::cout << "{ " << ii << ", " << cpy[ii] << "} ";
+                                    std::cout << "\n";
+                                    std::cout << "we wanted to remove: ";
+                                    for(auto& item : invalid_idxs)
+                                        std::cout << item << " ";
+                                    std::cout << "\n";
+                                }
+                                rule_map[nbr].erase(rule_map[nbr].begin()+invalid_idxs[iter]);
+                            }
                         }
                         std::cout << " }\n";
+                        geocell_properties.invalidated_components.clear();
                     }
                     tot_time += dim_time;
                     std::cout << (2 - d) << "D took " << dim_time << " milliseconds\n";
@@ -327,6 +378,19 @@ namespace DGGML {
             {
                 //auto max_cell = anchored_phi(inst, model->system_graph, model->geoplex2D);
                 auto max_cell = min_dim_phi(inst, model->system_graph, model->geoplex2D, component_matches);
+                //TODO: fix this error where we get an invalid max cell for some reason
+                for(auto i = 0; i < inst.components.size(); i++)
+                {
+                    if(auto search = component_matches.find(inst.components[i]); search == component_matches.end())
+                    {
+                        std::cout << "did not find component " << i << "\n";
+                    }
+                    else if (auto& m = component_matches[inst.components[i]].match; m.size() == 0)
+                    {
+                        std::cout << "max_cell: " << max_cell << ", for rule id " << key << " has size " << inst.components.size() << "\n";
+                        std::cout << "found component " << inst.components[i] << " in an invalid state\n";
+                    }
+                }
                 rule_map[max_cell].push_back(key);
             }
 
