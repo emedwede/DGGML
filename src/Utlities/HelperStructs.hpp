@@ -20,7 +20,7 @@ namespace DGGML {
         std::size_t current_rules_fired;
         std::size_t total_rules_fired;
         std::vector<CellMatchPair<NodeKeyType>> rejected_rule_matches;
-        std::vector<std::size_t> invalidated_components;
+        std::set<std::size_t> invalidated_components;
 
         GeocellProperties() : tau(0.0), exp_sample(0.0), current_rules_fired(0), total_rules_fired(0) {}
 

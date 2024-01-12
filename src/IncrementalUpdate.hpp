@@ -264,7 +264,7 @@ namespace DGGML
         //TODO: we really only need to add in ones near the boundary
         for(auto& item : component_invalidations)
         {
-            geocell_properties.invalidated_components.push_back(item);
+            geocell_properties.invalidated_components.insert(item);
         }
 
         std::cout << "CellList size before invalidations " << cell_list.getTotalSize() << "\n";
@@ -277,6 +277,9 @@ namespace DGGML
             auto iter = component_matches.find(item);
             cell_list.erase(iter);
             component_matches.erase(item);
+            std::cout << "erasing component " << item << "\n";
+            if(auto search = component_matches.find(item); search != component_matches.end())
+                std::cout << "somehow we still found " << item << "\n";
         }
         std::cout << "CellList size after invalidations " << cell_list.getTotalSize() << "\n";
         std::cout << "ComponentMatchMap size after invalidations " << component_matches.size() << "\n";
@@ -300,12 +303,20 @@ namespace DGGML
         }
 
         //we remove these now invalid rules
+        std::cout << "Rule matches before erase: " << rule_matches.size() << "\n";
+        std::cout << "Rule map before erase: " << rule_map.size() << "\n";
+        {int count = 0;
+        for(auto& item : rule_map)
+            if(rule_matches[item].category == "deterministic")
+                count++;
+        std::cout << "Number of deterministic rules: " << count << "\n";}
         for(auto& item : rule_invalidations) {
             rule_matches.erase(item);
-
             //we also need to remove the invalid rules from the rule map
             rule_map.erase(std::find(rule_map.begin(), rule_map.end(), item));
         }
+        std::cout << "Rule matches after erase: " << rule_matches.size() << "\n";
+        std::cout << "Rule map after erase: " << rule_map.size() << "\n";
         //return the list of boundary components invalidated
 
         return removals;
@@ -481,7 +492,7 @@ namespace DGGML
         for(auto& inst : accepted_rule_matches)
         {
             auto max_cell = min_dim_phi(inst, system_graph, geoplex2D, component_matches);
-            std::cout << "we are in cell " << cell_k << " and accepted instance maps to cell " << max_cell << "\n";
+            std::cout << "we are in cell " << cell_k << " and accepted instance of type " << inst.name << " maps to cell " << max_cell << "\n";
             //this cell owns the instance so it can add it back in
             if(max_cell == cell_k)
             {
@@ -494,12 +505,18 @@ namespace DGGML
             } else
             {
                 std::cout << "####################REJECTED#################\n";
+                std::cout << "reject rule is of type: " << inst.name << "\n";
                 geocell_properties.rejected_rule_matches.push_back({cell_k, inst});
                 //std::cin.get();
             }
         }
         std::cout << "Size of rule instances after phi: " << rule_matches.size() << "\n";
         std::cout << "Size of rules mapped to the geocell after phi: " << rule_map.size() << "\n";
+        {int count = 0;
+            for(auto& item : rule_map)
+                if(rule_matches[item].category == "deterministic")
+                    count++;
+        std::cout << "Number of deterministic rules: " << count << "\n";}
     }
 }
 #endif //DGGML_INCREMENTALUPDATE_HPP

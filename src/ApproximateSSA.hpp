@@ -118,7 +118,9 @@ void approximate_ssa(ComponentMatchMap<T1>& component_matches, AnalyzedGrammar<T
             ode_system.step();
             //TODO: make sure the step is adaptively solving to the event, meaning many events can happen between a
             // delta_delta_t
+            std::cout << "finished stepping\n";
             ode_system.copy_back();
+            std::cout << "finished copying\n";
             // STEP(3) : advance the loop timer
             delta_t = ode_system.t;
             steps++;
@@ -207,6 +209,7 @@ void approximate_ssa(ComponentMatchMap<T1>& component_matches, AnalyzedGrammar<T
             for(auto& item : rule_map[k])
                 if(rule_matches[item].category == "deterministic")
                     solving_rules.push_back(item);
+            std::cout << "Number of deterministic rules: " << solving_rules.size() << "\n";
             ode_system.reinit(solving_rules);
         }
         //break; //makes only one reaction occur break point
