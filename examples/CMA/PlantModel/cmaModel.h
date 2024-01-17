@@ -104,10 +104,13 @@ namespace CMA {
                 }, [](auto& lhs, auto& rhs, auto& m1, auto& m2) {
                         //in this function we are responsible for setting all new parameters
                         //first set the position
-                        //TODO: modify this rule s.t. new node is placed just behind the growing end not halfway
-                        rhs[m2[3]].position[0] = (lhs[m1[2]].position[0] + lhs[m1[1]].position[0])/2.0;
-                        rhs[m2[3]].position[1] = (lhs[m1[2]].position[1] + lhs[m1[1]].position[1])/2.0;
-                        rhs[m2[3]].position[2] = (lhs[m1[2]].position[2] + lhs[m1[1]].position[2])/2.0;
+                        //modified this rule s.t. new node is placed just behind the growing end not halfway
+//                        rhs[m2[3]].position[0] = (lhs[m1[2]].position[0] + lhs[m1[1]].position[0])/2.0;
+//                        rhs[m2[3]].position[1] = (lhs[m1[2]].position[1] + lhs[m1[1]].position[1])/2.0;
+//                        rhs[m2[3]].position[2] = (lhs[m1[2]].position[2] + lhs[m1[1]].position[2])/2.0;
+                        rhs[m2[3]].position[0] = lhs[m1[2]].position[0] - (lhs[m1[2]].position[0] - lhs[m1[1]].position[0])/100.0;
+                        rhs[m2[3]].position[1] = lhs[m1[2]].position[1] - (lhs[m1[2]].position[1] - lhs[m1[1]].position[1])/100.0;
+                        rhs[m2[3]].position[2] = lhs[m1[2]].position[2] - (lhs[m1[2]].position[2] - lhs[m1[1]].position[2])/100.0;
                         //next set the unit vector
                         std::get<Plant::Intermediate>(rhs[m2[3]].data).unit_vec[0] = std::get<Plant::Intermediate>(lhs[m1[1]].data).unit_vec[0];
                         std::get<Plant::Intermediate>(rhs[m2[3]].data).unit_vec[1] = std::get<Plant::Intermediate>(lhs[m1[1]].data).unit_vec[1];
@@ -338,14 +341,14 @@ namespace CMA {
                                                   [](auto& lhs, auto& m) { return 1; },
                                                   [](auto& lhs, auto& rhs, auto& m1, auto& m2) {});
 
-            gamma.addRule(destruction_case2);
+            //gamma.addRule(destruction_case2);
 
 
             //TODO: I think I need to add velocity back in, and make the growing solve a function of the two ODEs
             DGGML::SolvingRule<GT> r5("solving_grow", g1, g1, 3,
                     [](auto& lhs, auto& m1, auto& varset)
                     {
-                        //std::cout << "ic of the grow rule\n";
+                        //TODO: fix and account for verlet integration
                         //bind the variables involved
                         varset.insert(&lhs[m1[2]].position[0]);
                         varset.insert(&lhs[m1[2]].position[1]);
@@ -375,7 +378,7 @@ namespace CMA {
                         auto& data1 = std::get<Plant::Intermediate>(lhs[m1[1]].data);
                         for(auto i = 0; i < 3; i++) {
                             if (auto search = varmap.find(&data1.unit_vec[i]); search != varmap.end())
-                                NV_Ith_S(ydot, varmap[&lhs[m1[2]].position[i]]) += v_plus * NV_Ith_S(y, search->second) * length_limiter;
+                                NV_Ith_S(ydot, varmap[&lhs[m1[2]].position[i]]) += v_plus * data1.unit_vec[i]*NV_Ith_S(y, search->second) * length_limiter;
                             else
                                 NV_Ith_S(ydot, varmap[&lhs[m1[2]].position[i]]) += v_plus * data1.unit_vec[i] * length_limiter;
                         }
@@ -383,6 +386,7 @@ namespace CMA {
                         //TODO: see if we can make this internal to the algorithm and not user controlled
                         // so that deactivated ODEs can be removed from the system
                         //boundary check
+                        //TODO: fix and account for verlet integration
                         auto x_plus_dx = NV_Ith_S(y, varmap[&lhs[m1[2]].position[0]]) + NV_Ith_S(ydot, varmap[&lhs[m1[2]].position[0]]);
                         auto y_plus_dy = NV_Ith_S(y, varmap[&lhs[m1[2]].position[1]]) + NV_Ith_S(ydot, varmap[&lhs[m1[2]].position[1]]);
                         bool out_of_bounds = boundary_check_2D(settings, x_plus_dx, y_plus_dy);
@@ -426,7 +430,9 @@ namespace CMA {
                                           }
                                           l = sqrt(l);
                                           double length_limiter = l/d_l;
-                                          if(length_limiter <= d_l_r) length_limiter = 0.0;
+                                          //if(length_limiter <= d_l_r) length_limiter = 0.0;
+                                          if(l <= d_l_r/2.0) length_limiter = 0.0;
+                                          else length_limiter = 1.0;
                                           auto& data1 = std::get<Plant::Negative>(lhs[m1[1]].data);
                                           for(auto i = 0; i < 3; i++) {
                                               if (auto search = varmap.find(&data1.unit_vec[i]); search != varmap.end())
@@ -559,8 +565,8 @@ namespace CMA {
             settings.EXPERIMENT_NAME = "treadmilling";
 
             //1x1 micrometer domain
-            settings.CELL_NX = 2;//1;
-            settings.CELL_NY = 2;//1;
+            settings.CELL_NX = 1;//1;
+            settings.CELL_NY = 1;//1;
             settings.CELL_DX = 0.5;//1.0;
             settings.CELL_DY = 0.5;//1.0;
 
@@ -568,7 +574,7 @@ namespace CMA {
             settings.GHOSTED = false;
 
             //number of microtubules in the simulation
-            settings.NUM_MT = 120;
+            settings.NUM_MT = 20;
 
             //starting size of the MTs
             settings.MT_MIN_SEGMENT_INIT = 0.005;
