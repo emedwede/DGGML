@@ -13,6 +13,8 @@ namespace DGGML
             using types = CartesianComplex2D<GraphType>;
             
             CartesianGrid2D reaction_grid;
+            //TODO: reverse the order of labels, 2D is incorrectly labeled 0D
+            // the change will effect a sign in the min_dim_phi
             std::vector<int> dim_label;
             std::vector<std::size_t> cell_label;
            ExpandedComplex2D() = default; 
@@ -42,7 +44,7 @@ namespace DGGML
                 auto approx_epsilon_y = ( dy ) / m_r_c;
                 auto n_r = n_r_c * n;
                 auto m_r = m_r_c * m;
-                std::cout << "approx_epsilon_x: " << approx_epsilon_x << ", approx_epsilon_y: " << approx_epsilon_y << ", epsilon: " << epsilon << "\n";
+                //std::cout << "approx_epsilon_x: " << approx_epsilon_x << ", approx_epsilon_y: " << approx_epsilon_y << ", epsilon: " << epsilon << "\n";
                 reaction_grid.init(0.0, 0.0, n*d_x, m*d_y, n_r, m_r);
                 dim_label.resize(reaction_grid.totalNumCells());
                 cell_label.resize(reaction_grid.totalNumCells());
@@ -112,8 +114,8 @@ namespace DGGML
                             }
                             x2 = data.position[0]; y2 = data.position[1];
                             
-                            auto gamma_epsilon = 2.0*epsilon;
-                            if(x1 == x2 && x2 == x3) //x is the axis of collinearity 
+                            auto gamma_epsilon = 2.0*epsilon;//TODO: fix scaling 2.0*epsilon;
+                            if(x1 == x2 && x2 == x3) //x is the axis of collinearity
                             {
                                 data.corners[lower_left][0] = x3 - gamma_epsilon;
                                 data.corners[lower_left][1] = y3;
@@ -137,15 +139,15 @@ namespace DGGML
                                 data.corners[upper_right][1] = y1 + gamma_epsilon;
                             }
                             
-                            for(auto i = 0; i < 4; i++)
-                            {
-                                std::cout << i << ": { ";
-                                for(auto j = 0; j < 2; j++)
-                                {
-                                    std::cout << data.corners[i][j] << " ";
-                                }
-                                std::cout << "}\n";
-                            }
+//                            for(auto i = 0; i < 4; i++)
+//                            {
+//                                std::cout << i << ": { ";
+//                                for(auto j = 0; j < 2; j++)
+//                                {
+//                                    std::cout << data.corners[i][j] << " ";
+//                                }
+//                                std::cout << "}\n";
+//                            }
                             double min_x, min_y, max_x, max_y;
                             min_x = data.corners[lower_left][0];
                             min_y = data.corners[lower_left][1];
@@ -159,7 +161,7 @@ namespace DGGML
                                 min_y = ( min_y <= data.corners[i][1] ) ? min_y : data.corners[i][1];
                                 max_y = ( max_y >= data.corners[i][1] ) ? max_y : data.corners[i][1];
                             }
-                            std::cout << "{ min_x: " << min_x << ", min_y: " << min_y << ", max_x: " << max_x << ", max_y: " << max_y << " }\n";
+                            //std::cout << "{ min_x: " << min_x << ", min_y: " << min_y << ", max_x: " << max_x << ", max_y: " << max_y << " }\n";
                             //TODO: need to fix, works temporarily to map the cells to the right cell
                             label(min_x+0.1*epsilon, min_y+0.1*epsilon, max_x-0.1*epsilon, max_y-0.1*epsilon, 1, key);
                         }else {
@@ -187,7 +189,11 @@ namespace DGGML
                         //we only need to deal with expanding the interior 
                         double cx = data.position[0];
                         double cy = data.position[1];
-                        auto gamma_epsilon = 4.0*epsilon;
+                        auto gamma_epsilon = 3.5*epsilon; //TODO: fix scaling here
+                        //TODO: when we do 2.0 epsilon, it's off by 1 since I think we fall onto
+                        // the boundary of the other cell and it get's labeled thanks to how cardinal cell
+                        // is included
+                        //TODO: breaks for rectangular grids, because the expansion width should vary per dimension
                         data.corners[lower_left][0] = cx - gamma_epsilon;
                         data.corners[lower_left][1] = cy - gamma_epsilon;
                         data.corners[lower_right][0] = cx + gamma_epsilon;
@@ -210,7 +216,7 @@ namespace DGGML
                 reaction_grid.locatePoint(ur_x, ur_y, max_i, max_j);
                 //if(min_i > max_i) std::swap(min_i, max_i);
                 //if(min_j > min_i) std::swap(max_i, max_j);
-                std::cout << min_i << " " << min_j << " " << max_i << " " << max_j << "\n";
+                //std::cout << min_i << " " << min_j << " " << max_i << " " << max_j << "\n";
                 for(auto i = min_i; i <= max_i; i++)
                 {
                     for(auto j = min_j; j <= max_j; j++)
@@ -220,7 +226,7 @@ namespace DGGML
                         cell_label[cardinal] = key;
                     }
                 }
-                std::cout << "pass\n";
+                //std::cout << "pass\n";
 
            }
             friend std::ostream& operator<<(std::ostream& os, ExpandedComplex2D& geoplex)

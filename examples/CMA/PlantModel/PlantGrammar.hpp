@@ -7,7 +7,9 @@
 
 #include "Utlities/MathUtils.hpp"
 
-#include "RuleSystem.hpp"
+#include "ComponentMatchMap.hpp"
+
+#include "Grammar/Grammar.h"
 
 #include <random>
 
@@ -20,101 +22,6 @@ namespace DGGML
 
 namespace Plant 
 {
-
-void define_model(Grammar& gamma) {
-    //graph for a growing MT LHS
-    graph_type g1;
-    g1.addNode({0, {{0, 0, 0}, {0, 0, 0}, DGGML::Plant::intermediate}});
-    g1.addNode({1, {{0, 0, 0}, {0, 0, 0}, DGGML::Plant::positive}});
-    g1.addEdge(0, 1);
-    
-    //graph for a growing MT RHS
-    graph_type g2;
-    g2.addNode({0, {{0, 0, 0}, {0, 0, 0}, DGGML::Plant::intermediate}});
-    g2.addNode({1, {{0, 0, 0}, {0, 0, 0}, DGGML::Plant::intermediate}});
-    g2.addNode({2, {{0, 0, 0}, {0, 0, 0}, DGGML::Plant::positive}});
-    g2.addEdge(0, 1);
-    g2.addEdge(1, 2);
-    
-    //create the grammar rule 
-    RuleType r1("growing", g1, g2);
-    
-    //graph for a catastrophe LHS
-    graph_type g3;
-    g3.addNode({0, {{0, 0, 0}, {0, 0, 0}, DGGML::Plant::intermediate}});
-    g3.addNode({1, {{0, 0, 0}, {0, 0, 0}, DGGML::Plant::intermediate}});
-    g3.addNode({2, {{0, 0, 0}, {0, 0, 0}, DGGML::Plant::intermediate}});
-    g3.addNode({3, {{0, 0, 0}, {0, 0, 0}, DGGML::Plant::intermediate}});
-    g3.addNode({4, {{0, 0, 0}, {0, 0, 0}, DGGML::Plant::positive}});
-    g3.addEdge(0, 1);
-    g3.addEdge(1, 2);
-    g3.addEdge(3, 4);
-
-    //graph for catastrophe RHS
-    graph_type g4;
-    g4.addNode({0, {{0, 0, 0}, {0, 0, 0}, DGGML::Plant::intermediate}});
-    g4.addNode({1, {{0, 0, 0}, {0, 0, 0}, DGGML::Plant::intermediate}});
-    g4.addNode({2, {{0, 0, 0}, {0, 0, 0}, DGGML::Plant::intermediate}});
-    g4.addNode({3, {{0, 0, 0}, {0, 0, 0}, DGGML::Plant::intermediate}});
-    g4.addNode({4, {{0, 0, 0}, {0, 0, 0}, DGGML::Plant::negative}});
-    g4.addEdge(0, 1);
-    g4.addEdge(1, 2);
-    g4.addEdge(3, 4);
-    
-    //create the grammar rule 
-    RuleType r2("catastrophe", g3, g4);
-    
-    //graph for a retraction MT LHS
-    graph_type g5;
-    g5.addNode({0, {{0, 0, 0}, {0, 0, 0}, DGGML::Plant::intermediate}});
-    g5.addNode({1, {{0, 0, 0}, {0, 0, 0}, DGGML::Plant::negative}});
-    g5.addEdge(0, 1);
-    
-    //graph for a retraction MT RHS
-    graph_type g6;
-    g6.addNode({0, {{0, 0, 0}, {0, 0, 0}, DGGML::Plant::intermediate}});
-    g6.addNode({1, {{0, 0, 0}, {0, 0, 0}, DGGML::Plant::intermediate}});
-    g6.addNode({2, {{0, 0, 0}, {0, 0, 0}, DGGML::Plant::negative}});
-    g6.addEdge(0, 1);
-    g6.addEdge(1, 2);
-    
-    //create the grammar rule 
-    RuleType r3("retraction", g5, g6);
-    
-    //graph for a zipper LHS
-    graph_type g7;
-    g7.addNode({0, {{0, 0, 0}, {0, 0, 0}, DGGML::Plant::intermediate}});
-    g7.addNode({1, {{0, 0, 0}, {0, 0, 0}, DGGML::Plant::intermediate}});
-    g7.addNode({2, {{0, 0, 0}, {0, 0, 0}, DGGML::Plant::intermediate}});
-    g7.addNode({3, {{0, 0, 0}, {0, 0, 0}, DGGML::Plant::intermediate}});
-    g7.addNode({4, {{0, 0, 0}, {0, 0, 0}, DGGML::Plant::positive}});
-    g7.addEdge(0, 1);
-    g7.addEdge(1, 2);
-    g7.addEdge(3, 4);
-
-    //graph for a zipper RHS
-    graph_type g8;
-    g8.addNode({0, {{0, 0, 0}, {0, 0, 0}, DGGML::Plant::intermediate}});
-    g8.addNode({1, {{0, 0, 0}, {0, 0, 0}, DGGML::Plant::zipper}});
-    g8.addNode({2, {{0, 0, 0}, {0, 0, 0}, DGGML::Plant::intermediate}});
-    g8.addNode({3, {{0, 0, 0}, {0, 0, 0}, DGGML::Plant::intermediate}});
-    g8.addEdge(0, 1);
-    g8.addEdge(1, 2);
-    g8.addEdge(3, 1);
-    
-    RuleType r4("zipper", g7, g8);
-
-    //build the Grammar 
-    gamma.addRule(r1);
-    gamma.addRule(r2);
-    gamma.addRule(r3);
-    gamma.addRule(r4);
-
-    //if runtime just run 
-    //else we need a two phase compile or some compile time way to generate optimized code?
-}
-
-
 // search for growing ends in a dimensional partition 
 template <typename GraphType, typename BucketType>
 std::vector<std::vector<mt_key_type>> microtubule_growing_end_matcher(GraphType& graph, BucketType& bucket)
