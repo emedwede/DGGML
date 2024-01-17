@@ -90,6 +90,7 @@ namespace DGGML
         RewriteUpdates changes;
         std::string rname = inst.name;
 
+        //TODO: double check this mapping code is actually correct, see changes added in the previous commit before TODO
         //construct a vertex map for the lhs to the rule instance
         std::map<std::size_t, std::size_t> lhs_vertex_map;
         std::vector<std::size_t> left, mid, right;

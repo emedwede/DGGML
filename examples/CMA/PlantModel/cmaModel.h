@@ -164,7 +164,7 @@ namespace CMA {
                             if(sol[0] > 0.0 && sol[1] >= 0.0 && sol[1] <= 1.0)
                             {
                                 //TODO: distance should be closest point to the growing end not pos3
-                                propensity = 10.0*exp(-pow(DGGML::calculate_distance(pos2, pos3), 2.0) / pow(0.5*settings.DIV_LENGTH, 2.0));
+                                propensity = 1000.0*exp(-pow(DGGML::calculate_distance(pos2, pos3), 2.0) / pow(0.5*settings.DIV_LENGTH, 2.0));
                             }
                         }
                        //if(propensity != 0) {std::cout << "cat prop: " << propensity << "\n"; std::cin.get();}
@@ -226,7 +226,7 @@ namespace CMA {
                                                           if(sol[0] > 0.0 && sol[1] >= 0.0 && sol[1] <= 1.0)
                                                           {
                                                               //TODO: distance should be closest point to the growing end not pos3
-                                                              propensity = 10.0*exp(-pow(DGGML::calculate_distance(pos2, pos3), 2.0) / pow(0.5*settings.DIV_LENGTH, 2.0));
+                                                              propensity = 1000.0*exp(-pow(DGGML::calculate_distance(pos2, pos3), 2.0) / pow(0.5*settings.DIV_LENGTH, 2.0));
                                                           }
                                                       }
                                                       //if(propensity != 0) {std::cout << "cat prop: " << propensity << "\n"; std::cin.get();}
@@ -290,7 +290,7 @@ namespace CMA {
                                                           if(sol[0] > 0.0 && sol[1] >= 0.0 && sol[1] <= 1.0)
                                                           {
                                                               //TODO: distance should be closest point to the growing end not pos3
-                                                              propensity = 10.0*exp(-pow(DGGML::calculate_distance(pos2, pos3), 2.0) / pow(0.5*settings.DIV_LENGTH, 2.0));
+                                                              propensity = 1000.0*exp(-pow(DGGML::calculate_distance(pos2, pos3), 2.0) / pow(0.5*settings.DIV_LENGTH, 2.0));
                                                           }
                                                       }
 
@@ -308,27 +308,38 @@ namespace CMA {
 
             gamma.addRule(catastrophe_case3);
 
-            //Testable Interaction Rule
-            //collision catastrophe rule
-            GT g7;
-            g7.addNode({1, {Plant::Negative{}}});
-            g7.addNode({2, {Plant::Intermediate{}}});
-            g7.addNode({3, {Plant::Positive{}}});
-            g7.addNode({4, {Plant::Negative{}}});
-            g7.addNode({5, {Plant::Intermediate{}}});
-            g7.addNode({6, {Plant::Positive{}}});
-            g7.addEdge(1, 2);
-            g7.addEdge(2, 3);
-            g7.addEdge(4, 5);
-            g7.addEdge(5, 6);
+            //destruction rule case 1: depolymerization on both ends
+            GT destruction_lhs_graph1;
+            destruction_lhs_graph1.addNode({1, {Plant::Negative{}}});
+            destruction_lhs_graph1.addNode({2, {Plant::Intermediate{}}});
+            destruction_lhs_graph1.addNode({3, {Plant::Negative{}}});
+            destruction_lhs_graph1.addEdge(1, 2);
+            destruction_lhs_graph1.addEdge(2, 3);
 
-            GT g8;
+            GT destruction_rhs_graph1;
 
-            DGGML::WithRule<GT> r4("interaction", g7, g8,
-                    [](auto& lhs, auto& m) { return 7.5; },
-                    [](auto& lhs, auto& rhs, auto& m1, auto& m2) { std::cout << "updating interaction rule\n"; });
+            DGGML::WithRule<GT> destruction_case1("destruction_case1", destruction_lhs_graph1, destruction_rhs_graph1,
+                    [](auto& lhs, auto& m) { return 1; },
+                    [](auto& lhs, auto& rhs, auto& m1, auto& m2) {});
 
-            //gamma.addRule(r4);
+            gamma.addRule(destruction_case1);
+
+            //destruction rule case 2: depolymerization on one end polymerization on the other
+            GT destruction_lhs_graph2;
+            destruction_lhs_graph2.addNode({1, {Plant::Negative{}}});
+            destruction_lhs_graph2.addNode({2, {Plant::Intermediate{}}});
+            destruction_lhs_graph2.addNode({3, {Plant::Positive{}}});
+            destruction_lhs_graph2.addEdge(1, 2);
+            destruction_lhs_graph2.addEdge(2, 3);
+
+            GT destruction_rhs_graph2;
+
+            DGGML::WithRule<GT> destruction_case2("destruction_case2", destruction_lhs_graph2, destruction_rhs_graph2,
+                                                  [](auto& lhs, auto& m) { return 1; },
+                                                  [](auto& lhs, auto& rhs, auto& m1, auto& m2) {});
+
+            gamma.addRule(destruction_case2);
+
 
             //TODO: I think I need to add velocity back in, and make the growing solve a function of the two ODEs
             DGGML::SolvingRule<GT> r5("solving_grow", g1, g1, 3,
@@ -557,7 +568,7 @@ namespace CMA {
             settings.GHOSTED = false;
 
             //number of microtubules in the simulation
-            settings.NUM_MT = 40;
+            settings.NUM_MT = 120;
 
             //starting size of the MTs
             settings.MT_MIN_SEGMENT_INIT = 0.005;
@@ -578,7 +589,7 @@ namespace CMA {
 
             //simulation time in seconds
             settings.TOTAL_TIME = 20.0;
-            settings.DELTA = 0.5; //unit of seconds
+            settings.DELTA = 0.5/8.0; //unit of seconds
 
             //The internal step of the solver should be at least smaller than delta
             settings.DELTA_DELTA_T = settings.DELTA / 20.0;
