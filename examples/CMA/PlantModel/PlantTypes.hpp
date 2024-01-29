@@ -97,6 +97,17 @@ namespace Plant
         double unit_vec[DIM3D];
     };
 
+    struct Holding
+    {
+        double unit_vec[DIM3D];
+        double collision_angle;
+    };
+
+    struct Capture
+    {
+        double unit_vec[DIM3D];
+    };
+
     struct Zipper
     {
         double unit_vec[DIM3D];
@@ -104,7 +115,7 @@ namespace Plant
 
     using key_type = std::size_t;
 
-    using graph_type = YAGL::Graph<key_type, SpatialNode3D<Negative, Intermediate, Positive, Junction, Zipper>>;
+    using graph_type = YAGL::Graph<key_type, SpatialNode3D<Negative, Intermediate, Positive, Junction, Zipper, Holding, Capture>>;
 }
 
 #endif

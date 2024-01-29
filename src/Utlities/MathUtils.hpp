@@ -139,6 +139,37 @@ double heaviside(double input, double threshold)
     }
 }
 
+//calculates the distance of point Q to a line segment between two points P1 and P2
+double distanceToLineSegment(double x1, double y1, double x2, double y2, double xq, double yq) {
+
+    // Ensure x1 <= x2, swap if needed
+    if (x1 > x2) {
+        std::swap(x1, x2);
+        std::swap(y1, y2);
+    }
+
+    // Calculate parametric value (t)
+    double t = ((xq - x1) * (x2 - x1) + (yq - y1) * (y2 - y1)) / ((x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1));
+
+    // Check if the projection is within the line segment
+    double xc, yc;
+    if (t < 0) {
+        xc = x1;
+        yc = y1;
+    } else if (t > 1) {
+        xc = x2;
+        yc = y2;
+    } else {
+        // Calculate closest point on the line
+        xc = x1 + t * (x2 - x1);
+        yc = y1 + t * (y2 - y1);
+    }
+
+    // Calculate distance between the point and the closest point on the line
+    double distance = sqrt((xq - xc) * (xq - xc) + (yq - yc) * (yq - yc));
+    return distance;
+}
+
 } //end namespace DGGML
 
 #endif 

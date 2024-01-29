@@ -229,17 +229,17 @@ namespace Plant
 {
     template <typename GraphType, typename CplexType, typename ParamType, typename GenType>
     void microtubule_uniform_scatter(GraphType& graph, CplexType& cplex, ParamType& settings, GenType& gen) {
-        double epsilon_min = settings.MT_MIN_SEGMENT_INIT;
-        double epsilon_max = settings.MT_MAX_SEGMENT_INIT;
+        double epsilon_min = settings.DIV_LENGTH;//settings.MT_MIN_SEGMENT_INIT;
+        double epsilon_max = settings.DIV_LENGTH;//settings.MT_MAX_SEGMENT_INIT;
         std::random_device random_device;
         std::mt19937 random_engine(random_device());
         auto &grid = cplex.getCoarseGrid();
 
         //first create a grid that needs to fit MTs of two segments without initial overlap
         double max_nx =
-                std::floor((cplex.max_x - cplex.min_x) / (2.25 * settings.MT_MAX_SEGMENT_INIT));
+                std::floor((cplex.max_x - cplex.min_x) / (4.0 * settings.DIV_LENGTH));//settings.MT_MAX_SEGMENT_INIT));
         double max_ny =
-                std::floor((cplex.max_y - cplex.min_y) / (2.25 * settings.MT_MAX_SEGMENT_INIT));
+                std::floor((cplex.max_y - cplex.min_y) / (4.0 * settings.DIV_LENGTH));//settings.MT_MAX_SEGMENT_INIT));
 
         DGGML::CartesianGrid2D uniform_grid;
         uniform_grid.init(cplex.min_x, cplex.min_y,

@@ -54,13 +54,26 @@ namespace CMA {
         double RHO_TEST_RATE; //a tunable test parameter for MT dynamics
     };
 
-    bool boundary_check_2D(Parameters& settings, double x, double y)
+    //checks if we're outside a box boundary
+    bool boundary_check_2D(Parameters& settings, double x, double y, double padding = 0.0)
     {
-        auto min_x = 0.0, min_y = 0.0;
-        auto max_x = settings.CELL_NX*settings.CELL_DX;
-        auto max_y = settings.CELL_NY*settings.CELL_DY;
+        auto min_x = 0.0+padding, min_y = 0.0+padding;
+        auto max_x = settings.CELL_NX*settings.CELL_DX-padding;
+        auto max_y = settings.CELL_NY*settings.CELL_DY-padding;
 
         return (x > min_x && x < max_x && y > min_y && y < max_y) ? false : true;
+    }
+
+    //checks if we're outside a circular boundary
+    bool boundary_check_circle(Parameters& settings, double x, double y)
+    {
+        double padding = 2.0*settings.MAXIMAL_REACTION_RADIUS;
+        double diameter =  settings.CELL_NX*settings.CELL_DX - 2*padding;
+        double radius = diameter/2.0;
+        double center_x = settings.CELL_NX*settings.CELL_DX/2.0;
+        double center_y = settings.CELL_NY*settings.CELL_DY/2.0;
+        double d = sqrt((x - center_x)*(x - center_x) + (y - center_y)*(y - center_y));
+        return (d < radius) ? false : true;
     }
 
     using graph_grammar_t = DGGML::Grammar<Plant::graph_type>;
@@ -98,7 +111,7 @@ namespace CMA {
                     auto& node_i_data = lhs.findNode(m[1])->second.getData();
                     auto& node_j_data = lhs.findNode(m[2])->second.getData();
                     auto len = DGGML::calculate_distance(node_i_data.position, node_j_data.position);
-                    double propensity = 10.0*DGGML::heaviside(len, settings.DIV_LENGTH);
+                    double propensity = 100.0*DGGML::heaviside(len, settings.DIV_LENGTH);
                     //double propensity = DGGML::sigmoid((len/settings.DIV_LENGTH) - 1.0, settings.SIGMOID_K);
                     return propensity;
                 }, [](auto& lhs, auto& rhs, auto& m1, auto& m2) {
@@ -119,6 +132,432 @@ namespace CMA {
 
             gamma.addRule(r1);
 
+            GT boundary_catastrophe_lhs;
+            boundary_catastrophe_lhs.addNode({1, {Plant::Intermediate{}}});
+            boundary_catastrophe_lhs.addNode({2, {Plant::Positive{}}});
+            boundary_catastrophe_lhs.addEdge(1, 2);
+            GT boundary_catastrophe_rhs;
+            boundary_catastrophe_rhs.addNode({1, {Plant::Intermediate{}}});
+            boundary_catastrophe_rhs.addNode({2, {Plant::Negative{}}});
+            boundary_catastrophe_rhs.addEdge(1, 2);
+
+            DGGML::WithRule<GT> boundary_catastrophe("boundary_catastrophe", boundary_catastrophe_lhs, boundary_catastrophe_rhs,
+         [&](auto& lhs, auto& m)
+            {
+                //determine if we're outside the interior of a padded boundary
+                if(boundary_check_2D(settings, lhs[m[2]].position[0], lhs[m[2]].position[1], settings.MAXIMAL_REACTION_RADIUS)) return 1000.0;
+                //if(boundary_check_circle(settings, lhs[m[2]].position[0], lhs[m[2]].position[1])) return 1000.0;
+                return 0.0;
+            },
+            [](auto& lhs, auto& rhs, auto& m1, auto& m2)
+            {
+                std::get<Plant::Negative>(rhs[m2[2]].data).unit_vec[0] = -std::get<Plant::Positive>(lhs[m1[2]].data).unit_vec[0];
+                std::get<Plant::Negative>(rhs[m2[2]].data).unit_vec[1] = -std::get<Plant::Positive>(lhs[m1[2]].data).unit_vec[1];
+                std::get<Plant::Negative>(rhs[m2[2]].data).unit_vec[2] = -std::get<Plant::Positive>(lhs[m1[2]].data).unit_vec[2];
+            });
+            gamma.addRule(boundary_catastrophe);
+
+            GT boundary_capture_lhs;
+            boundary_capture_lhs.addNode({1, {Plant::Intermediate{}}});
+            boundary_capture_lhs.addNode({2, {Plant::Positive{}}});
+            boundary_capture_lhs.addEdge(1, 2);
+            GT boundary_capture_rhs;
+            boundary_capture_rhs.addNode({1, {Plant::Intermediate{}}});
+            boundary_capture_rhs.addNode({2, {Plant::Capture{}}});
+            boundary_capture_rhs.addEdge(1, 2);
+
+            DGGML::WithRule<GT> boundary_capture("boundary_capture", boundary_capture_lhs, boundary_capture_rhs,
+             [&](auto& lhs, auto& m)
+             {
+                 //determine if we're outside the interior of a padded boundary
+                 if(boundary_check_2D(settings, lhs[m[2]].position[0], lhs[m[2]].position[1], settings.MAXIMAL_REACTION_RADIUS)) return 1000.0;
+                 //if(boundary_check_circle(settings, lhs[m[2]].position[0], lhs[m[2]].position[1])) return 1000.0;
+                 return 0.0;
+             },
+             [](auto& lhs, auto& rhs, auto& m1, auto& m2)
+             {
+                 std::get<Plant::Capture>(rhs[m2[2]].data).unit_vec[0] = std::get<Plant::Positive>(lhs[m1[2]].data).unit_vec[0];
+                 std::get<Plant::Capture>(rhs[m2[2]].data).unit_vec[1] = std::get<Plant::Positive>(lhs[m1[2]].data).unit_vec[1];
+                 std::get<Plant::Capture>(rhs[m2[2]].data).unit_vec[2] = std::get<Plant::Positive>(lhs[m1[2]].data).unit_vec[2];
+
+                 //std::get<Plant::Negative>(rhs[m2[2]].data).unit_vec[0] = -std::get<Plant::Positive>(lhs[m1[2]].data).unit_vec[0];
+                 //std::get<Plant::Negative>(rhs[m2[2]].data).unit_vec[1] = -std::get<Plant::Positive>(lhs[m1[2]].data).unit_vec[1];
+                 //std::get<Plant::Negative>(rhs[m2[2]].data).unit_vec[2] = -std::get<Plant::Positive>(lhs[m1[2]].data).unit_vec[2];
+             });
+            //gamma.addRule(boundary_capture);
+
+            GT periodic_replicate_lhs;
+            periodic_replicate_lhs.addNode({1, {Plant::Intermediate{}}});
+            periodic_replicate_lhs.addNode({2, {Plant::Capture{}}});
+            periodic_replicate_lhs.addEdge(1, 2);
+            GT periodic_replicate_rhs;
+            periodic_replicate_rhs.addNode({1, {Plant::Intermediate{}}});
+            periodic_replicate_rhs.addNode({2, {Plant::Holding{}}});
+            periodic_replicate_rhs.addNode({3, {Plant::Intermediate{}}});
+            periodic_replicate_rhs.addNode({4, {Plant::Positive{}}});
+            periodic_replicate_rhs.addEdge(1, 2);
+            periodic_replicate_rhs.addEdge(3, 4);
+
+            //TODO: replicated MTs show up on the other side and seem not to be added back into the match data struct
+            DGGML::WithRule<GT> periodic_replicate("periodic_replicate", periodic_replicate_lhs, periodic_replicate_rhs,
+             [&](auto& lhs, auto& m)
+             {
+                 double len_x = settings.CELL_DX * settings.CELL_NX;
+                 double len_y = settings.CELL_DY * settings.CELL_NY;
+                 double r = settings.MAXIMAL_REACTION_RADIUS;
+                 double period_x = len_x - r;
+                 double period_y = len_y - r;
+                 if(lhs[m[2]].position[0] >= len_x - r) //went out the right side
+                 {
+                     return 1000.0;
+                 }
+                 else if(lhs[m[2]].position[0] <= r)
+                 {
+                     return 1000.0;
+                 }
+                 return 0.0;
+             },
+             [&](auto& lhs, auto& rhs, auto& m1, auto& m2)
+             {
+                 double len_x = settings.CELL_DX * settings.CELL_NX;
+                 double len_y = settings.CELL_DY * settings.CELL_NY;
+                 double r = settings.MAXIMAL_REACTION_RADIUS;
+                 double period_x = len_x - r;
+                 double period_y = len_y - r;
+                 if(lhs[m1[2]].position[0] >= len_x - r) //went out the right side
+                 {
+                     //set the intermediate
+                     rhs[m2[3]].position[0] = lhs[m1[1]].position[0] - len_x + 2.0*r;
+                     rhs[m2[3]].position[1] = lhs[m1[1]].position[1];
+                     rhs[m2[3]].position[2] = 0.0;
+                     //set the positive
+                     rhs[m2[4]].position[0] = lhs[m1[2]].position[0] - len_x + 2.1*r;
+                     rhs[m2[4]].position[1] = lhs[m1[2]].position[1];
+                     rhs[m2[4]].position[2] = 0.0;
+                     std::get<Plant::Positive>(rhs[m2[4]].data).unit_vec[0] = std::get<Plant::Capture>(lhs[m1[2]].data).unit_vec[0];
+                     std::get<Plant::Positive>(rhs[m2[4]].data).unit_vec[1] = std::get<Plant::Capture>(lhs[m1[2]].data).unit_vec[1];
+                     std::get<Plant::Positive>(rhs[m2[4]].data).unit_vec[2] = std::get<Plant::Capture>(lhs[m1[2]].data).unit_vec[2];
+                 }
+                 else if(lhs[m1[2]].position[0] <= r) //went out the left side
+                 {
+                     //set the intermediate
+                     rhs[m2[3]].position[0] = lhs[m1[1]].position[0] + len_x - 2.0*r;
+                     rhs[m2[3]].position[1] = lhs[m1[1]].position[1];
+                     rhs[m2[3]].position[2] = 0.0;
+                     //set the positive
+                     rhs[m2[4]].position[0] = lhs[m1[2]].position[0] + len_x - 2.1*r;
+                     rhs[m2[4]].position[1] = lhs[m1[2]].position[1];
+                     rhs[m2[4]].position[2] = 0.0;
+                     std::get<Plant::Positive>(rhs[m2[4]].data).unit_vec[0] = -std::get<Plant::Capture>(lhs[m1[2]].data).unit_vec[0];
+                     std::get<Plant::Positive>(rhs[m2[4]].data).unit_vec[1] = -std::get<Plant::Capture>(lhs[m1[2]].data).unit_vec[1];
+                     std::get<Plant::Positive>(rhs[m2[4]].data).unit_vec[2] = -std::get<Plant::Capture>(lhs[m1[2]].data).unit_vec[2];
+                 }
+             });
+            //gamma.addRule(periodic_replicate);
+
+            GT zippering_lhs_graph1;
+            zippering_lhs_graph1.addNode({1, {Plant::Intermediate{}}});
+            zippering_lhs_graph1.addNode({2, {Plant::Holding{}}});
+            zippering_lhs_graph1.addNode({3, {Plant::Intermediate{}}});
+            zippering_lhs_graph1.addNode({4, {Plant::Intermediate{}}});
+            zippering_lhs_graph1.addEdge(1, 2);
+            zippering_lhs_graph1.addEdge(3, 4);
+
+            GT zippering_rhs_graph1;
+            zippering_rhs_graph1.addNode({1, {Plant::Intermediate{}}});
+            zippering_rhs_graph1.addNode({2, {Plant::Intermediate{}}});
+            zippering_rhs_graph1.addNode({5, {Plant::Positive{}}});
+            zippering_rhs_graph1.addNode({3, {Plant::Intermediate{}}});
+            zippering_rhs_graph1.addNode({4, {Plant::Intermediate{}}});
+            zippering_rhs_graph1.addEdge(1, 2);
+            zippering_rhs_graph1.addEdge(2, 5);
+            zippering_rhs_graph1.addEdge(3, 4);
+
+            DGGML::WithRule<GT> zippering_case1("zippering_case1", zippering_lhs_graph1, zippering_rhs_graph1,
+                                                  [&](auto& lhs, auto& m) {
+                                                      //find all the node data
+                                                      auto& dat1 = lhs.findNode(m[1])->second.getData();
+                                                      auto& dat2 = lhs.findNode(m[2])->second.getData();
+                                                      auto& dat3 = lhs.findNode(m[3])->second.getData();
+                                                      auto& dat4 = lhs.findNode(m[4])->second.getData();
+
+                                                      //get references to position vector
+                                                      auto& pos1 = dat1.position;
+                                                      auto& pos2 = dat2.position;
+                                                      auto& pos3 = dat3.position;
+                                                      auto& pos4 = dat4.position;
+
+                                                      //get references to unit vectors
+                                                      auto& u1 = std::get<Plant::Intermediate>(dat1.data).unit_vec;
+                                                      auto& u2 = std::get<Plant::Holding>(dat2.data).unit_vec;
+                                                      auto& u3 = std::get<Plant::Intermediate>(dat3.data).unit_vec;
+                                                      auto& u4 = std::get<Plant::Intermediate>(dat4.data).unit_vec;
+
+                                                      //distance from positive node to line segment
+                                                      auto d = DGGML::distanceToLineSegment(pos3[0], pos3[1], pos4[0], pos4[1], pos2[0], pos2[1]);
+                                                      if(d <= 0.025)
+                                                      {
+                                                          double theta = std::acos(DGGML::unit_dot_product(u2, u3))*(180.0/3.14159265);
+                                                          theta = std::min(180.0 - theta, theta);
+                                                          if(theta > 2.0 && theta < 80.0)
+                                                          {
+                                                              return 1000.0;
+                                                          }
+                                                      }
+                                                      return 0.0;
+                                                      double theta = std::acos(DGGML::unit_dot_product(u2, u3))*(180.0/3.14159265);
+                                                      theta = std::max(180.0 - theta, theta);
+                                                      double propensity = 0.0;
+                                                      double sol[2];
+                                                      if(theta != 1.0 && theta != -1.0)
+                                                      {
+                                                          DGGML::paramaterized_intersection(pos2, pos4, pos3, u2, sol);
+
+                                                          if(sol[0] > 0.0 && sol[1] >= 0.0 && sol[1] <= 1.0)
+                                                          {
+                                                              //TODO: distance should be closest point to the growing end not pos3
+                                                              propensity = 1000.0*exp(-pow(DGGML::calculate_distance(pos2, pos3), 2.0) / pow(0.5*settings.DIV_LENGTH, 2.0));
+                                                          }
+                                                      }
+                                                      //if(propensity != 0) {std::cout << "cat prop: " << propensity << "\n"; std::cin.get();}
+                                                      return propensity;
+                                                  },
+                                                  [](auto& lhs, auto& rhs, auto& m1, auto& m2)
+                                                  {
+                                                        //TODO: we acutally need a better way of picking the unit vec
+                                                      std::get<Plant::Intermediate>(rhs[m2[2]].data).unit_vec[0] = std::get<Plant::Intermediate>(lhs[m1[3]].data).unit_vec[0];
+                                                      std::get<Plant::Intermediate>(rhs[m2[2]].data).unit_vec[1] = std::get<Plant::Intermediate>(lhs[m1[3]].data).unit_vec[1];
+                                                      std::get<Plant::Intermediate>(rhs[m2[2]].data).unit_vec[2] = std::get<Plant::Intermediate>(lhs[m1[3]].data).unit_vec[2];
+
+                                                      std::get<Plant::Positive>(rhs[m2[5]].data).unit_vec[0] = std::get<Plant::Intermediate>(lhs[m1[3]].data).unit_vec[0];
+                                                      std::get<Plant::Positive>(rhs[m2[5]].data).unit_vec[1] = std::get<Plant::Intermediate>(lhs[m1[3]].data).unit_vec[1];
+                                                      std::get<Plant::Positive>(rhs[m2[5]].data).unit_vec[2] = std::get<Plant::Intermediate>(lhs[m1[3]].data).unit_vec[2];
+
+                                                      rhs[m2[5]].position[0] = lhs[m1[2]].position[0]+0.01*std::get<Plant::Intermediate>(lhs[m1[3]].data).unit_vec[0];
+                                                      rhs[m2[5]].position[1] = lhs[m1[2]].position[1]+0.01*std::get<Plant::Intermediate>(lhs[m1[3]].data).unit_vec[1];
+                                                      rhs[m2[5]].position[2] = lhs[m1[2]].position[2]+0.01*std::get<Plant::Intermediate>(lhs[m1[3]].data).unit_vec[2];
+
+                                                      //DGGML::set_unit_vector(rhs[m2[5]].position, rhs[m2[2]].position, std::get<Plant::Positive>(rhs[m2[5]].data).unit_vec);
+
+                                                  });
+
+            //gamma.addRule(zippering_case1);
+
+            GT crossover_lhs_graph;
+            crossover_lhs_graph.addNode({1, {Plant::Intermediate{}}});
+            crossover_lhs_graph.addNode({2, {Plant::Holding{}}});
+            crossover_lhs_graph.addNode({3, {Plant::Intermediate{}}});
+            crossover_lhs_graph.addNode({4, {Plant::Intermediate{}}});
+            crossover_lhs_graph.addEdge(1, 2);
+            crossover_lhs_graph.addEdge(3, 4);
+
+            GT crossover_rhs_graph;
+            crossover_rhs_graph.addNode({1, {Plant::Intermediate{}}});
+            crossover_rhs_graph.addNode({2, {Plant::Junction{}}});
+            crossover_rhs_graph.addNode({5, {Plant::Positive{}}});
+            crossover_rhs_graph.addNode({3, {Plant::Intermediate{}}});
+            crossover_rhs_graph.addNode({4, {Plant::Intermediate{}}});
+            crossover_rhs_graph.addEdge(1, 2);
+            crossover_rhs_graph.addEdge(3, 2);
+            crossover_rhs_graph.addEdge(4, 2);
+            crossover_rhs_graph.addEdge(5, 2);
+
+            DGGML::WithRule<GT> crossover("crossover", crossover_lhs_graph, crossover_rhs_graph,
+                                                   [&](auto& lhs, auto& m) {
+                                                       //find all the node data
+                                                       auto& dat1 = lhs.findNode(m[1])->second.getData();
+                                                       auto& dat2 = lhs.findNode(m[2])->second.getData();
+                                                       auto& dat3 = lhs.findNode(m[3])->second.getData();
+                                                       auto& dat4 = lhs.findNode(m[4])->second.getData();
+
+                                                       //get references to position vector
+                                                       auto& pos1 = dat1.position;
+                                                       auto& pos2 = dat2.position;
+                                                       auto& pos3 = dat3.position;
+                                                       auto& pos4 = dat4.position;
+
+                                                       //get references to unit vectors
+                                                       auto& u1 = std::get<Plant::Intermediate>(dat1.data).unit_vec;
+                                                       auto& u2 = std::get<Plant::Holding>(dat2.data).unit_vec;
+                                                       auto& u3 = std::get<Plant::Intermediate>(dat3.data).unit_vec;
+                                                       auto& u4 = std::get<Plant::Intermediate>(dat4.data).unit_vec;
+
+                                                       //distance from positive node to line segment
+                                                       auto d = DGGML::distanceToLineSegment(pos3[0], pos3[1], pos4[0], pos4[1], pos2[0], pos2[1]);
+                                                       if(d <= 0.025)
+                                                           return 1000.0;
+                                                       else return 0.0;
+                                                   },
+                                                   [](auto& lhs, auto& rhs, auto& m1, auto& m2)
+                                                   {
+                                                       for(int i = 0; i < 3; i++)
+                                                        rhs[m2[2]].position[i] = (lhs[m2[4]].position[i] + lhs[m2[3]].position[i])/2.0;
+                                                       DGGML::set_unit_vector(rhs[m2[2]].position, rhs[m2[1]].position, std::get<Plant::Junction>(rhs[m2[2]].data).unit_vec);
+                                                       DGGML::set_unit_vector(rhs[m2[2]].position, rhs[m2[1]].position, std::get<Plant::Intermediate>(rhs[m2[1]].data).unit_vec);
+                                                       for(int i = 0; i < 3; i++)
+                                                        rhs[m2[5]].position[i] = rhs[m1[2]].position[i]+0.01*std::get<Plant::Junction>(rhs[m1[2]].data).unit_vec[i];
+                                                       DGGML::set_unit_vector(rhs[m2[5]].position, rhs[m2[2]].position, std::get<Plant::Positive>(rhs[m2[5]].data).unit_vec);
+
+                                                   });
+
+            //gamma.addRule(crossover);
+
+            GT catastrophe2_lhs_graph1;
+            catastrophe2_lhs_graph1.addNode({1, {Plant::Intermediate{}}});
+            catastrophe2_lhs_graph1.addNode({2, {Plant::Positive{}}});
+            catastrophe2_lhs_graph1.addNode({3, {Plant::Intermediate{}}});
+            catastrophe2_lhs_graph1.addNode({4, {Plant::Intermediate{}}});
+            catastrophe2_lhs_graph1.addEdge(1, 2);
+            catastrophe2_lhs_graph1.addEdge(3, 4);
+
+            GT catastrophe2_rhs_graph1;
+            catastrophe2_rhs_graph1.addNode({1, {Plant::Intermediate{}}});
+            catastrophe2_rhs_graph1.addNode({2, {Plant::Holding{}}});
+            catastrophe2_rhs_graph1.addNode({3, {Plant::Intermediate{}}});
+            catastrophe2_rhs_graph1.addNode({4, {Plant::Intermediate{}}});
+            catastrophe2_rhs_graph1.addEdge(1, 2);
+            catastrophe2_rhs_graph1.addEdge(3, 4);
+
+            DGGML::WithRule<GT> catastrophe2_case1("catastrophe2_case1", catastrophe2_lhs_graph1, catastrophe2_rhs_graph1,
+                                                  [&](auto& lhs, auto& m) {
+                                                      //find all the node data
+                                                      auto& dat1 = lhs.findNode(m[1])->second.getData();
+                                                      auto& dat2 = lhs.findNode(m[2])->second.getData();
+                                                      auto& dat3 = lhs.findNode(m[3])->second.getData();
+                                                      auto& dat4 = lhs.findNode(m[4])->second.getData();
+
+                                                      //get references to position vector
+                                                      auto& pos1 = dat1.position;
+                                                      auto& pos2 = dat2.position;
+                                                      auto& pos3 = dat3.position;
+                                                      auto& pos4 = dat4.position;
+
+                                                      //get references to unit vectors
+                                                      auto& u1 = std::get<Plant::Intermediate>(dat1.data).unit_vec;
+                                                      auto& u2 = std::get<Plant::Positive>(dat2.data).unit_vec;
+                                                      auto& u3 = std::get<Plant::Intermediate>(dat3.data).unit_vec;
+                                                      auto& u4 = std::get<Plant::Intermediate>(dat4.data).unit_vec;
+
+                                                      //distance from positive node to line segment
+                                                      auto d = DGGML::distanceToLineSegment(pos3[0], pos3[1], pos4[0], pos4[1], pos2[0], pos2[1]);
+                                                      if(d <= 0.025) {
+                                                          double theta = std::acos(DGGML::unit_dot_product(u2, u3)) * (180.0 / 3.14159265);
+                                                          theta = std::min(180.0 - theta, theta);
+                                                          if(theta > 2.0)
+                                                            return 1000.0;
+                                                      }
+                                                      return 0.0;
+                                                  },
+                                                  [](auto& lhs, auto& rhs, auto& m1, auto& m2)
+                                                  {
+                                                      std::get<Plant::Holding>(rhs[m2[2]].data).unit_vec[0] = -std::get<Plant::Positive>(lhs[m1[2]].data).unit_vec[0];
+                                                      std::get<Plant::Holding>(rhs[m2[2]].data).unit_vec[1] = -std::get<Plant::Positive>(lhs[m1[2]].data).unit_vec[1];
+                                                      std::get<Plant::Holding>(rhs[m2[2]].data).unit_vec[2] = -std::get<Plant::Positive>(lhs[m1[2]].data).unit_vec[2];
+                                                  });
+
+            //gamma.addRule(catastrophe2_case1);
+
+            GT catastrophe2_lhs_graph2;
+            catastrophe2_lhs_graph2.addNode({1, {Plant::Intermediate{}}});
+            catastrophe2_lhs_graph2.addNode({2, {Plant::Positive{}}});
+            catastrophe2_lhs_graph2.addNode({3, {Plant::Intermediate{}}});
+            catastrophe2_lhs_graph2.addNode({4, {Plant::Positive{}}});
+            catastrophe2_lhs_graph2.addEdge(1, 2);
+            catastrophe2_lhs_graph2.addEdge(3, 4);
+
+            GT catastrophe2_rhs_graph2;
+            catastrophe2_rhs_graph2.addNode({1, {Plant::Intermediate{}}});
+            catastrophe2_rhs_graph2.addNode({2, {Plant::Negative{}}});
+            catastrophe2_rhs_graph2.addNode({3, {Plant::Intermediate{}}});
+            catastrophe2_rhs_graph2.addNode({4, {Plant::Positive{}}});
+            catastrophe2_rhs_graph2.addEdge(1, 2);
+            catastrophe2_rhs_graph2.addEdge(3, 4);
+
+            DGGML::WithRule<GT> catastrophe2_case2("catastrophe2_case2", catastrophe2_lhs_graph2, catastrophe2_rhs_graph2,
+                                                   [&](auto& lhs, auto& m) {
+                                                       //find all the node data
+                                                       auto& dat1 = lhs.findNode(m[1])->second.getData();
+                                                       auto& dat2 = lhs.findNode(m[2])->second.getData();
+                                                       auto& dat3 = lhs.findNode(m[3])->second.getData();
+                                                       auto& dat4 = lhs.findNode(m[4])->second.getData();
+
+                                                       //get references to position vector
+                                                       auto& pos1 = dat1.position;
+                                                       auto& pos2 = dat2.position;
+                                                       auto& pos3 = dat3.position;
+                                                       auto& pos4 = dat4.position;
+
+                                                       //get references to unit vectors
+                                                       auto& u1 = std::get<Plant::Intermediate>(dat1.data).unit_vec;
+                                                       auto& u2 = std::get<Plant::Positive>(dat2.data).unit_vec;
+                                                       auto& u3 = std::get<Plant::Intermediate>(dat3.data).unit_vec;
+                                                       auto& u4 = std::get<Plant::Positive>(dat4.data).unit_vec;
+
+                                                       //distance from positive node to line segment
+                                                       auto d = DGGML::distanceToLineSegment(pos3[0], pos3[1], pos4[0], pos4[1], pos2[0], pos2[1]);
+                                                       if(d <= 0.025)
+                                                           return 1000.0;
+                                                       else return 0.0;
+                                                   },
+                                                   [](auto& lhs, auto& rhs, auto& m1, auto& m2)
+                                                   {
+                                                       std::get<Plant::Negative>(rhs[m2[2]].data).unit_vec[0] = -std::get<Plant::Positive>(lhs[m1[2]].data).unit_vec[0];
+                                                       std::get<Plant::Negative>(rhs[m2[2]].data).unit_vec[1] = -std::get<Plant::Positive>(lhs[m1[2]].data).unit_vec[1];
+                                                       std::get<Plant::Negative>(rhs[m2[2]].data).unit_vec[2] = -std::get<Plant::Positive>(lhs[m1[2]].data).unit_vec[2];
+                                                   });
+
+            //gamma.addRule(catastrophe2_case2);
+
+            GT catastrophe2_lhs_graph3;
+            catastrophe2_lhs_graph3.addNode({1, {Plant::Intermediate{}}});
+            catastrophe2_lhs_graph3.addNode({2, {Plant::Positive{}}});
+            catastrophe2_lhs_graph3.addNode({3, {Plant::Intermediate{}}});
+            catastrophe2_lhs_graph3.addNode({4, {Plant::Negative{}}});
+            catastrophe2_lhs_graph3.addEdge(1, 2);
+            catastrophe2_lhs_graph3.addEdge(3, 4);
+
+            GT catastrophe2_rhs_graph3;
+            catastrophe2_rhs_graph3.addNode({1, {Plant::Intermediate{}}});
+            catastrophe2_rhs_graph3.addNode({2, {Plant::Negative{}}});
+            catastrophe2_rhs_graph3.addNode({3, {Plant::Intermediate{}}});
+            catastrophe2_rhs_graph3.addNode({4, {Plant::Negative{}}});
+            catastrophe2_rhs_graph3.addEdge(1, 2);
+            catastrophe2_rhs_graph3.addEdge(3, 4);
+
+            DGGML::WithRule<GT> catastrophe2_case3("catastrophe2_case3", catastrophe2_lhs_graph3, catastrophe2_rhs_graph3,
+                                                   [&](auto& lhs, auto& m) {
+                                                       //find all the node data
+                                                       auto& dat1 = lhs.findNode(m[1])->second.getData();
+                                                       auto& dat2 = lhs.findNode(m[2])->second.getData();
+                                                       auto& dat3 = lhs.findNode(m[3])->second.getData();
+                                                       auto& dat4 = lhs.findNode(m[4])->second.getData();
+
+                                                       //get references to position vector
+                                                       auto& pos1 = dat1.position;
+                                                       auto& pos2 = dat2.position;
+                                                       auto& pos3 = dat3.position;
+                                                       auto& pos4 = dat4.position;
+
+                                                       //get references to unit vectors
+                                                       auto& u1 = std::get<Plant::Intermediate>(dat1.data).unit_vec;
+                                                       auto& u2 = std::get<Plant::Positive>(dat2.data).unit_vec;
+                                                       auto& u3 = std::get<Plant::Intermediate>(dat3.data).unit_vec;
+                                                       auto& u4 = std::get<Plant::Negative>(dat4.data).unit_vec;
+
+                                                       //distance from positive node to line segment
+                                                       auto d = DGGML::distanceToLineSegment(pos3[0], pos3[1], pos4[0], pos4[1], pos2[0], pos2[1]);
+                                                       if(d <= 0.025)
+                                                           return 1000.0;
+                                                       else return 0.0;
+                                                   },
+                                                   [](auto& lhs, auto& rhs, auto& m1, auto& m2)
+                                                   {
+                                                       std::get<Plant::Negative>(rhs[m2[2]].data).unit_vec[0] = -std::get<Plant::Positive>(lhs[m1[2]].data).unit_vec[0];
+                                                       std::get<Plant::Negative>(rhs[m2[2]].data).unit_vec[1] = -std::get<Plant::Positive>(lhs[m1[2]].data).unit_vec[1];
+                                                       std::get<Plant::Negative>(rhs[m2[2]].data).unit_vec[2] = -std::get<Plant::Positive>(lhs[m1[2]].data).unit_vec[2];
+                                                   });
+
+            //gamma.addRule(catastrophe2_case3);
             //TODO: reduce the copy paste coding
             //collision catastrophe rule case 1
             GT catastrophe_lhs_graph1;
@@ -180,7 +619,7 @@ namespace CMA {
                         std::get<Plant::Negative>(rhs[m2[2]].data).unit_vec[2] = -std::get<Plant::Positive>(lhs[m1[2]].data).unit_vec[2];
                     });
 
-            gamma.addRule(catastrophe_case1);
+            //gamma.addRule(catastrophe_case1);
 
             //collision catastrophe rule case 2
             GT catastrophe_lhs_graph2;
@@ -242,7 +681,7 @@ namespace CMA {
                                                       std::get<Plant::Negative>(rhs[m2[2]].data).unit_vec[2] = -std::get<Plant::Positive>(lhs[m1[2]].data).unit_vec[2];
                                                   });
 
-            gamma.addRule(catastrophe_case2);
+            //gamma.addRule(catastrophe_case2);
 
             //collision catastrophe rule case 3
             GT catastrophe_lhs_graph3;
@@ -309,7 +748,7 @@ namespace CMA {
 
                                                   });
 
-            gamma.addRule(catastrophe_case3);
+            //gamma.addRule(catastrophe_case3);
 
             //destruction rule case 1: depolymerization on both ends
             GT destruction_lhs_graph1;
@@ -390,7 +829,7 @@ namespace CMA {
                         auto x_plus_dx = NV_Ith_S(y, varmap[&lhs[m1[2]].position[0]]) + NV_Ith_S(ydot, varmap[&lhs[m1[2]].position[0]]);
                         auto y_plus_dy = NV_Ith_S(y, varmap[&lhs[m1[2]].position[1]]) + NV_Ith_S(ydot, varmap[&lhs[m1[2]].position[1]]);
                         bool out_of_bounds = boundary_check_2D(settings, x_plus_dx, y_plus_dy);
-                        if(out_of_bounds) {
+                        if(false){//out_of_bounds) {
                             for (auto i = 0; i < 3; i++) {
                                 NV_Ith_S(ydot, varmap[&lhs[m1[2]].position[i]]) = 0.0;
                             }
@@ -567,34 +1006,36 @@ namespace CMA {
             //1x1 micrometer domain
             settings.CELL_NX = 1;//1;
             settings.CELL_NY = 1;//1;
-            settings.CELL_DX = 0.5;//1.0;
-            settings.CELL_DY = 0.5;//1.0;
+            settings.CELL_DX = 1.5;//;0.5;//1.0;
+            settings.CELL_DY = 1.5;//0.5;//1.0;
 
             //non ghosted complex
             settings.GHOSTED = false;
 
             //number of microtubules in the simulation
-            settings.NUM_MT = 20;
+            settings.NUM_MT = 25;
 
             //starting size of the MTs
             settings.MT_MIN_SEGMENT_INIT = 0.005;
             settings.MT_MAX_SEGMENT_INIT = 0.01;
 
             settings.LENGTH_DIV_FACTOR = 1.2;
-            settings.DIV_LENGTH = 0.026;
-            settings.DIV_LENGTH_RETRACT = 0.0026;
+
+            //actual MTs are 23 to 27 nm in diameter and up to 50 micrometers (um) long
+            settings.DIV_LENGTH = 3*0.025; //MT segments are approximated as 25 nm long
+            settings.DIV_LENGTH_RETRACT = 0.0025;
 
             //growing and shrinking velocities in micrometers per second
-            settings.V_PLUS = 0.0583;
-            settings.V_MINUS = 0.00883;
+            settings.V_PLUS = 0.0615; // 3.69um/min to um/s, shaw et al. (2003)
+            settings.V_MINUS = 0.00883; // 0.53um/min to um/s, shaw et al. (2003)
 
             settings.SIGMOID_K = 10.0;
 
             //0.05 micrometers = 50 nanometers
-            settings.MAXIMAL_REACTION_RADIUS = 0.05;
+            settings.MAXIMAL_REACTION_RADIUS = 2*0.05;
 
             //simulation time in seconds
-            settings.TOTAL_TIME = 20.0;
+            settings.TOTAL_TIME = 5.0;//20.0;
             settings.DELTA = 0.5/8.0; //unit of seconds
 
             //The internal step of the solver should be at least smaller than delta
