@@ -257,7 +257,7 @@ namespace CMA {
 
             GT zippering_lhs_graph1;
             zippering_lhs_graph1.addNode({1, {Plant::Intermediate{}}});
-            zippering_lhs_graph1.addNode({2, {Plant::Holding{}}});
+            zippering_lhs_graph1.addNode({2, {Plant::Positive{}}});
             zippering_lhs_graph1.addNode({3, {Plant::Intermediate{}}});
             zippering_lhs_graph1.addNode({4, {Plant::Intermediate{}}});
             zippering_lhs_graph1.addEdge(1, 2);
@@ -289,7 +289,7 @@ namespace CMA {
 
                                                       //get references to unit vectors
                                                       auto& u1 = std::get<Plant::Intermediate>(dat1.data).unit_vec;
-                                                      auto& u2 = std::get<Plant::Holding>(dat2.data).unit_vec;
+                                                      auto& u2 = std::get<Plant::Positive>(dat2.data).unit_vec;
                                                       auto& u3 = std::get<Plant::Intermediate>(dat3.data).unit_vec;
                                                       auto& u4 = std::get<Plant::Intermediate>(dat4.data).unit_vec;
 
@@ -301,7 +301,12 @@ namespace CMA {
                                                           theta = std::min(180.0 - theta, theta);
                                                           if(theta > 2.0 && theta < 80.0)
                                                           {
-                                                              return 1000.0;
+                                                              double sol[2];
+                                                              DGGML::paramaterized_intersection(pos2, pos4, pos3, u2, sol);
+
+                                                              if(sol[0] > 0.0 && sol[1] >= 0.0 && sol[1] <= 1.0) {
+                                                                  return 1000.0;
+                                                              }
                                                           }
                                                       }
                                                       return 0.0;
@@ -324,28 +329,34 @@ namespace CMA {
                                                   },
                                                   [](auto& lhs, auto& rhs, auto& m1, auto& m2)
                                                   {
-                                                        //TODO: we acutally need a better way of picking the unit vec
+                                                      auto& dat2 = lhs.findNode(m1[2])->second.getData();
+                                                      auto& dat3 = lhs.findNode(m1[3])->second.getData();
+                                                      auto& u2 = std::get<Plant::Positive>(dat2.data).unit_vec;
+                                                      auto& u3 = std::get<Plant::Intermediate>(dat3.data).unit_vec;
+                                                      double par_u[3];
+                                                      //DGGML::perfect_deflection(u2, dat2.position, u3, par_u);
+                                                      DGGML::parallel_deflection(u2, dat2.position, u3, par_u);
                                                       std::get<Plant::Intermediate>(rhs[m2[2]].data).unit_vec[0] = std::get<Plant::Intermediate>(lhs[m1[3]].data).unit_vec[0];
                                                       std::get<Plant::Intermediate>(rhs[m2[2]].data).unit_vec[1] = std::get<Plant::Intermediate>(lhs[m1[3]].data).unit_vec[1];
                                                       std::get<Plant::Intermediate>(rhs[m2[2]].data).unit_vec[2] = std::get<Plant::Intermediate>(lhs[m1[3]].data).unit_vec[2];
 
-                                                      std::get<Plant::Positive>(rhs[m2[5]].data).unit_vec[0] = std::get<Plant::Intermediate>(lhs[m1[3]].data).unit_vec[0];
-                                                      std::get<Plant::Positive>(rhs[m2[5]].data).unit_vec[1] = std::get<Plant::Intermediate>(lhs[m1[3]].data).unit_vec[1];
-                                                      std::get<Plant::Positive>(rhs[m2[5]].data).unit_vec[2] = std::get<Plant::Intermediate>(lhs[m1[3]].data).unit_vec[2];
+                                                      std::get<Plant::Positive>(rhs[m2[5]].data).unit_vec[0] = par_u[0];
+                                                      std::get<Plant::Positive>(rhs[m2[5]].data).unit_vec[1] = par_u[1];
+                                                      std::get<Plant::Positive>(rhs[m2[5]].data).unit_vec[2] = par_u[2];
 
-                                                      rhs[m2[5]].position[0] = lhs[m1[2]].position[0]+0.01*std::get<Plant::Intermediate>(lhs[m1[3]].data).unit_vec[0];
-                                                      rhs[m2[5]].position[1] = lhs[m1[2]].position[1]+0.01*std::get<Plant::Intermediate>(lhs[m1[3]].data).unit_vec[1];
-                                                      rhs[m2[5]].position[2] = lhs[m1[2]].position[2]+0.01*std::get<Plant::Intermediate>(lhs[m1[3]].data).unit_vec[2];
+                                                      rhs[m2[5]].position[0] = lhs[m1[2]].position[0]+0.01*std::get<Plant::Positive>(rhs[m2[5]].data).unit_vec[0];
+                                                      rhs[m2[5]].position[1] = lhs[m1[2]].position[1]+0.01*std::get<Plant::Positive>(rhs[m2[5]].data).unit_vec[1];
+                                                      rhs[m2[5]].position[2] = lhs[m1[2]].position[2]+0.01*std::get<Plant::Positive>(rhs[m2[5]].data).unit_vec[2];
 
                                                       //DGGML::set_unit_vector(rhs[m2[5]].position, rhs[m2[2]].position, std::get<Plant::Positive>(rhs[m2[5]].data).unit_vec);
 
                                                   });
 
-            //gamma.addRule(zippering_case1);
+            gamma.addRule(zippering_case1);
 
             GT crossover_lhs_graph;
             crossover_lhs_graph.addNode({1, {Plant::Intermediate{}}});
-            crossover_lhs_graph.addNode({2, {Plant::Holding{}}});
+            crossover_lhs_graph.addNode({2, {Plant::Positive{}}});
             crossover_lhs_graph.addNode({3, {Plant::Intermediate{}}});
             crossover_lhs_graph.addNode({4, {Plant::Intermediate{}}});
             crossover_lhs_graph.addEdge(1, 2);
@@ -378,7 +389,7 @@ namespace CMA {
 
                                                        //get references to unit vectors
                                                        auto& u1 = std::get<Plant::Intermediate>(dat1.data).unit_vec;
-                                                       auto& u2 = std::get<Plant::Holding>(dat2.data).unit_vec;
+                                                       auto& u2 = std::get<Plant::Positive>(dat2.data).unit_vec;
                                                        auto& u3 = std::get<Plant::Intermediate>(dat3.data).unit_vec;
                                                        auto& u4 = std::get<Plant::Intermediate>(dat4.data).unit_vec;
 
@@ -506,7 +517,7 @@ namespace CMA {
                                                        std::get<Plant::Negative>(rhs[m2[2]].data).unit_vec[2] = -std::get<Plant::Positive>(lhs[m1[2]].data).unit_vec[2];
                                                    });
 
-            //gamma.addRule(catastrophe2_case2);
+            gamma.addRule(catastrophe2_case2);
 
             GT catastrophe2_lhs_graph3;
             catastrophe2_lhs_graph3.addNode({1, {Plant::Intermediate{}}});
@@ -557,7 +568,7 @@ namespace CMA {
                                                        std::get<Plant::Negative>(rhs[m2[2]].data).unit_vec[2] = -std::get<Plant::Positive>(lhs[m1[2]].data).unit_vec[2];
                                                    });
 
-            //gamma.addRule(catastrophe2_case3);
+            gamma.addRule(catastrophe2_case3);
             //TODO: reduce the copy paste coding
             //collision catastrophe rule case 1
             GT catastrophe_lhs_graph1;
@@ -814,7 +825,8 @@ namespace CMA {
                         }
                         l = sqrt(l);
                         double length_limiter = 1.0;//(1.0 - (l/d_l));
-                        auto& data1 = std::get<Plant::Intermediate>(lhs[m1[1]].data);
+                        auto& data2 = std::get<Plant::Intermediate>(lhs[m1[1]].data);
+                        auto& data1 = std::get<Plant::Positive>(lhs[m1[2]].data);
                         for(auto i = 0; i < 3; i++) {
                             if (auto search = varmap.find(&data1.unit_vec[i]); search != varmap.end())
                                 NV_Ith_S(ydot, varmap[&lhs[m1[2]].position[i]]) += v_plus * data1.unit_vec[i]*NV_Ith_S(y, search->second) * length_limiter;
@@ -906,7 +918,8 @@ namespace CMA {
                                        double propensity = 10.0*DGGML::heaviside(settings.DIV_LENGTH_RETRACT, len);
                                        return propensity;
                                    }, [](auto& lhs, auto& rhs, auto& m1, auto& m2) {
-                                        //TODO: reset the unit vector if we have wobble rules
+                                        //reset the unit vector
+                                        DGGML::set_unit_vector(rhs[m2[3]].position, rhs[m2[1]].position, std::get<Plant::Negative>(rhs[m2[1]].data).unit_vec);
                     });
 
             gamma.addRule(r7);

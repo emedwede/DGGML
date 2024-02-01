@@ -3,6 +3,7 @@
 
 #include <iostream>
 #include <math.h>
+#include <array>
 
 namespace DGGML
 {
@@ -19,6 +20,79 @@ double calculate_distance(PositionType (&p1)[N], PositionType (&p2)[N])
     return sqrt(l);
 }
 
+void calculateNormalVector(const double (&u)[3], double (&N)[3]) {
+    N[0] = -u[1];
+    N[1] = u[0];
+    N[2] = u[2];
+}
+
+double signedDistance(const double (&N)[3], const double (&P)[3])
+{
+    return (N[0]*P[0]+N[1]*P[1])/sqrt(N[0]*N[0]+N[1]*N[1]);;
+}
+
+double invertVector(double (&v)[3])
+{
+    v[0] = -v[0];
+    v[1] = -v[1];
+    v[2] = -v[2];
+}
+
+double calculateMagnitute(const double (&N)[3])
+{
+    return std::sqrt(N[0]*N[0] + N[1]*N[1] + N[2]*N[2]);
+}
+
+void normalize(double (&v)[3])
+{
+    double mag = calculateMagnitute(v);
+    v[0] /= mag;
+    v[1] /= mag;
+    v[2] /= mag;
+}
+
+template <typename UnitVecType, std::size_t N>
+double unit_dot_product(UnitVecType (&u1)[N], UnitVecType (&u2)[N])
+{
+    double result = 0.0;
+
+    for(auto i = 0; i < N; i++) {
+        result += u1[i]*u2[i];
+    }
+
+    return result;
+}
+
+void perfect_deflection(double (&u2)[3], double (&p2)[3], double (&u3)[3], double (&res)[3])
+{
+    double N[3]; //normal vector
+    DGGML::calculateNormalVector(u3, N);
+    double signed_distance = DGGML::signedDistance(N, p2);
+    //we're on the wrong side, if it was zero, we're on the line
+    if(signed_distance < 0) DGGML::invertVector(N); //switch the Normal
+
+    double coeff = 2.0*DGGML::unit_dot_product(u2, N);
+
+    res[0] = u2[0]-coeff*N[0];
+    res[1] = u2[1]-coeff*N[1];
+    res[2] = u2[2]-coeff*N[2];
+    DGGML::normalize(res);
+}
+
+void parallel_deflection(double (&u2)[3], double (&p2)[3], double (&u3)[3], double (&res)[3])
+{
+    double N[3]; //normal vector
+    DGGML::calculateNormalVector(u3, N);
+    double signed_distance = DGGML::signedDistance(N, p2);
+    //we're on the wrong side, if it was zero, we're on the line
+    if(signed_distance < 0) DGGML::invertVector(N); //switch the Normal
+
+    double coeff = DGGML::unit_dot_product(u2, N);
+    res[0] = u2[0]-coeff*N[0];
+    res[1] = u2[1]-coeff*N[1];
+    res[2] = u2[2]-coeff*N[2];
+    DGGML::normalize(res);
+}
 //Order matters here
 template <typename PositionType, std::size_t N>
 void calculate_difference(PositionType (&p1)[N], PositionType (&p2)[N], PositionType (&p3)[N])
@@ -108,19 +182,6 @@ double cross_product(double a1, double a2, double b1, double b2)
 {
     return ( ( a1 * b2 ) - ( a2 * b1 ) );
 }
-
-template <typename UnitVecType, std::size_t N>
-double unit_dot_product(UnitVecType (&u1)[N], UnitVecType (&u2)[N])
-{
-    double result = 0.0;
-
-    for(auto i = 0; i < N; i++) {
-        result += u1[i]*u2[i];
-    }
-
-    return result;
-}
-
 
 double sigmoid(double input, double coeffcient)
 {
