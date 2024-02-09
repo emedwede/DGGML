@@ -75,6 +75,14 @@ class VtkFileWriter : public FileWriter<DataType> {
                     //auto size = data.out_neighbors(i->second).size();
                     //offsets.push_back(last+size);
                 //}
+
+                //TODO: fix self connection hack. Basically to make the objects render easily without a format change
+                // we add a self connection from the node back to itself
+                types.push_back(4);
+                offsets.push_back(offsets.empty() ? 2 : offsets.back()+2);
+                connectivity.push_back(rekey[i->first]);
+                connectivity.push_back(rekey[i->first]);
+
                 for(auto j = data.out_neighbors_begin(i->second); j != data.out_neighbors_end(i->second); j++) 
                 {
                     std::size_t last;
