@@ -1,8 +1,8 @@
 #ifndef DGGML_APPROXIMATESSA_HPP
 #define DGGML_APPROXIMATESSA_HPP
 
-#include "PlantTypes.hpp"
-#include "PlantGrammar.hpp"
+//#include "PlantTypes.hpp"
+//#include "PlantGrammar.hpp"
 
 #include "ExpandedComplex2D.hpp"
 #include "YAGL_Graph.hpp"

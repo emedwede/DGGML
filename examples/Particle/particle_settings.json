@@ -1,0 +1,16 @@
+{
+  "META": {
+    "EXPERIMENT": "box"
+  },
+  "SETTINGS": {
+    "TOTAL_TIME": 5.0,
+    "CELL_NX": 2,
+    "CELL_NY": 2,
+    "CELL_DX": 15.0,
+    "CELL_DY": 15.0,
+    "GHOSTED": true,
+    "NUM_PARTICLES": 64,
+    "V_PLUS": 1.0,
+    "REACTION_RADIUS": 0.05
+  }
+}
