@@ -31,7 +31,7 @@ double signedDistance(const double (&N)[3], const double (&P)[3])
     return (N[0]*P[0]+N[1]*P[1])/sqrt(N[0]*N[0]+N[1]*N[1]);;
 }
 
-double invertVector(double (&v)[3])
+void invertVector(double (&v)[3])
 {
     v[0] = -v[0];
     v[1] = -v[1];
@@ -61,6 +61,17 @@ double unit_dot_product(UnitVecType (&u1)[N], UnitVecType (&u2)[N])
     }
 
     return result;
+}
+
+//TODO: should actually be part of the grammar, not part of library ... technicallyish
+double compute_theta(double (&u2)[3], double (&p2)[3], double (&u3)[3]) {
+    double N[3]; //normal vector
+    DGGML::calculateNormalVector(u3, N);
+    double signed_distance = DGGML::signedDistance(N, p2);
+    //we're on the wrong side, if it was zero, we're on the line
+    if (signed_distance < 0) DGGML::invertVector(N); //switch the Normal
+    auto angle = acos(DGGML::unit_dot_product(u2, N))*(180.0/3.14159265);
+    return (angle <= 90.0) ? angle : 180.0 - angle;
 }
 
 void perfect_deflection(double (&u2)[3], double (&p2)[3], double (&u3)[3], double (&res)[3])

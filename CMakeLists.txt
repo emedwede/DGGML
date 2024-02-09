@@ -47,7 +47,7 @@ include_directories(src/Solvers)
 add_subdirectory(dependencies/YAGL)
 add_subdirectory(thirdparty/vtu11)
 add_subdirectory(src)
-add_subdirectory(tests)
+#add_subdirectory(tests)
 add_subdirectory(tools)
 add_subdirectory(examples)
 

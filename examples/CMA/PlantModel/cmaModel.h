@@ -155,7 +155,7 @@ namespace CMA {
                 std::get<Plant::Negative>(rhs[m2[2]].data).unit_vec[1] = -std::get<Plant::Positive>(lhs[m1[2]].data).unit_vec[1];
                 std::get<Plant::Negative>(rhs[m2[2]].data).unit_vec[2] = -std::get<Plant::Positive>(lhs[m1[2]].data).unit_vec[2];
             });
-            gamma.addRule(boundary_catastrophe);
+            //gamma.addRule(boundary_catastrophe);
 
             GT boundary_capture_lhs;
             boundary_capture_lhs.addNode({1, {Plant::Intermediate{}}});
@@ -184,7 +184,7 @@ namespace CMA {
                  //std::get<Plant::Negative>(rhs[m2[2]].data).unit_vec[1] = -std::get<Plant::Positive>(lhs[m1[2]].data).unit_vec[1];
                  //std::get<Plant::Negative>(rhs[m2[2]].data).unit_vec[2] = -std::get<Plant::Positive>(lhs[m1[2]].data).unit_vec[2];
              });
-            //gamma.addRule(boundary_capture);
+            gamma.addRule(boundary_capture);
 
             GT periodic_replicate_lhs;
             periodic_replicate_lhs.addNode({1, {Plant::Intermediate{}}});
@@ -297,35 +297,22 @@ namespace CMA {
                                                       auto d = DGGML::distanceToLineSegment(pos3[0], pos3[1], pos4[0], pos4[1], pos2[0], pos2[1]);
                                                       if(d <= 0.025)
                                                       {
-                                                          double theta = std::acos(DGGML::unit_dot_product(u2, u3))*(180.0/3.14159265);
-                                                          theta = std::min(180.0 - theta, theta);
-                                                          if(theta > 2.0 && theta < 80.0)
+                                                          //double theta = std::acos(DGGML::unit_dot_product(u2, u3))*(180.0/3.14159265);
+                                                          //theta = std::min(180.0 - theta, theta);
+                                                          //if(theta > 2.0 && theta < 80.0)
+                                                          auto theta = DGGML::compute_theta(u2, dat2.position, u3);
+                                                          if(theta >= 45.0 && theta < 88.0)
                                                           {
                                                               double sol[2];
                                                               DGGML::paramaterized_intersection(pos2, pos4, pos3, u2, sol);
 
-                                                              if(sol[0] > 0.0 && sol[1] >= 0.0 && sol[1] <= 1.0) {
+                                                              //TODO: determine how strict we need to be with the collision point
+                                                              if(sol[0] > 0.0){// && sol[1] >= 0.0 && sol[1] <= 1.0) {
                                                                   return 1000.0;
                                                               }
                                                           }
                                                       }
                                                       return 0.0;
-                                                      double theta = std::acos(DGGML::unit_dot_product(u2, u3))*(180.0/3.14159265);
-                                                      theta = std::max(180.0 - theta, theta);
-                                                      double propensity = 0.0;
-                                                      double sol[2];
-                                                      if(theta != 1.0 && theta != -1.0)
-                                                      {
-                                                          DGGML::paramaterized_intersection(pos2, pos4, pos3, u2, sol);
-
-                                                          if(sol[0] > 0.0 && sol[1] >= 0.0 && sol[1] <= 1.0)
-                                                          {
-                                                              //TODO: distance should be closest point to the growing end not pos3
-                                                              propensity = 1000.0*exp(-pow(DGGML::calculate_distance(pos2, pos3), 2.0) / pow(0.5*settings.DIV_LENGTH, 2.0));
-                                                          }
-                                                      }
-                                                      //if(propensity != 0) {std::cout << "cat prop: " << propensity << "\n"; std::cin.get();}
-                                                      return propensity;
                                                   },
                                                   [](auto& lhs, auto& rhs, auto& m1, auto& m2)
                                                   {
@@ -335,6 +322,9 @@ namespace CMA {
                                                       auto& u3 = std::get<Plant::Intermediate>(dat3.data).unit_vec;
                                                       double par_u[3];
                                                       //DGGML::perfect_deflection(u2, dat2.position, u3, par_u);
+                                                      auto theta = DGGML::compute_theta(u2, dat2.position, u3);
+                                                      std::cout << theta << "\n";
+                                                      //std::cin.get();
                                                       DGGML::parallel_deflection(u2, dat2.position, u3, par_u);
                                                       std::get<Plant::Intermediate>(rhs[m2[2]].data).unit_vec[0] = std::get<Plant::Intermediate>(lhs[m1[3]].data).unit_vec[0];
                                                       std::get<Plant::Intermediate>(rhs[m2[2]].data).unit_vec[1] = std::get<Plant::Intermediate>(lhs[m1[3]].data).unit_vec[1];
@@ -395,9 +385,20 @@ namespace CMA {
 
                                                        //distance from positive node to line segment
                                                        auto d = DGGML::distanceToLineSegment(pos3[0], pos3[1], pos4[0], pos4[1], pos2[0], pos2[1]);
-                                                       if(d <= 0.025)
-                                                           return 1000.0;
-                                                       else return 0.0;
+                                                       if(d <= 0.025) {
+                                                           auto theta = DGGML::compute_theta(u2, dat2.position, u3);
+                                                           if(theta < 45.0)
+                                                           {
+                                                               double sol[2];
+                                                               DGGML::paramaterized_intersection(pos2, pos4, pos3, u2, sol);
+
+                                                               //TODO: determine how strict we need to be with the collision point
+                                                               if(sol[0] > 0.0){// && sol[1] >= 0.0 && sol[1] <= 1.0) {
+                                                                   return 1000.0;
+                                                               }
+                                                           }
+                                                       }
+                                                       return 0.0;
                                                    },
                                                    [](auto& lhs, auto& rhs, auto& m1, auto& m2)
                                                    {
@@ -411,7 +412,7 @@ namespace CMA {
 
                                                    });
 
-            //gamma.addRule(crossover);
+            gamma.addRule(crossover);
 
             GT catastrophe2_lhs_graph1;
             catastrophe2_lhs_graph1.addNode({1, {Plant::Intermediate{}}});
@@ -423,7 +424,7 @@ namespace CMA {
 
             GT catastrophe2_rhs_graph1;
             catastrophe2_rhs_graph1.addNode({1, {Plant::Intermediate{}}});
-            catastrophe2_rhs_graph1.addNode({2, {Plant::Holding{}}});
+            catastrophe2_rhs_graph1.addNode({2, {Plant::Negative{}}});
             catastrophe2_rhs_graph1.addNode({3, {Plant::Intermediate{}}});
             catastrophe2_rhs_graph1.addNode({4, {Plant::Intermediate{}}});
             catastrophe2_rhs_graph1.addEdge(1, 2);
@@ -452,21 +453,28 @@ namespace CMA {
                                                       //distance from positive node to line segment
                                                       auto d = DGGML::distanceToLineSegment(pos3[0], pos3[1], pos4[0], pos4[1], pos2[0], pos2[1]);
                                                       if(d <= 0.025) {
-                                                          double theta = std::acos(DGGML::unit_dot_product(u2, u3)) * (180.0 / 3.14159265);
-                                                          theta = std::min(180.0 - theta, theta);
-                                                          if(theta > 2.0)
-                                                            return 1000.0;
+                                                          auto theta = DGGML::compute_theta(u2, dat2.position, u3);
+                                                          if(theta < 45.0)
+                                                          {
+                                                              double sol[2];
+                                                              DGGML::paramaterized_intersection(pos2, pos4, pos3, u2, sol);
+
+                                                              //TODO: determine how strict we need to be with the collision point
+                                                              if(sol[0] > 0.0){// && sol[1] >= 0.0 && sol[1] <= 1.0) {
+                                                                  return 4000.0;
+                                                              }
+                                                          }
                                                       }
                                                       return 0.0;
                                                   },
                                                   [](auto& lhs, auto& rhs, auto& m1, auto& m2)
                                                   {
-                                                      std::get<Plant::Holding>(rhs[m2[2]].data).unit_vec[0] = -std::get<Plant::Positive>(lhs[m1[2]].data).unit_vec[0];
-                                                      std::get<Plant::Holding>(rhs[m2[2]].data).unit_vec[1] = -std::get<Plant::Positive>(lhs[m1[2]].data).unit_vec[1];
-                                                      std::get<Plant::Holding>(rhs[m2[2]].data).unit_vec[2] = -std::get<Plant::Positive>(lhs[m1[2]].data).unit_vec[2];
+                                                      std::get<Plant::Negative>(rhs[m2[2]].data).unit_vec[0] = -std::get<Plant::Positive>(lhs[m1[2]].data).unit_vec[0];
+                                                      std::get<Plant::Negative>(rhs[m2[2]].data).unit_vec[1] = -std::get<Plant::Positive>(lhs[m1[2]].data).unit_vec[1];
+                                                      std::get<Plant::Negative>(rhs[m2[2]].data).unit_vec[2] = -std::get<Plant::Positive>(lhs[m1[2]].data).unit_vec[2];
                                                   });
 
-            //gamma.addRule(catastrophe2_case1);
+            gamma.addRule(catastrophe2_case1);
 
             GT catastrophe2_lhs_graph2;
             catastrophe2_lhs_graph2.addNode({1, {Plant::Intermediate{}}});
@@ -772,7 +780,7 @@ namespace CMA {
             GT destruction_rhs_graph1;
 
             DGGML::WithRule<GT> destruction_case1("destruction_case1", destruction_lhs_graph1, destruction_rhs_graph1,
-                    [](auto& lhs, auto& m) { return 1; },
+                    [](auto& lhs, auto& m) { return 0.001; },
                     [](auto& lhs, auto& rhs, auto& m1, auto& m2) {});
 
             gamma.addRule(destruction_case1);
@@ -924,6 +932,30 @@ namespace CMA {
 
             gamma.addRule(r7);
 
+            //TODO: bug, flipping the ordering of the lhs to {1: negative, 2: intermediate}
+            // and rhs to {1: positive, 2: intermediate} causes a bad variant access
+            GT rescue_lhs;
+            rescue_lhs.addNode({1, {Plant::Intermediate{}}});
+            rescue_lhs.addNode({2, {Plant::Negative{}}});
+            rescue_lhs.addEdge(1, 2);
+
+            GT rescue_rhs;
+            rescue_rhs.addNode({1, {Plant::Intermediate{}}});
+            rescue_rhs.addNode({2, {Plant::Positive{}}});
+            rescue_rhs.addEdge(1, 2);
+
+            DGGML::WithRule<GT> rescue("rescue", rescue_lhs, rescue_rhs,
+                                   [&](auto& lhs, auto& m)
+                                   {
+                                       return 0.0016;
+                                   }, [](auto& lhs, auto& rhs, auto& m1, auto& m2) {
+                        std::get<Plant::Positive>(rhs[m2[2]].data).unit_vec[0] = -std::get<Plant::Negative>(lhs[m1[2]].data).unit_vec[0];
+                        std::get<Plant::Positive>(rhs[m2[2]].data).unit_vec[1] = -std::get<Plant::Negative>(lhs[m1[2]].data).unit_vec[1];
+                        std::get<Plant::Positive>(rhs[m2[2]].data).unit_vec[2] = -std::get<Plant::Negative>(lhs[m1[2]].data).unit_vec[2];
+
+                    });
+
+            gamma.addRule(rescue);
 //            DGGML::WithRule<GT> r7alt("retraction_alt", r7g1, r7g2,
 //                                   [&](auto& lhs, auto& m)
 //                                   {
@@ -1017,8 +1049,8 @@ namespace CMA {
             settings.EXPERIMENT_NAME = "treadmilling";
 
             //1x1 micrometer domain
-            settings.CELL_NX = 1;//1;
-            settings.CELL_NY = 1;//1;
+            settings.CELL_NX = 2;//1;
+            settings.CELL_NY = 2;//1;
             settings.CELL_DX = 1.5;//;0.5;//1.0;
             settings.CELL_DY = 1.5;//0.5;//1.0;
 
@@ -1026,7 +1058,7 @@ namespace CMA {
             settings.GHOSTED = false;
 
             //number of microtubules in the simulation
-            settings.NUM_MT = 25;
+            settings.NUM_MT = 250;
 
             //starting size of the MTs
             settings.MT_MIN_SEGMENT_INIT = 0.005;
@@ -1048,7 +1080,7 @@ namespace CMA {
             settings.MAXIMAL_REACTION_RADIUS = 2*0.05;
 
             //simulation time in seconds
-            settings.TOTAL_TIME = 5.0;//20.0;
+            settings.TOTAL_TIME = 25.0;//25.0;//20.0;
             settings.DELTA = 0.5/8.0; //unit of seconds
 
             //The internal step of the solver should be at least smaller than delta
