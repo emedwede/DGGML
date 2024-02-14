@@ -237,8 +237,8 @@ namespace DGGML {
 
                 std::cout << "Running the checkpointer\n";
                 write_system_graph(i+1);
-                //model->collect();
-                //model->print_metrics();
+                model->collect();
+                model->print_metrics();
                 std::cout << "Total dimensional time is " << tot_time << " milliseconds\n";
                 //time_count.push_back(tot_time);
                 std::cout << model->system_graph << "\n";

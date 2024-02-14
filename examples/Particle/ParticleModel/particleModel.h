@@ -192,8 +192,8 @@ namespace MD {
             settings.EXPERIMENT_NAME = "box";
 
             //1x1 micrometer domain
-            settings.CELL_NX = 2;//1;
-            settings.CELL_NY = 2;//1;
+            settings.CELL_NX = 1;//1;
+            settings.CELL_NY = 1;//1;
             settings.CELL_DX = 1.5;//;0.5;//1.0;
             settings.CELL_DY = 1.5;//0.5;//1.0;
 
@@ -201,14 +201,14 @@ namespace MD {
             settings.GHOSTED = false;
 
             //number of microtubules in the simulation
-            settings.NUM_PARTICLES = 1000;
+            settings.NUM_PARTICLES = 100;
 
             settings.V_PLUS = 0.0615;
 
             settings.MAXIMAL_REACTION_RADIUS = 2*0.05;
 
             //simulation time in seconds
-            settings.TOTAL_TIME = 25.0;//25.0;//20.0;
+            settings.TOTAL_TIME = 8.0;//25.0;//20.0;
             settings.DELTA = 0.5/8.0; //unit of seconds
 
             //The internal step of the solver should be at least smaller than delta
