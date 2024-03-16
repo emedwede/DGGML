@@ -1133,6 +1133,8 @@ namespace CMA {
 
             settings.RHO_TEST_RATE = double(interface["EXPERIMENTAL"]["RHO_TEST_RATE"]);
         }
+
+        //TODO: separate core settings out into the base class
         Parameters settings;
     };
 }

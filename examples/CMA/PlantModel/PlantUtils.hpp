@@ -246,7 +246,7 @@ namespace Plant
                           cplex.max_x, cplex.max_y,
                           max_nx, max_ny);
         std::size_t max_mts = uniform_grid.totalNumCells();
-
+        //std::cout << "Max mts " << max_mts << "\n"; std::cin.get();
         if (settings.NUM_MT > max_mts) {
             std::cout << "The number of " << settings.NUM_MT
                       << " MTs is not supported for the requested grid size.\n"
