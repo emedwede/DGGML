@@ -344,6 +344,75 @@ namespace CMA {
 
             gamma.addRule(zippering_case1);
 
+//            GT crossover_lhs_graph;
+//            crossover_lhs_graph.addNode({1, {Plant::Intermediate{}}});
+//            crossover_lhs_graph.addNode({2, {Plant::Positive{}}});
+//            crossover_lhs_graph.addNode({3, {Plant::Intermediate{}}});
+//            crossover_lhs_graph.addNode({4, {Plant::Intermediate{}}});
+//            crossover_lhs_graph.addEdge(1, 2);
+//            crossover_lhs_graph.addEdge(3, 4);
+//
+//            GT crossover_rhs_graph;
+//            crossover_rhs_graph.addNode({1, {Plant::Intermediate{}}});
+//            crossover_rhs_graph.addNode({2, {Plant::Junction{}}});
+//            crossover_rhs_graph.addNode({5, {Plant::Positive{}}});
+//            crossover_rhs_graph.addNode({3, {Plant::Intermediate{}}});
+//            crossover_rhs_graph.addNode({4, {Plant::Intermediate{}}});
+//            crossover_rhs_graph.addEdge(1, 2);
+//            crossover_rhs_graph.addEdge(3, 2);
+//            crossover_rhs_graph.addEdge(4, 2);
+//            crossover_rhs_graph.addEdge(5, 2);
+//
+//            DGGML::WithRule<GT> crossover("crossover", crossover_lhs_graph, crossover_rhs_graph,
+//                                                   [&](auto& lhs, auto& m) {
+//                                                       //find all the node data
+//                                                       auto& dat1 = lhs.findNode(m[1])->second.getData();
+//                                                       auto& dat2 = lhs.findNode(m[2])->second.getData();
+//                                                       auto& dat3 = lhs.findNode(m[3])->second.getData();
+//                                                       auto& dat4 = lhs.findNode(m[4])->second.getData();
+//
+//                                                       //get references to position vector
+//                                                       auto& pos1 = dat1.position;
+//                                                       auto& pos2 = dat2.position;
+//                                                       auto& pos3 = dat3.position;
+//                                                       auto& pos4 = dat4.position;
+//
+//                                                       //get references to unit vectors
+//                                                       auto& u1 = std::get<Plant::Intermediate>(dat1.data).unit_vec;
+//                                                       auto& u2 = std::get<Plant::Positive>(dat2.data).unit_vec;
+//                                                       auto& u3 = std::get<Plant::Intermediate>(dat3.data).unit_vec;
+//                                                       auto& u4 = std::get<Plant::Intermediate>(dat4.data).unit_vec;
+//
+//                                                       //distance from positive node to line segment
+//                                                       auto d = DGGML::distanceToLineSegment(pos3[0], pos3[1], pos4[0], pos4[1], pos2[0], pos2[1]);
+//                                                       if(d <= 0.025) {
+//                                                           auto theta = DGGML::compute_theta(u2, dat2.position, u3);
+//                                                           if(theta < 45.0)
+//                                                           {
+//                                                               double sol[2];
+//                                                               DGGML::paramaterized_intersection(pos2, pos4, pos3, u2, sol);
+//
+//                                                               //TODO: determine how strict we need to be with the collision point
+//                                                               if(sol[0] > 0.0){// && sol[1] >= 0.0 && sol[1] <= 1.0) {
+//                                                                   return 1000.0;
+//                                                               }
+//                                                           }
+//                                                       }
+//                                                       return 0.0;
+//                                                   },
+//                                                   [](auto& lhs, auto& rhs, auto& m1, auto& m2)
+//                                                   {
+//                                                       for(int i = 0; i < 3; i++)
+//                                                        rhs[m2[2]].position[i] = (lhs[m2[4]].position[i] + lhs[m2[3]].position[i])/2.0;
+//                                                       DGGML::set_unit_vector(rhs[m2[2]].position, rhs[m2[1]].position, std::get<Plant::Junction>(rhs[m2[2]].data).unit_vec);
+//                                                       DGGML::set_unit_vector(rhs[m2[2]].position, rhs[m2[1]].position, std::get<Plant::Intermediate>(rhs[m2[1]].data).unit_vec);
+//                                                       for(int i = 0; i < 3; i++)
+//                                                        rhs[m2[5]].position[i] = rhs[m1[2]].position[i]+0.01*std::get<Plant::Junction>(rhs[m1[2]].data).unit_vec[i];
+//                                                       DGGML::set_unit_vector(rhs[m2[5]].position, rhs[m2[2]].position, std::get<Plant::Positive>(rhs[m2[5]].data).unit_vec);
+//
+//                                                   });
+//
+//            gamma.addRule(crossover);
             GT crossover_lhs_graph;
             crossover_lhs_graph.addNode({1, {Plant::Intermediate{}}});
             crossover_lhs_graph.addNode({2, {Plant::Positive{}}});
@@ -355,64 +424,79 @@ namespace CMA {
             GT crossover_rhs_graph;
             crossover_rhs_graph.addNode({1, {Plant::Intermediate{}}});
             crossover_rhs_graph.addNode({2, {Plant::Junction{}}});
-            crossover_rhs_graph.addNode({5, {Plant::Positive{}}});
+            crossover_rhs_graph.addNode({5, {Plant::Intermediate{}}});
+            crossover_rhs_graph.addNode({6, {Plant::Positive{}}});
             crossover_rhs_graph.addNode({3, {Plant::Intermediate{}}});
             crossover_rhs_graph.addNode({4, {Plant::Intermediate{}}});
             crossover_rhs_graph.addEdge(1, 2);
             crossover_rhs_graph.addEdge(3, 2);
             crossover_rhs_graph.addEdge(4, 2);
             crossover_rhs_graph.addEdge(5, 2);
+            crossover_rhs_graph.addEdge(5, 6);
 
             DGGML::WithRule<GT> crossover("crossover", crossover_lhs_graph, crossover_rhs_graph,
-                                                   [&](auto& lhs, auto& m) {
-                                                       //find all the node data
-                                                       auto& dat1 = lhs.findNode(m[1])->second.getData();
-                                                       auto& dat2 = lhs.findNode(m[2])->second.getData();
-                                                       auto& dat3 = lhs.findNode(m[3])->second.getData();
-                                                       auto& dat4 = lhs.findNode(m[4])->second.getData();
+                                          [&](auto& lhs, auto& m) {
+                                              //find all the node data
+                                              auto& dat1 = lhs.findNode(m[1])->second.getData();
+                                              auto& dat2 = lhs.findNode(m[2])->second.getData();
+                                              auto& dat3 = lhs.findNode(m[3])->second.getData();
+                                              auto& dat4 = lhs.findNode(m[4])->second.getData();
 
-                                                       //get references to position vector
-                                                       auto& pos1 = dat1.position;
-                                                       auto& pos2 = dat2.position;
-                                                       auto& pos3 = dat3.position;
-                                                       auto& pos4 = dat4.position;
+                                              //get references to position vector
+                                              auto& pos1 = dat1.position;
+                                              auto& pos2 = dat2.position;
+                                              auto& pos3 = dat3.position;
+                                              auto& pos4 = dat4.position;
 
-                                                       //get references to unit vectors
-                                                       auto& u1 = std::get<Plant::Intermediate>(dat1.data).unit_vec;
-                                                       auto& u2 = std::get<Plant::Positive>(dat2.data).unit_vec;
-                                                       auto& u3 = std::get<Plant::Intermediate>(dat3.data).unit_vec;
-                                                       auto& u4 = std::get<Plant::Intermediate>(dat4.data).unit_vec;
+                                              //get references to unit vectors
+                                              auto& u1 = std::get<Plant::Intermediate>(dat1.data).unit_vec;
+                                              auto& u2 = std::get<Plant::Positive>(dat2.data).unit_vec;
+                                              auto& u3 = std::get<Plant::Intermediate>(dat3.data).unit_vec;
+                                              auto& u4 = std::get<Plant::Intermediate>(dat4.data).unit_vec;
 
-                                                       //distance from positive node to line segment
-                                                       auto d = DGGML::distanceToLineSegment(pos3[0], pos3[1], pos4[0], pos4[1], pos2[0], pos2[1]);
-                                                       if(d <= 0.025) {
-                                                           auto theta = DGGML::compute_theta(u2, dat2.position, u3);
-                                                           if(theta < 45.0)
-                                                           {
-                                                               double sol[2];
-                                                               DGGML::paramaterized_intersection(pos2, pos4, pos3, u2, sol);
+                                              //distance from positive node to line segment
+                                              auto d = DGGML::distanceToLineSegment(pos3[0], pos3[1], pos4[0], pos4[1], pos2[0], pos2[1]);
+                                              if(d <= 0.025) {
+                                                  auto theta = DGGML::compute_theta(u2, dat2.position, u3);
+                                                  if(theta < 45.0)
+                                                  {
+                                                      double sol[2];
+                                                      DGGML::paramaterized_intersection(pos2, pos4, pos3, u2, sol);
 
-                                                               //TODO: determine how strict we need to be with the collision point
-                                                               if(sol[0] > 0.0){// && sol[1] >= 0.0 && sol[1] <= 1.0) {
-                                                                   return 1000.0;
-                                                               }
-                                                           }
-                                                       }
-                                                       return 0.0;
-                                                   },
-                                                   [](auto& lhs, auto& rhs, auto& m1, auto& m2)
-                                                   {
-                                                       for(int i = 0; i < 3; i++)
-                                                        rhs[m2[2]].position[i] = (lhs[m2[4]].position[i] + lhs[m2[3]].position[i])/2.0;
-                                                       DGGML::set_unit_vector(rhs[m2[2]].position, rhs[m2[1]].position, std::get<Plant::Junction>(rhs[m2[2]].data).unit_vec);
-                                                       DGGML::set_unit_vector(rhs[m2[2]].position, rhs[m2[1]].position, std::get<Plant::Intermediate>(rhs[m2[1]].data).unit_vec);
-                                                       for(int i = 0; i < 3; i++)
-                                                        rhs[m2[5]].position[i] = rhs[m1[2]].position[i]+0.01*std::get<Plant::Junction>(rhs[m1[2]].data).unit_vec[i];
-                                                       DGGML::set_unit_vector(rhs[m2[5]].position, rhs[m2[2]].position, std::get<Plant::Positive>(rhs[m2[5]].data).unit_vec);
+                                                      //TODO: determine how strict we need to be with the collision point
+                                                      if(sol[0] > 0.0 && sol[1] >= 0.0 && sol[1] <= 1.0) {
+                                                          return 1000.0;
+                                                      }
+                                                  }
+                                              }
+                                              return 0.0;
+                                          },
+                                          [](auto& lhs, auto& rhs, auto& m1, auto& m2)
+                                          {
+                                              auto& dat2 = lhs.findNode(m1[2])->second.getData();
+                                              auto& dat3 = lhs.findNode(m1[3])->second.getData();
+                                              auto& dat4 = lhs.findNode(m1[4])->second.getData();
+                                              auto& pos2 = dat2.position;
+                                              auto& pos3 = dat3.position;
+                                              auto& pos4 = dat4.position;
+                                              auto& u2 = std::get<Plant::Positive>(dat2.data).unit_vec;
+                                              auto& u3 = std::get<Plant::Intermediate>(dat3.data).unit_vec;
+                                              double sol[2];
+                                              DGGML::paramaterized_intersection(pos2, pos4, pos3, u2, sol);
+                                              for(int i = 0; i < 3; i++)
+                                                  rhs[m2[2]].position[i] = lhs[m2[4]].position[i]+(lhs[m2[3]].position[i] - lhs[m2[4]].position[i])*sol[1];
+                                              DGGML::set_unit_vector(rhs[m2[2]].position, rhs[m2[1]].position, std::get<Plant::Junction>(rhs[m2[2]].data).unit_vec);
+                                              DGGML::set_unit_vector(rhs[m2[2]].position, rhs[m2[1]].position, std::get<Plant::Intermediate>(rhs[m2[1]].data).unit_vec);
+                                              for(int i = 0; i < 3; i++)
+                                                  rhs[m2[5]].position[i] = rhs[m1[2]].position[i]+0.01*std::get<Plant::Junction>(rhs[m1[2]].data).unit_vec[i];
+                                              DGGML::set_unit_vector(rhs[m2[5]].position, rhs[m2[2]].position, std::get<Plant::Intermediate>(rhs[m2[5]].data).unit_vec);
+                                              for(int i = 0; i < 3; i++)
+                                                  rhs[m2[6]].position[i] = rhs[m1[2]].position[i]+0.011*std::get<Plant::Junction>(rhs[m1[2]].data).unit_vec[i];
+                                              DGGML::set_unit_vector(rhs[m2[6]].position, rhs[m2[2]].position, std::get<Plant::Positive>(rhs[m2[6]].data).unit_vec);
 
-                                                   });
+                                          });
 
-            gamma.addRule(crossover);
+            //gamma.addRule(crossover);
 
             GT catastrophe2_lhs_graph1;
             catastrophe2_lhs_graph1.addNode({1, {Plant::Intermediate{}}});
@@ -514,7 +598,7 @@ namespace CMA {
 
                                                        //distance from positive node to line segment
                                                        auto d = DGGML::distanceToLineSegment(pos3[0], pos3[1], pos4[0], pos4[1], pos2[0], pos2[1]);
-                                                       if(d <= 0.025)
+                                                       if(d <= 0.025/2.0)
                                                            return 1000.0;
                                                        else return 0.0;
                                                    },
@@ -565,7 +649,7 @@ namespace CMA {
 
                                                        //distance from positive node to line segment
                                                        auto d = DGGML::distanceToLineSegment(pos3[0], pos3[1], pos4[0], pos4[1], pos2[0], pos2[1]);
-                                                       if(d <= 0.025)
+                                                       if(d <= 0.025/2.0)
                                                            return 1000.0;
                                                        else return 0.0;
                                                    },
@@ -780,7 +864,7 @@ namespace CMA {
             GT destruction_rhs_graph1;
 
             DGGML::WithRule<GT> destruction_case1("destruction_case1", destruction_lhs_graph1, destruction_rhs_graph1,
-                    [](auto& lhs, auto& m) { return 0.001; },
+                    [](auto& lhs, auto& m) { return 10.0; },
                     [](auto& lhs, auto& rhs, auto& m1, auto& m2) {});
 
             gamma.addRule(destruction_case1);
@@ -947,7 +1031,7 @@ namespace CMA {
             DGGML::WithRule<GT> rescue("rescue", rescue_lhs, rescue_rhs,
                                    [&](auto& lhs, auto& m)
                                    {
-                                       return 0.0016;
+                                       return 10*0.0016;
                                    }, [](auto& lhs, auto& rhs, auto& m1, auto& m2) {
                         std::get<Plant::Positive>(rhs[m2[2]].data).unit_vec[0] = -std::get<Plant::Negative>(lhs[m1[2]].data).unit_vec[0];
                         std::get<Plant::Positive>(rhs[m2[2]].data).unit_vec[1] = -std::get<Plant::Negative>(lhs[m1[2]].data).unit_vec[1];
@@ -968,6 +1052,7 @@ namespace CMA {
 //                    });
 
             //gamma.addRule(r7alt);
+
 
             std::cout << "Generating the expanded cell complex\n";
             geoplex2D.init(settings.CELL_NX,
@@ -1046,11 +1131,11 @@ namespace CMA {
         }
 
         void set_parameters() {
-            settings.EXPERIMENT_NAME = "treadmilling";
+            settings.EXPERIMENT_NAME = "alignment_debug";
 
             //1x1 micrometer domain
-            settings.CELL_NX = 2;//1;
-            settings.CELL_NY = 2;//1;
+            settings.CELL_NX = 1;//1;
+            settings.CELL_NY = 1;//1;
             settings.CELL_DX = 1.5;//;0.5;//1.0;
             settings.CELL_DY = 1.5;//0.5;//1.0;
 
@@ -1058,7 +1143,7 @@ namespace CMA {
             settings.GHOSTED = false;
 
             //number of microtubules in the simulation
-            settings.NUM_MT = 250;
+            settings.NUM_MT = 18;
 
             //starting size of the MTs
             settings.MT_MIN_SEGMENT_INIT = 0.005;
@@ -1071,8 +1156,8 @@ namespace CMA {
             settings.DIV_LENGTH_RETRACT = 0.0025;
 
             //growing and shrinking velocities in micrometers per second
-            settings.V_PLUS = 0.0615; // 3.69um/min to um/s, shaw et al. (2003)
-            settings.V_MINUS = 0.00883; // 0.53um/min to um/s, shaw et al. (2003)
+            settings.V_PLUS = 4*0.0615; // 3.69um/min to um/s, shaw et al. (2003)
+            settings.V_MINUS = 4*0.00883; // 0.53um/min to um/s, shaw et al. (2003)
 
             settings.SIGMOID_K = 10.0;
 
@@ -1080,7 +1165,7 @@ namespace CMA {
             settings.MAXIMAL_REACTION_RADIUS = 2*0.05;
 
             //simulation time in seconds
-            settings.TOTAL_TIME = 25.0;//25.0;//20.0;
+            settings.TOTAL_TIME = 20.0;//25.0;//20.0;
             settings.DELTA = 0.5/8.0; //unit of seconds
 
             //The internal step of the solver should be at least smaller than delta

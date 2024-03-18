@@ -111,7 +111,19 @@ namespace MD {
                     [](auto& lhs, auto& m) { return 0.2; },
                     [](auto& lhs, auto& rhs, auto& m1, auto& m2) {});
 
-            gamma.addRule(destroy_molecule);
+            //gamma.addRule(destroy_molecule);
+
+            GT create_molecule_lhs;
+
+            GT create_molecule_rhs;
+            create_molecule_rhs.addNode({1, {MD::Molecule{}}});
+
+            DGGML::WithRule<GT> create_molecule("create_molecule", create_molecule_lhs, create_molecule_rhs,
+                                                 [](auto& lhs, auto& m) { return 1; },
+                                                 [](auto& lhs, auto& rhs, auto& m1, auto& m2) {});
+
+            //gamma.addRule(create_molecule);
+
 
             GT particle_motion_lhs;
             particle_motion_lhs.addNode({1, {MD::Molecule{}}});
@@ -194,21 +206,21 @@ namespace MD {
             //1x1 micrometer domain
             settings.CELL_NX = 1;//1;
             settings.CELL_NY = 1;//1;
-            settings.CELL_DX = 3.0;//;0.5;//1.0;
-            settings.CELL_DY = 3.0;//0.5;//1.0;
+            settings.CELL_DX = 1.5;//;0.5;//1.0;
+            settings.CELL_DY = 1.5;//0.5;//1.0;
 
             //non ghosted complex
             settings.GHOSTED = false;
 
             //number of microtubules in the simulation
-            settings.NUM_PARTICLES = 2000;
+            settings.NUM_PARTICLES = 20;
 
             settings.V_PLUS = 0.0615;
 
             settings.MAXIMAL_REACTION_RADIUS = 2*0.05;
 
             //simulation time in seconds
-            settings.TOTAL_TIME = 40.0;//25.0;//20.0;
+            settings.TOTAL_TIME = 20.0;//25.0;//20.0;
             settings.DELTA = 0.5/8.0; //unit of seconds
 
             //The internal step of the solver should be at least smaller than delta
