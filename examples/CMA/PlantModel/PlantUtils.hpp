@@ -229,12 +229,28 @@ namespace Plant
 {
     template <typename GraphType, typename CplexType, typename ParamType, typename GenType>
     void microtubule_uniform_scatter(GraphType& graph, CplexType& cplex, ParamType& settings, GenType& gen) {
+        using node_type = typename GraphType::node_type;
         double epsilon_min = settings.DIV_LENGTH;//settings.MT_MIN_SEGMENT_INIT;
         double epsilon_max = settings.DIV_LENGTH;//settings.MT_MAX_SEGMENT_INIT;
         std::random_device random_device;
         std::mt19937 random_engine(random_device());
         auto &grid = cplex.getCoarseGrid();
 
+        DGGML::CartesianGrid2D& reaction_grid = cplex.reaction_grid;
+
+        for(auto i = 0+2; i < reaction_grid._nx; i++)
+        {
+            for(auto j = 0+2; j < reaction_grid._ny; j++)
+            {
+                if(i % 3 == 0 && j % 3 == 0) {
+                    auto cardinal = reaction_grid.cardinalCellIndex(i, j);
+                    double px, py;
+                    reaction_grid.cardinalCellToPoint(px, py, cardinal);
+                    node_type node_n = {gen.get_key(), {Plant::Nucleator{}, px, py, 0.0}};
+                    graph.addNode(node_n);
+                }
+            }
+        }
         //first create a grid that needs to fit MTs of two segments without initial overlap
         double max_nx =
                 std::floor((cplex.max_x - cplex.min_x) / (4.0 * settings.DIV_LENGTH));//settings.MT_MAX_SEGMENT_INIT));
@@ -282,7 +298,6 @@ namespace Plant
 
         std::uniform_real_distribution<double>
                 distribution_angle(0.0, 2.0 * 3.14);
-        using node_type = typename GraphType::node_type;
 
         std::size_t segments = 3;
         for (auto i = 0; i < settings.NUM_MT; i++) {

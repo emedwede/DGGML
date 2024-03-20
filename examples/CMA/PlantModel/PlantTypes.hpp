@@ -5,6 +5,7 @@
 #include "YAGL_Node.hpp"
 #include "SpatialData3D.hpp"
 
+//TODO Remove this section
 namespace DGGML
 {
     namespace Plant
@@ -69,6 +70,7 @@ namespace DGGML
     } // end namespace Plant
 }// end namespace DGGML
 
+//TODO: keep this section
 namespace Plant
 {
 
@@ -113,9 +115,11 @@ namespace Plant
         double unit_vec[DIM3D];
     };
 
+    struct Nucleator {};
+
     using key_type = std::size_t;
 
-    using graph_type = YAGL::Graph<key_type, SpatialNode3D<Negative, Intermediate, Positive, Junction, Zipper, Holding, Capture>>;
+    using graph_type = YAGL::Graph<key_type, SpatialNode3D<Negative, Intermediate, Positive, Junction, Zipper, Holding, Capture, Nucleator>>;
 }
 
 #endif

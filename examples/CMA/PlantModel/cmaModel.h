@@ -496,7 +496,7 @@ namespace CMA {
 
                                           });
 
-            //gamma.addRule(crossover);
+            gamma.addRule(crossover);
 
             GT catastrophe2_lhs_graph1;
             catastrophe2_lhs_graph1.addNode({1, {Plant::Intermediate{}}});
@@ -885,7 +885,91 @@ namespace CMA {
 
             //gamma.addRule(destruction_case2);
 
+            GT creation_lhs_graph1;
+            creation_lhs_graph1.addNode({1, {Plant::Nucleator{}}});
 
+            GT creation_rhs_graph1;
+            creation_rhs_graph1.addNode({1, {Plant::Nucleator{}}});
+            creation_rhs_graph1.addNode({2, {Plant::Negative{}}});
+            creation_rhs_graph1.addNode({3, {Plant::Intermediate{}}});
+            creation_rhs_graph1.addNode({4, {Plant::Positive{}}});
+            creation_rhs_graph1.addEdge(2, 3);
+            creation_rhs_graph1.addEdge(3, 4);
+
+            DGGML::WithRule<GT> creation_case1("creation_case1", creation_lhs_graph1, creation_rhs_graph1,
+                                                  [](auto& lhs, auto& m) { return 0.5; },
+                                                  [&](auto& lhs, auto& rhs, auto& m1, auto& m2) {
+                                                      //std::cin.get();
+                                                      //find all the node data for the left
+                                                      auto& lhs_node1 = lhs.findNode(m1[1])->second.getData();
+                                                      //find all the node data for the right
+                                                      auto& rhs_node2 = rhs.findNode(m2[2])->second.getData();
+                                                      auto& rhs_node3 = rhs.findNode(m2[3])->second.getData();
+                                                      auto& rhs_node4 = rhs.findNode(m2[4])->second.getData();
+
+                                                      //get references to position vectors for left
+                                                      auto& lhs_pos1 = lhs_node1.position;
+                                                      //get references to position vectors for right
+                                                      auto& rhs_pos2 = rhs_node2.position;
+                                                      auto& rhs_pos3 = rhs_node3.position;
+                                                      auto& rhs_pos4 = rhs_node4.position;
+
+                                                      std::random_device random_device;
+                                                      std::mt19937 random_engine(random_device());
+                                                      std::uniform_real_distribution<double>
+                                                        distribution_local(settings.MT_MIN_SEGMENT_INIT, settings.MT_MAX_SEGMENT_INIT);
+                                                      std::uniform_real_distribution<double>
+                                                              distribution_angle(0.0, 2.0 * 3.14);
+
+                                                      auto theta = distribution_angle(random_engine);
+                                                      auto seg_len = distribution_local(random_engine);
+                                                      double x_c, y_c, z_c;
+                                                      x_c = lhs_pos1[0];
+                                                      y_c = lhs_pos1[1];
+                                                      z_c = 0;
+                                                      auto x_s = 0.0;
+                                                      auto y_s = seg_len;
+                                                      auto x_r_t = x_s * cos(theta) + y_s * sin(theta);
+                                                      auto y_r_t = -x_s * sin(theta) + y_s * cos(theta);
+                                                      auto x_r = x_c + x_r_t;
+                                                      auto y_r = y_c + y_r_t;
+                                                      auto z_r = 0.0;
+                                                      auto x_l = x_c - (x_r - x_c);
+                                                      auto y_l = y_c - (y_r - y_c);
+                                                      auto z_l = 0.0;
+
+                                                      //compute dist and unit vector
+                                                      rhs_pos2[0] = x_l;
+                                                      rhs_pos2[1] = y_l;
+                                                      rhs_pos2[2] = z_l;
+                                                      rhs_pos3[0] = x_c;
+                                                      rhs_pos3[1] = y_c;
+                                                      rhs_pos3[2] = z_c;
+                                                      rhs_pos4[0] = x_r;
+                                                      rhs_pos4[1] = y_r;
+                                                      rhs_pos4[2] = z_r;
+
+                                                      //get references to unit vectors for right
+                                                      auto& u2 = std::get<Plant::Negative>(rhs_node2.data).unit_vec;
+                                                      auto& u3 = std::get<Plant::Intermediate>(rhs_node3.data).unit_vec;
+                                                      auto& u4 = std::get<Plant::Positive>(rhs_node4.data).unit_vec;
+//                                                      for(int i = 0; i < 3; i++) {
+//                                                          rhs_pos2[i] = lhs_pos1[i]+settings.MT_MIN_SEGMENT_INIT;
+//                                                          rhs_pos3[i] = lhs_pos1[i];
+//                                                          rhs_pos4[i] = lhs_pos1[i]-+settings.MT_MIN_SEGMENT_INIT;
+//                                                          if(i == 2)
+//                                                          {
+//                                                              rhs_pos2[i] = 0.0;
+//                                                              rhs_pos3[i] = 0.0;
+//                                                              rhs_pos4[i] = 0.0;
+//                                                          }
+//                                                      }
+                                                      DGGML::set_unit_vector(rhs_pos4, rhs_pos3, u2);
+                                                      DGGML::set_unit_vector(rhs_pos4, rhs_pos3, u3);
+                                                      DGGML::set_unit_vector(rhs_pos4, rhs_pos3, u4);
+
+            });
+            gamma.addRule(creation_case1);
             //TODO: I think I need to add velocity back in, and make the growing solve a function of the two ODEs
             DGGML::SolvingRule<GT> r5("solving_grow", g1, g1, 3,
                     [](auto& lhs, auto& m1, auto& varset)
@@ -1134,8 +1218,8 @@ namespace CMA {
             settings.EXPERIMENT_NAME = "alignment_debug";
 
             //1x1 micrometer domain
-            settings.CELL_NX = 1;//1;
-            settings.CELL_NY = 1;//1;
+            settings.CELL_NX = 2;//1;
+            settings.CELL_NY = 2;//1;
             settings.CELL_DX = 1.5;//;0.5;//1.0;
             settings.CELL_DY = 1.5;//0.5;//1.0;
 
@@ -1143,7 +1227,7 @@ namespace CMA {
             settings.GHOSTED = false;
 
             //number of microtubules in the simulation
-            settings.NUM_MT = 18;
+            settings.NUM_MT = 12;//18;
 
             //starting size of the MTs
             settings.MT_MIN_SEGMENT_INIT = 0.005;
