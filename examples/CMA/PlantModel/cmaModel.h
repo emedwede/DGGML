@@ -159,22 +159,22 @@ namespace CMA {
 //            gamma.addRule(boundary_catastrophe);
 
             //alternatively to boundary checking we can have rules if the boundary is a graph
-            GT boundary_catastrophe_lhs;
-            boundary_catastrophe_lhs.addNode({1, {Plant::Intermediate{}}});
-            boundary_catastrophe_lhs.addNode({2, {Plant::Positive{}}});
-            boundary_catastrophe_lhs.addEdge(1, 2);
-            boundary_catastrophe_lhs.addNode({3, {Plant::Boundary{}}});
-            boundary_catastrophe_lhs.addNode({4, {Plant::Boundary{}}});
-            boundary_catastrophe_lhs.addEdge(3, 4);
-            GT boundary_catastrophe_rhs;
-            boundary_catastrophe_rhs.addNode({1, {Plant::Intermediate{}}});
-            boundary_catastrophe_rhs.addNode({2, {Plant::Negative{}}});
-            boundary_catastrophe_rhs.addEdge(1, 2);
-            boundary_catastrophe_rhs.addNode({3, {Plant::Boundary{}}});
-            boundary_catastrophe_rhs.addNode({4, {Plant::Boundary{}}});
-            boundary_catastrophe_rhs.addEdge(3, 4);
+            GT boundary_catastrophe_lhs1;
+            boundary_catastrophe_lhs1.addNode({1, {Plant::Intermediate{}}});
+            boundary_catastrophe_lhs1.addNode({2, {Plant::Positive{}}});
+            boundary_catastrophe_lhs1.addEdge(1, 2);
+            boundary_catastrophe_lhs1.addNode({3, {Plant::Boundary{}}});
+            boundary_catastrophe_lhs1.addNode({4, {Plant::Boundary{}}});
+            boundary_catastrophe_lhs1.addEdge(3, 4);
+            GT boundary_catastrophe_rhs1;
+            boundary_catastrophe_rhs1.addNode({1, {Plant::Intermediate{}}});
+            boundary_catastrophe_rhs1.addNode({2, {Plant::Negative{}}});
+            boundary_catastrophe_rhs1.addEdge(1, 2);
+            boundary_catastrophe_rhs1.addNode({3, {Plant::Boundary{}}});
+            boundary_catastrophe_rhs1.addNode({4, {Plant::Boundary{}}});
+            boundary_catastrophe_rhs1.addEdge(3, 4);
 
-            DGGML::WithRule<GT> boundary_catastrophe("boundary_catastrophe", boundary_catastrophe_lhs, boundary_catastrophe_rhs,
+            DGGML::WithRule<GT> boundary_catastrophe1("boundary_catastrophe1", boundary_catastrophe_lhs1, boundary_catastrophe_rhs1,
          [&](auto& lhs, auto& m)
             {
                 auto& dat1 = lhs.findNode(m[1])->second.getData();
@@ -207,7 +207,58 @@ namespace CMA {
                 std::get<Plant::Negative>(rhs[m2[2]].data).unit_vec[1] = -std::get<Plant::Positive>(lhs[m1[2]].data).unit_vec[1];
                 std::get<Plant::Negative>(rhs[m2[2]].data).unit_vec[2] = -std::get<Plant::Positive>(lhs[m1[2]].data).unit_vec[2];
             });
-            gamma.addRule(boundary_catastrophe);
+            gamma.addRule(boundary_catastrophe1);
+
+            //temp rule for clasp
+            GT boundary_catastrophe_lhs2;
+            boundary_catastrophe_lhs2.addNode({1, {Plant::Intermediate{}}});
+            boundary_catastrophe_lhs2.addNode({2, {Plant::Positive{}}});
+            boundary_catastrophe_lhs2.addEdge(1, 2);
+            boundary_catastrophe_lhs2.addNode({3, {Plant::Boundary{}}});
+            boundary_catastrophe_lhs2.addNode({4, {Plant::Intermediate{}}});
+            boundary_catastrophe_lhs2.addEdge(3, 4);
+            GT boundary_catastrophe_rhs2;
+            boundary_catastrophe_rhs2.addNode({1, {Plant::Intermediate{}}});
+            boundary_catastrophe_rhs2.addNode({2, {Plant::Negative{}}});
+            boundary_catastrophe_rhs2.addEdge(1, 2);
+            boundary_catastrophe_rhs2.addNode({3, {Plant::Boundary{}}});
+            boundary_catastrophe_rhs2.addNode({4, {Plant::Intermediate{}}});
+            boundary_catastrophe_rhs2.addEdge(3, 4);
+
+            DGGML::WithRule<GT> boundary_catastrophe2("boundary_catastrophe2", boundary_catastrophe_lhs2, boundary_catastrophe_rhs2,
+                                                      [&](auto& lhs, auto& m)
+                                                      {
+                                                          auto& dat1 = lhs.findNode(m[1])->second.getData();
+                                                          auto& dat2 = lhs.findNode(m[2])->second.getData();
+                                                          auto& dat3 = lhs.findNode(m[3])->second.getData();
+                                                          auto& dat4 = lhs.findNode(m[4])->second.getData();
+
+                                                          //get references to position vector
+                                                          auto& pos1 = dat1.position;
+                                                          auto& pos2 = dat2.position;
+                                                          auto& pos3 = dat3.position;
+                                                          auto& pos4 = dat4.position;
+
+                                                          //get references to unit vectors
+                                                          auto& u1 = std::get<Plant::Intermediate>(dat1.data).unit_vec;
+                                                          auto& u2 = std::get<Plant::Positive>(dat2.data).unit_vec;
+                                                          //auto& u3 = std::get<Plant::Boundary>(dat3.data).unit_vec;
+                                                          //auto& u4 = std::get<Plant::Boundary>(dat4.data).unit_vec;
+
+                                                          //distance from positive node to line segment
+                                                          auto d = DGGML::distanceToLineSegment(pos3[0], pos3[1], pos4[0], pos4[1], pos2[0], pos2[1]);
+                                                          if(d <= 0.025)
+                                                              return 1000.0;
+                                                          else
+                                                              return 0.0;
+                                                      },
+                                                      [](auto& lhs, auto& rhs, auto& m1, auto& m2)
+                                                      {
+                                                          std::get<Plant::Negative>(rhs[m2[2]].data).unit_vec[0] = -std::get<Plant::Positive>(lhs[m1[2]].data).unit_vec[0];
+                                                          std::get<Plant::Negative>(rhs[m2[2]].data).unit_vec[1] = -std::get<Plant::Positive>(lhs[m1[2]].data).unit_vec[1];
+                                                          std::get<Plant::Negative>(rhs[m2[2]].data).unit_vec[2] = -std::get<Plant::Positive>(lhs[m1[2]].data).unit_vec[2];
+                                                      });
+            gamma.addRule(boundary_catastrophe2);
 
             GT boundary_capture_lhs;
             boundary_capture_lhs.addNode({1, {Plant::Intermediate{}}});
@@ -1022,6 +1073,95 @@ namespace CMA {
 
             });
             gamma.addRule(creation_case1);
+
+            GT clasp_creation_lhs_graph1;
+            clasp_creation_lhs_graph1.addNode({1, {Plant::Boundary{}}});
+            clasp_creation_lhs_graph1.addNode({2, {Plant::Boundary{}}});
+            clasp_creation_lhs_graph1.addEdge(1, 2);
+
+            GT clasp_creation_rhs_graph1;
+            clasp_creation_rhs_graph1.addNode({1, {Plant::Boundary{}}});
+            clasp_creation_rhs_graph1.addNode({2, {Plant::Boundary{}}});
+            clasp_creation_rhs_graph1.addNode({3, {Plant::Intermediate{}}});
+            clasp_creation_rhs_graph1.addNode({4, {Plant::Positive{}}});
+            clasp_creation_rhs_graph1.addEdge(1, 3);
+            clasp_creation_rhs_graph1.addEdge(3, 2);
+            clasp_creation_rhs_graph1.addEdge(3, 4);
+
+            DGGML::WithRule<GT> clasp_creation_case1("clasp_creation_case1", clasp_creation_lhs_graph1, clasp_creation_rhs_graph1,
+                                               [](auto& lhs, auto& m) { return 0.01; },
+                                               [&](auto& lhs, auto& rhs, auto& m1, auto& m2) {
+                                                   auto& lhs_node1 = lhs.findNode(m1[1])->second.getData();
+                                                   auto& lhs_node2 = rhs.findNode(m1[2])->second.getData();
+                                                   auto& rhs_node3 = rhs.findNode(m2[3])->second.getData();
+                                                   auto& rhs_node4 = rhs.findNode(m2[4])->second.getData();
+
+                                                   auto& lhs_pos1 = lhs_node1.position;
+                                                   auto& lhs_pos2 = lhs_node2.position;
+                                                   auto& rhs_pos3 = rhs_node3.position;
+                                                   auto& rhs_pos4 = rhs_node4.position;
+
+                                                   //compute the normal
+                                                   auto n_x = lhs_pos2[0] - lhs_pos1[0];
+                                                   auto n_y = lhs_pos2[1] - lhs_pos1[1];
+                                                   auto n_mag = std::sqrt(n_x*n_x+n_y*n_y);
+                                                   n_x /= n_mag;
+                                                   n_y /= n_mag;
+                                                   //make orthogonal
+                                                   std::swap(n_x, n_y);
+                                                   n_x = -n_x;
+                                                   std::random_device random_device;
+                                                   std::mt19937 random_engine(random_device());
+                                                   //std::uniform_real_distribution<double>
+                                                   //        distribution_local(settings.MT_MIN_SEGMENT_INIT, settings.MT_MAX_SEGMENT_INIT);
+                                                   auto radian_angle = 15.0*3.14/180.0;
+                                                   std::uniform_real_distribution<double>
+                                                           distribution_angle(-radian_angle, radian_angle);
+
+                                                   auto theta = distribution_angle(random_engine);
+                                                   auto seg_len = 0.027;//distribution_local(random_engine);
+                                                   double x_c, y_c, z_c;
+                                                   x_c = (lhs_pos1[0]+lhs_pos2[0])/2.0;
+                                                   y_c = (lhs_pos1[1]+lhs_pos2[1])/2.0;
+                                                   z_c = 0;
+                                                   auto x_s = n_x*seg_len;//0.0;
+                                                   auto y_s = n_y*seg_len;
+                                                   auto x_r_t = x_s * cos(theta) + y_s * sin(theta);
+                                                   auto y_r_t = -x_s * sin(theta) + y_s * cos(theta);
+                                                   auto x_r = x_c + x_r_t;
+                                                   auto y_r = y_c + y_r_t;
+                                                   auto z_r = 0.0;
+
+                                                   x_r = x_c + x_r_t;//n_x*x_r_t;//seg_len;
+                                                   y_r = y_c + y_r_t;//n_y*y_r_t;//seg_len;
+
+                                                   if(boundary_check_2D(settings, x_r, y_r, settings.MAXIMAL_REACTION_RADIUS/2.0))
+                                                   {
+                                                       x_r = x_c - x_r_t;//n_x*x_r_t;//seg_len;
+                                                       y_r = y_c - y_r_t;//n_y*y_r_t;//seg_len;
+                                                   }
+
+                                                   //auto x_rot = x_r * cos(theta) + y_r * sin(theta);
+                                                   //auto y_rot = -x_r * sin(theta) + y_r * cos(theta);
+
+                                                   //compute dist and unit vector
+                                                   rhs_pos3[0] = x_c;
+                                                   rhs_pos3[1] = y_c;
+                                                   rhs_pos3[2] = z_c;
+                                                   rhs_pos4[0] = x_r;
+                                                   rhs_pos4[1] = y_r;
+                                                   rhs_pos4[2] = z_r;
+
+                                                   //get references to unit vectors for right
+                                                   auto& u3 = std::get<Plant::Intermediate>(rhs_node3.data).unit_vec;
+                                                   auto& u4 = std::get<Plant::Positive>(rhs_node4.data).unit_vec;
+//
+                                                   DGGML::set_unit_vector(rhs_pos4, rhs_pos3, u3);
+                                                   DGGML::set_unit_vector(rhs_pos4, rhs_pos3, u4);
+
+                                               });
+            gamma.addRule(clasp_creation_case1);
+
             //TODO: I think I need to add velocity back in, and make the growing solve a function of the two ODEs
             DGGML::SolvingRule<GT> r5("solving_grow", g1, g1, 3,
                     [](auto& lhs, auto& m1, auto& varset)
@@ -1270,8 +1410,8 @@ namespace CMA {
             settings.EXPERIMENT_NAME = "alignment_debug";
 
             //1x1 micrometer domain
-            settings.CELL_NX = 1;//1;
-            settings.CELL_NY = 1;//1;
+            settings.CELL_NX = 2;//1;
+            settings.CELL_NY = 2;//1;
             settings.CELL_DX = 1;//;0.5;//1.0;
             settings.CELL_DY = 1;//0.5;//1.0;
 
@@ -1279,7 +1419,7 @@ namespace CMA {
             settings.GHOSTED = false;
 
             //number of microtubules in the simulation
-            settings.NUM_MT = 18;
+            settings.NUM_MT = 0;//18;
 
             //starting size of the MTs
             settings.MT_MIN_SEGMENT_INIT = 0.005;
