@@ -115,11 +115,14 @@ namespace Plant
         double unit_vec[DIM3D];
     };
 
+    struct Boundary {};
+
     struct Nucleator {};
 
     using key_type = std::size_t;
 
-    using graph_type = YAGL::Graph<key_type, SpatialNode3D<Negative, Intermediate, Positive, Junction, Zipper, Holding, Capture, Nucleator>>;
+    using graph_type = YAGL::Graph<key_type,
+    SpatialNode3D<Negative, Intermediate, Positive, Junction, Zipper, Holding, Capture, Boundary, Nucleator>>;
 }
 
 #endif

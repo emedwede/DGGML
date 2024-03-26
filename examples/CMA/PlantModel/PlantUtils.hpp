@@ -230,6 +230,7 @@ namespace Plant
     template <typename GraphType, typename CplexType, typename ParamType, typename GenType>
     void microtubule_uniform_scatter(GraphType& graph, CplexType& cplex, ParamType& settings, GenType& gen) {
         using node_type = typename GraphType::node_type;
+        using key_type = typename node_type::key_type;
         double epsilon_min = settings.DIV_LENGTH;//settings.MT_MIN_SEGMENT_INIT;
         double epsilon_max = settings.DIV_LENGTH;//settings.MT_MAX_SEGMENT_INIT;
         std::random_device random_device;
@@ -238,17 +239,80 @@ namespace Plant
 
         DGGML::CartesianGrid2D& reaction_grid = cplex.reaction_grid;
 
-        for(auto i = 0+2; i < reaction_grid._nx; i++)
+        //create the boundary
+        //bottom, left to right
+        key_type prev_key; //only the first step doesn't have a prev
+        key_type first_key; //needed to complete the loop around the boundary
+        for(auto i = 0; i < reaction_grid._nx; i++)
         {
-            for(auto j = 0+2; j < reaction_grid._ny; j++)
+            auto cardinal = reaction_grid.cardinalCellIndex(i, 0);
+            double px, py;
+            reaction_grid.cardinalCellToPoint(px, py, cardinal);
+            key_type curr_key = gen.get_key();
+            node_type node_n = {curr_key, {Plant::Boundary{}, px, py, 0.0}};
+            graph.addNode(node_n);
+            //connect to previous node or its the first
+            if(i >= 1) graph.addEdge(prev_key, curr_key);
+            else first_key = curr_key;
+            prev_key = curr_key;
+        }
+        //note: the previous gets carried over!
+        //right side interior, bottom to top
+        for(auto j = 1; j < reaction_grid._ny-1; j++)
+        {
+            auto cardinal = reaction_grid.cardinalCellIndex(reaction_grid._nx-1, j);
+            double px, py;
+            reaction_grid.cardinalCellToPoint(px, py, cardinal);
+            key_type curr_key = gen.get_key();
+            node_type node_n = {curr_key, {Plant::Boundary{}, px, py, 0.0}};
+            graph.addNode(node_n);
+            //connect to previous node
+            graph.addEdge(prev_key, curr_key);
+            prev_key = curr_key;
+        }
+        //note: the previous gets carried over!
+        //top, right to left
+        for(auto i = reaction_grid._nx-1; i >= 0; i--)
+        {
+            auto cardinal = reaction_grid.cardinalCellIndex(i, reaction_grid._ny-1);
+            double px, py;
+            reaction_grid.cardinalCellToPoint(px, py, cardinal);
+            key_type curr_key = gen.get_key();
+            node_type node_n = {curr_key, {Plant::Boundary{}, px, py, 0.0}};
+            graph.addNode(node_n);
+            //connect to previous node
+            graph.addEdge(prev_key, curr_key);
+            prev_key = curr_key;
+        }
+        //note: the previous gets carried over!
+        //left side interior, bottom to top
+        for(auto j = reaction_grid._nx-2; j > 0; j--)
+        {
+            auto cardinal = reaction_grid.cardinalCellIndex(0, j);
+            double px, py;
+            reaction_grid.cardinalCellToPoint(px, py, cardinal);
+            key_type curr_key = gen.get_key();
+            node_type node_n = {curr_key, {Plant::Boundary{}, px, py, 0.0}};
+            graph.addNode(node_n);
+            //connect to previous node
+            graph.addEdge(prev_key, curr_key);
+            prev_key = curr_key;
+        }
+        //complete the loop with the first
+        graph.addEdge(prev_key, first_key);
+
+        //create the nucleators
+        for(auto i = 1; i < reaction_grid._nx-1; i++)
+        {
+            for(auto j = 1; j < reaction_grid._ny-1; j++)
             {
-                if(i % 3 == 0 && j % 3 == 0) {
+                ///if(i % 3 == 0 && j % 3 == 0) {
                     auto cardinal = reaction_grid.cardinalCellIndex(i, j);
                     double px, py;
                     reaction_grid.cardinalCellToPoint(px, py, cardinal);
                     node_type node_n = {gen.get_key(), {Plant::Nucleator{}, px, py, 0.0}};
                     graph.addNode(node_n);
-                }
+                //}
             }
         }
         //first create a grid that needs to fit MTs of two segments without initial overlap
