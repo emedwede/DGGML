@@ -132,22 +132,74 @@ namespace CMA {
 
             gamma.addRule(r1);
 
+            //One way to check for boundary crossing is checking every object to see if it is inside the boundary or not
+//            GT boundary_catastrophe_lhs;
+//            boundary_catastrophe_lhs.addNode({1, {Plant::Intermediate{}}});
+//            boundary_catastrophe_lhs.addNode({2, {Plant::Positive{}}});
+//            boundary_catastrophe_lhs.addEdge(1, 2);
+//            GT boundary_catastrophe_rhs;
+//            boundary_catastrophe_rhs.addNode({1, {Plant::Intermediate{}}});
+//            boundary_catastrophe_rhs.addNode({2, {Plant::Negative{}}});
+//            boundary_catastrophe_rhs.addEdge(1, 2);
+//
+//            DGGML::WithRule<GT> boundary_catastrophe("boundary_catastrophe", boundary_catastrophe_lhs, boundary_catastrophe_rhs,
+//         [&](auto& lhs, auto& m)
+//            {
+//                //determine if we're outside the interior of a padded boundary
+//                if(boundary_check_2D(settings, lhs[m[2]].position[0], lhs[m[2]].position[1], settings.MAXIMAL_REACTION_RADIUS)) return 1000.0;
+//                //if(boundary_check_circle(settings, lhs[m[2]].position[0], lhs[m[2]].position[1])) return 1000.0;
+//                return 0.0;
+//            },
+//            [](auto& lhs, auto& rhs, auto& m1, auto& m2)
+//            {
+//                std::get<Plant::Negative>(rhs[m2[2]].data).unit_vec[0] = -std::get<Plant::Positive>(lhs[m1[2]].data).unit_vec[0];
+//                std::get<Plant::Negative>(rhs[m2[2]].data).unit_vec[1] = -std::get<Plant::Positive>(lhs[m1[2]].data).unit_vec[1];
+//                std::get<Plant::Negative>(rhs[m2[2]].data).unit_vec[2] = -std::get<Plant::Positive>(lhs[m1[2]].data).unit_vec[2];
+//            });
+//            gamma.addRule(boundary_catastrophe);
+
+            //alternatively to boundary checking we can have rules if the boundary is a graph
             GT boundary_catastrophe_lhs;
             boundary_catastrophe_lhs.addNode({1, {Plant::Intermediate{}}});
             boundary_catastrophe_lhs.addNode({2, {Plant::Positive{}}});
             boundary_catastrophe_lhs.addEdge(1, 2);
+            boundary_catastrophe_lhs.addNode({3, {Plant::Boundary{}}});
+            boundary_catastrophe_lhs.addNode({4, {Plant::Boundary{}}});
+            boundary_catastrophe_lhs.addEdge(3, 4);
             GT boundary_catastrophe_rhs;
             boundary_catastrophe_rhs.addNode({1, {Plant::Intermediate{}}});
             boundary_catastrophe_rhs.addNode({2, {Plant::Negative{}}});
             boundary_catastrophe_rhs.addEdge(1, 2);
+            boundary_catastrophe_rhs.addNode({3, {Plant::Boundary{}}});
+            boundary_catastrophe_rhs.addNode({4, {Plant::Boundary{}}});
+            boundary_catastrophe_rhs.addEdge(3, 4);
 
             DGGML::WithRule<GT> boundary_catastrophe("boundary_catastrophe", boundary_catastrophe_lhs, boundary_catastrophe_rhs,
          [&](auto& lhs, auto& m)
             {
-                //determine if we're outside the interior of a padded boundary
-                if(boundary_check_2D(settings, lhs[m[2]].position[0], lhs[m[2]].position[1], settings.MAXIMAL_REACTION_RADIUS)) return 1000.0;
-                //if(boundary_check_circle(settings, lhs[m[2]].position[0], lhs[m[2]].position[1])) return 1000.0;
-                return 0.0;
+                auto& dat1 = lhs.findNode(m[1])->second.getData();
+                auto& dat2 = lhs.findNode(m[2])->second.getData();
+                auto& dat3 = lhs.findNode(m[3])->second.getData();
+                auto& dat4 = lhs.findNode(m[4])->second.getData();
+
+                //get references to position vector
+                auto& pos1 = dat1.position;
+                auto& pos2 = dat2.position;
+                auto& pos3 = dat3.position;
+                auto& pos4 = dat4.position;
+
+                //get references to unit vectors
+                auto& u1 = std::get<Plant::Intermediate>(dat1.data).unit_vec;
+                auto& u2 = std::get<Plant::Positive>(dat2.data).unit_vec;
+                //auto& u3 = std::get<Plant::Boundary>(dat3.data).unit_vec;
+                //auto& u4 = std::get<Plant::Boundary>(dat4.data).unit_vec;
+
+                //distance from positive node to line segment
+                auto d = DGGML::distanceToLineSegment(pos3[0], pos3[1], pos4[0], pos4[1], pos2[0], pos2[1]);
+                if(d <= 0.025)
+                    return 1000.0;
+                else
+                    return 0.0;
             },
             [](auto& lhs, auto& rhs, auto& m1, auto& m2)
             {
@@ -155,7 +207,7 @@ namespace CMA {
                 std::get<Plant::Negative>(rhs[m2[2]].data).unit_vec[1] = -std::get<Plant::Positive>(lhs[m1[2]].data).unit_vec[1];
                 std::get<Plant::Negative>(rhs[m2[2]].data).unit_vec[2] = -std::get<Plant::Positive>(lhs[m1[2]].data).unit_vec[2];
             });
-            //gamma.addRule(boundary_catastrophe);
+            gamma.addRule(boundary_catastrophe);
 
             GT boundary_capture_lhs;
             boundary_capture_lhs.addNode({1, {Plant::Intermediate{}}});
@@ -184,7 +236,7 @@ namespace CMA {
                  //std::get<Plant::Negative>(rhs[m2[2]].data).unit_vec[1] = -std::get<Plant::Positive>(lhs[m1[2]].data).unit_vec[1];
                  //std::get<Plant::Negative>(rhs[m2[2]].data).unit_vec[2] = -std::get<Plant::Positive>(lhs[m1[2]].data).unit_vec[2];
              });
-            gamma.addRule(boundary_capture);
+            //gamma.addRule(boundary_capture);
 
             GT periodic_replicate_lhs;
             periodic_replicate_lhs.addNode({1, {Plant::Intermediate{}}});
@@ -465,7 +517,7 @@ namespace CMA {
 
                                                       //TODO: determine how strict we need to be with the collision point
                                                       if(sol[0] > 0.0 && sol[1] >= 0.0 && sol[1] <= 1.0) {
-                                                          return 1000.0;
+                                                          return 8000.0;
                                                       }
                                                   }
                                               }
@@ -496,7 +548,7 @@ namespace CMA {
 
                                           });
 
-            gamma.addRule(crossover);
+            //gamma.addRule(crossover);
 
             GT catastrophe2_lhs_graph1;
             catastrophe2_lhs_graph1.addNode({1, {Plant::Intermediate{}}});
@@ -897,7 +949,7 @@ namespace CMA {
             creation_rhs_graph1.addEdge(3, 4);
 
             DGGML::WithRule<GT> creation_case1("creation_case1", creation_lhs_graph1, creation_rhs_graph1,
-                                                  [](auto& lhs, auto& m) { return 0.5; },
+                                                  [](auto& lhs, auto& m) { return 0.5/100.0; },
                                                   [&](auto& lhs, auto& rhs, auto& m1, auto& m2) {
                                                       //std::cin.get();
                                                       //find all the node data for the left
@@ -1218,16 +1270,16 @@ namespace CMA {
             settings.EXPERIMENT_NAME = "alignment_debug";
 
             //1x1 micrometer domain
-            settings.CELL_NX = 2;//1;
-            settings.CELL_NY = 2;//1;
-            settings.CELL_DX = 1.5;//;0.5;//1.0;
-            settings.CELL_DY = 1.5;//0.5;//1.0;
+            settings.CELL_NX = 1;//1;
+            settings.CELL_NY = 1;//1;
+            settings.CELL_DX = 1;//;0.5;//1.0;
+            settings.CELL_DY = 1;//0.5;//1.0;
 
             //non ghosted complex
             settings.GHOSTED = false;
 
             //number of microtubules in the simulation
-            settings.NUM_MT = 12;//18;
+            settings.NUM_MT = 18;
 
             //starting size of the MTs
             settings.MT_MIN_SEGMENT_INIT = 0.005;
