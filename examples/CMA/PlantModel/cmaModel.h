@@ -1089,7 +1089,7 @@ namespace CMA {
             clasp_creation_rhs_graph1.addEdge(3, 4);
 
             DGGML::WithRule<GT> clasp_creation_case1("clasp_creation_case1", clasp_creation_lhs_graph1, clasp_creation_rhs_graph1,
-                                               [](auto& lhs, auto& m) { return 0.01; },
+                                               [](auto& lhs, auto& m) { return 5*0.01; },
                                                [&](auto& lhs, auto& rhs, auto& m1, auto& m2) {
                                                    auto& lhs_node1 = lhs.findNode(m1[1])->second.getData();
                                                    auto& lhs_node2 = rhs.findNode(m1[2])->second.getData();
@@ -1161,6 +1161,46 @@ namespace CMA {
 
                                                });
             gamma.addRule(clasp_creation_case1);
+
+
+            GT clasp_catastrophe_lhs_graph1;
+            clasp_catastrophe_lhs_graph1.addNode({1, {Plant::Boundary{}}});
+            clasp_catastrophe_lhs_graph1.addNode({2, {Plant::Boundary{}}});
+            clasp_catastrophe_lhs_graph1.addNode({3, {Plant::Intermediate{}}});
+            clasp_catastrophe_lhs_graph1.addNode({4, {Plant::Negative{}}});
+            clasp_catastrophe_lhs_graph1.addEdge(1, 3);
+            clasp_catastrophe_lhs_graph1.addEdge(3, 2);
+            clasp_catastrophe_lhs_graph1.addEdge(3, 4);
+
+            GT clasp_catastrophe_rhs_graph1;
+            clasp_catastrophe_rhs_graph1.addNode({1, {Plant::Boundary{}}});
+            clasp_catastrophe_rhs_graph1.addNode({2, {Plant::Boundary{}}});
+            clasp_catastrophe_rhs_graph1.addEdge(1, 2);
+
+            DGGML::WithRule<GT> clasp_catastrophe_case1("clasp_catastrophe_case1", clasp_catastrophe_lhs_graph1, clasp_catastrophe_rhs_graph1,
+                                                     [](auto& lhs, auto& m) {
+                                                         auto& dat3 = lhs.findNode(m[3])->second.getData();
+                                                         auto& dat4 = lhs.findNode(m[4])->second.getData();
+                                                         auto& pos3 = dat3.position;
+                                                         auto& pos4 = dat4.position;
+
+                                                         auto d = DGGML::calculate_distance(pos3, pos4);
+                                                         auto d2 = sqrt((pos3[0]-pos4[0])*(pos3[0]-pos4[0])+(pos3[1]-pos4[1])*(pos3[1]-pos4[1]));
+                                                         //std::cin.get(); std::cout << d << " " << d2 << "\n";
+                                                         auto& t3 = std::get<Plant::Intermediate>(dat3.data);
+                                                         auto& t4 = std::get<Plant::Negative>(dat4.data);
+                                                         //std::cin.get();
+                                                         if(d <= 0.01) {
+                                                             //std::cout << "here\n";
+                                                             //std::cin.get();
+                                                             return 1000.0;
+                                                         }
+                                                         else
+                                                            return 0.0;
+                                                      },
+                                                     [&](auto& lhs, auto& rhs, auto& m1, auto& m2) {
+                                                     });
+            gamma.addRule(clasp_catastrophe_case1);
 
             //TODO: I think I need to add velocity back in, and make the growing solve a function of the two ODEs
             DGGML::SolvingRule<GT> r5("solving_grow", g1, g1, 3,
@@ -1410,8 +1450,8 @@ namespace CMA {
             settings.EXPERIMENT_NAME = "alignment_debug";
 
             //1x1 micrometer domain
-            settings.CELL_NX = 2;//1;
-            settings.CELL_NY = 2;//1;
+            settings.CELL_NX = 1;//1;
+            settings.CELL_NY = 1;//1;
             settings.CELL_DX = 1;//;0.5;//1.0;
             settings.CELL_DY = 1;//0.5;//1.0;
 
