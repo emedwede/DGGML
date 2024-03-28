@@ -307,13 +307,16 @@ namespace DGGML {
                 if(!matches.empty())
                 for(auto& item : matches)
                 {
+                    std::vector<typename ModelType::key_type> order;
                     std::vector<typename ModelType::key_type> match;
                     for(auto& [key, value] : item)
                     {
+                        order.push_back(key);
                         match.push_back(value);
                     }
                     ComponentMatch<typename ModelType::key_type> inst;
                     inst.match = match;
+                    inst.order = order;
                     inst.type = k;
                     inst.anchor = match[0];
                     component_matches.insert(inst);

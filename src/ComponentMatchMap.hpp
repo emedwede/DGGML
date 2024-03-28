@@ -34,6 +34,7 @@ namespace DGGML
         using key_type = KeyType;
         using container_type = std::vector<key_type>;
         container_type match;
+        container_type order;
         
         std::size_t type;
         key_type anchor;

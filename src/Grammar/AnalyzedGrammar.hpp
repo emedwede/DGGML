@@ -236,6 +236,35 @@ namespace DGGML
             {
                 orderings.insert({k, {}});
                 auto path = YAGL::recursive_dfs2(g, g.node_list_begin()->first);
+                //******
+                YAGL::FlatNTree<typename GraphType::key_type> rst(path[0].first);
+                if(path.size() > 1)
+                {
+                    for(auto i = 1; i < path.size(); i++)
+                    {
+                        //parent is node of previous depth
+                        typename GraphType::key_type parent;
+
+                        for(auto j = i-1; j >= 0; j--)
+                        {
+                            if(path[i].second == (path[j].second + 1))
+                            {
+                                parent = path[j].first;
+                                break;
+                            }
+                            else
+                                parent = path[0].first;
+                        }
+                        rst.add_node(path[i].first, parent);
+                    }
+                }
+                std::cout << "RST path: ";
+                for(auto iter = rst.begin(); iter != rst.end(); iter++)
+                    std::cout << rst.indexed_key(*iter) << " ";
+                std::cout << "\n";
+                rst.print_preorder();
+                //auto v = g1.findNode(rst.indexed_key(idx));
+                //******
                 for(auto& item : path)
                     orderings[k].push_back(item.first);
             }

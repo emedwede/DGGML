@@ -374,12 +374,15 @@ namespace DGGML
                         for (auto& n: changes.node_updates) {
                             if (v2 == n) {
                                 accepted = true;
+                                std::vector<typename GraphType::key_type> order;
                                 std::vector<typename GraphType::key_type> match;
                                 for (auto &[key, value]: m) {
+                                    order.push_back(key);
                                     match.push_back(value);
                                 }
                                 ComponentMatch<typename GraphType::key_type> inst;
                                 inst.match = match;
+                                inst.order = order;
                                 inst.type = k;
                                 inst.anchor = match[0];
                                 auto res = component_matches.insert(inst);
@@ -397,12 +400,15 @@ namespace DGGML
                                 if (v2 == n1 && u2 == n2 && pattern.adjacent(v1, u1)) {
                                     //The accepted code is copy pasted and could be fused
                                     accepted = true;
+                                    std::vector<typename GraphType::key_type> order;
                                     std::vector<typename GraphType::key_type> match;
                                     for (auto &[key, value]: m) {
+                                        order.push_back(key);
                                         match.push_back(value);
                                     }
                                     ComponentMatch<typename GraphType::key_type> inst;
                                     inst.match = match;
+                                    inst.order = order;
                                     inst.type = k;
                                     inst.anchor = match[0];
                                     auto res = component_matches.insert(inst);

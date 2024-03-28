@@ -18,19 +18,54 @@ auto induce_from_set(T1& inst, T2& component_matches, T3& system_graph)
 template <typename InstType, typename GrammarAnalysisType, typename MapType, typename ComponentSetType>
 void construct_grammar_match_map(InstType& inst, GrammarAnalysisType& grammar_analysis, MapType& lhs_vertex_map,
                                  ComponentSetType& component_match_set) {
-    //I think this is the fix
     for(auto i = 0; i < grammar_analysis.ccuv_mappings[inst.name].size(); i++)
     {
         auto& m = grammar_analysis.ccuv_mappings[inst.name][i];
+//        std::cout << "Begin: \n";
+//        auto print = [](auto& mm) { std::cout << "{";
+//            for(auto& [k, v] : mm)
+//                std::cout << "( " << k << " -> " << v << " ) ";
+//            std::cout << "}\n";};
+//        print(m);
         auto& c = inst.components[i];
         auto cid = component_match_set[c].type;
-        auto& o = grammar_analysis.orderings[cid];
+        auto& o = component_match_set[c].order;
+        //auto& o = grammar_analysis.orderings[cid];
         std::map<int, int> ro;
         for(int j = 0; j < o.size(); j++)
             ro[o[j]] = j;
+//        print(ro);
         for(auto& [k, v] : m)
             lhs_vertex_map[k] = component_match_set[c].match[ro[v]];
+//        print(lhs_vertex_map);
+//        for(auto& item : component_match_set[c].match)
+//            std::cout << item << " ";
+//        std::cout << "\n";
     }
+    //I think this is the fix, v2
+//    for(auto i = 0; i < grammar_analysis.ccuv_mappings[inst.name].size(); i++)
+//    {
+//        auto& m = grammar_analysis.ccuv_mappings[inst.name][i];
+//        std::cout << "Begin: \n";
+//        auto print = [](auto& mm) { std::cout << "{";
+//        for(auto& [k, v] : mm)
+//            std::cout << "( " << k << " -> " << v << " ) ";
+//        std::cout << "}\n";};
+//        print(m);
+//        auto& c = inst.components[i];
+//        auto cid = component_match_set[c].type;
+//        auto& o = grammar_analysis.orderings[cid];
+//        std::map<int, int> ro;
+//        for(int j = 0; j < o.size(); j++)
+//            ro[o[j]] = j;
+//        print(ro);
+//        for(auto& [k, v] : m)
+//            lhs_vertex_map[k] = component_match_set[c].match[ro[v]];
+//        print(lhs_vertex_map);
+//        for(auto& item : component_match_set[c].match)
+//            std::cout << item << " ";
+//        std::cout << "\n";
+//    }
     //original code
 //    //construct a vertex map for the lhs to the rule instance
 //    std::vector<std::size_t> left, right;
