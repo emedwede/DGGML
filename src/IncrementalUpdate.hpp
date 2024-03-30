@@ -108,17 +108,17 @@ namespace DGGML
                 right.push_back(k);
 
         //print out the mapping info, so we know how a lhs numbering maps to an instance numbering
-        std::cout << "\nMappings: { LHS Key -> Minimal Component Key -> Rule ComponentMatch Key }\n";
+//        std::cout << "\nMappings: { LHS Key -> Minimal Component Key -> Rule ComponentMatch Key }\n";
         for(auto i = 0; i < left.size(); i++)
         {
             lhs_vertex_map[left[i]] = right[i];
-            std::cout << "{ " << left[i] << " -> " << mid[i] << " -> " << right[i] << " }\n";
+//            std::cout << "{ " << left[i] << " -> " << mid[i] << " -> " << right[i] << " }\n";
         }
 
         auto& rewrite = grammar_analysis.with_rewrites.at(rname);
-        rewrite.print_node_sets(rname);
-        std::cout << "\n";
-        rewrite.print_edge_sets(rname);
+//        rewrite.print_node_sets(rname);
+//        std::cout << "\n";
+//        rewrite.print_edge_sets(rname);
 
         //TODO: Induced subgraph may include edges we didn't expect and create a rewrite error
         auto lhs_match = YAGL::induced_subgraph(system_graph, right);
@@ -182,8 +182,8 @@ namespace DGGML
         //I think we actually need a map for the lhs, and the rhs
         grammar_analysis.with_rules.at(rname).update(lhs_match, lhs_match_copy, lhs_vertex_map, rhs_vertex_map); //h
 
-        std::cout << "currently mapped rules: { ";
-        for(auto& key : rule_map) std::cout << key << " "; std::cout << "}\n";
+//        std::cout << "currently mapped rules: { ";
+//        for(auto& key : rule_map) std::cout << key << " "; std::cout << "}\n";
 
         //TODO: need a better fix, currently here because the cell list uses the graph to find the anchor
         // for a component so that we can find its cell, but if the node has already been removed by a rewrite
@@ -225,7 +225,7 @@ namespace DGGML
                                         std::vector<std::size_t>& rule_map,
                                         CellList<GraphType>& cell_list, GeocellProperties<std::size_t>& geocell_properties)
     {
-        std::cout << "This function invalidates\n";
+        //std::cout << "This function invalidates\n";
         Invalidations removals;
         //we must first search for any components containing the nodes/edges that were invalidated
         //note: worst case we search the whole list, better case we use the cell list to speed up search
@@ -268,8 +268,8 @@ namespace DGGML
             geocell_properties.invalidated_components.insert(item);
         }
 
-        std::cout << "CellList size before invalidations " << cell_list.getTotalSize() << "\n";
-        std::cout << "ComponentMatchMap size before invalidations " << component_matches.size() << "\n";
+        //std::cout << "CellList size before invalidations " << cell_list.getTotalSize() << "\n";
+        //std::cout << "ComponentMatchMap size before invalidations " << component_matches.size() << "\n";
         //use list of removable components to delete items from component matches and cell_list
         for(auto& item : component_invalidations)
         {
@@ -278,12 +278,12 @@ namespace DGGML
             auto iter = component_matches.find(item);
             cell_list.erase(iter);
             component_matches.erase(item);
-            std::cout << "erasing component " << item << "\n";
-            if(auto search = component_matches.find(item); search != component_matches.end())
-                std::cout << "somehow we still found " << item << "\n";
+            //std::cout << "erasing component " << item << "\n";
+//            if(auto search = component_matches.find(item); search != component_matches.end())
+//                std::cout << "somehow we still found " << item << "\n";
         }
-        std::cout << "CellList size after invalidations " << cell_list.getTotalSize() << "\n";
-        std::cout << "ComponentMatchMap size after invalidations " << component_matches.size() << "\n";
+        //std::cout << "CellList size after invalidations " << cell_list.getTotalSize() << "\n";
+        //std::cout << "ComponentMatchMap size after invalidations " << component_matches.size() << "\n";
 
         //if a component is removed is in a boundary cell, it may participate in a rule instance of another dimension,
         //so we could mark it for that as well
@@ -304,20 +304,22 @@ namespace DGGML
         }
 
         //we remove these now invalid rules
-        std::cout << "Rule matches before erase: " << rule_matches.size() << "\n";
-        std::cout << "Rule map before erase: " << rule_map.size() << "\n";
-        {int count = 0;
-        for(auto& item : rule_map)
-            if(rule_matches[item].category == "deterministic")
-                count++;
-        std::cout << "Number of deterministic rules: " << count << "\n";}
+        //std::cout << "Rule matches before erase: " << rule_matches.size() << "\n";
+        //std::cout << "Rule map before erase: " << rule_map.size() << "\n";
+        {
+            int count = 0;
+            for(auto& item : rule_map)
+                if(rule_matches[item].category == "deterministic")
+                    count++;
+            //std::cout << "Number of deterministic rules: " << count << "\n";
+         }
         for(auto& item : rule_invalidations) {
             rule_matches.erase(item);
             //we also need to remove the invalid rules from the rule map
             rule_map.erase(std::find(rule_map.begin(), rule_map.end(), item));
         }
-        std::cout << "Rule matches after erase: " << rule_matches.size() << "\n";
-        std::cout << "Rule map after erase: " << rule_map.size() << "\n";
+        //std::cout << "Rule matches after erase: " << rule_matches.size() << "\n";
+        //std::cout << "Rule map after erase: " << rule_map.size() << "\n";
         //return the list of boundary components invalidated
 
         return removals;
@@ -336,7 +338,7 @@ namespace DGGML
                           double reaction_radius,
                           GeocellProperties<std::size_t>& geocell_properties)
     {
-        std::cout << "This function finds new matches\n";
+        //std::cout << "This function finds new matches\n";
         //goal, take the candidate nodes, do a search the depth of the height of the tallest rooted spanning tree
         //for each candidate and create a set of nodes used to induce a graph that we will search for new components
         //What should the candidate nodes be?
@@ -357,7 +359,7 @@ namespace DGGML
         }
 
         auto candidate_graph = YAGL::induced_subgraph(system_graph, inducers);
-        std::cout << candidate_graph << "\n";
+        //std::cout << candidate_graph << "\n";
 
         //TODO: fuse the acceptance functions
         //search the candidate graph for components, the code below finds and validates in one loop
@@ -366,7 +368,7 @@ namespace DGGML
         for(auto& [k, pattern] : grammar_analysis.unique_components) {
             //need to actually get the ordering for the mapping
             auto matches = YAGL::subgraph_isomorphism2(pattern, candidate_graph);
-            std::cout << "Match sizes found for " << k << " " << matches.size() << "\n";
+            //std::cout << "Match sizes found for " << k << " " << matches.size() << "\n";
             if (!matches.empty()) {
                 for (auto &m: matches) {
                     bool accepted = false;
@@ -425,23 +427,23 @@ namespace DGGML
                 }
             }
         }
-        std::cout << "Validated components: { ";
-        for(auto& item : validated_components)
-            std::cout << item << " ";
-        std::cout << "}\n";
-        for(auto& item : validated_components)
-        {
-            std::cout <<  component_matches[item].type << ": " << component_matches[item] << "\n";
-        }
+//        std::cout << "Validated components: { ";
+//        for(auto& item : validated_components)
+//            std::cout << item << " ";
+//        std::cout << "}\n";
+//        for(auto& item : validated_components)
+//        {
+//            std::cout <<  component_matches[item].type << ": " << component_matches[item] << "\n";
+//        }
 
         //new components need to be added back into their dynamic cell list
-        std::cout << "CellList size before insertion " << cell_list.getTotalSize() << "\n";
+        //std::cout << "CellList size before insertion " << cell_list.getTotalSize() << "\n";
         for(auto& item : validated_components)
         {
             auto iter = component_matches.find(item);
             cell_list.insert_match(iter);
         }
-        std::cout << "CellList size after insertion " << cell_list.getTotalSize() << "\n";
+        //std::cout << "CellList size after insertion " << cell_list.getTotalSize() << "\n";
 
         //after finding components and adding them to the cell list, we need find all new rule instances
         //we only need to search in the cells surrounding a newly inserted component
@@ -468,19 +470,19 @@ namespace DGGML
         {
             for(auto& item : cell_list.data[cell]) {
                 auto m1 = component_matches.find(item);
-                if(m1 == component_matches.end())
-                    std::cout << "did not find " << item << "\n";
+//                if(m1 == component_matches.end())
+//                    std::cout << "did not find " << item << "\n";
                 for (auto &[name, pattern]: grammar_analysis.rule_component) {
                     int k = 0;
                     std::vector<std::size_t> result;
                     result.resize(pattern.size());
-                    std::cout << "searching for " << name << "\n";
+//                    std::cout << "searching for " << name << "\n";
                     if (pattern.size() && m1->second.type == pattern.front()) {
                         result[k] = m1->first;
                         k++;
                         //using this cell should work since the component was just added and can't drift
                         auto c = cell_list.locate_cell(m1);
-                        std::cout << "match " << m1->first << " is located in cell " << c << "\n";
+//                        std::cout << "match " << m1->first << " is located in cell " << c << "\n";
                         incremental_reaction_instance_backtracker(accepted_rule_matches, validated_components,
                                                                   system_graph, component_matches,
                                                                   grammar_analysis, cell_list, name,
@@ -489,17 +491,17 @@ namespace DGGML
                 }
             }
         }
-        std::cout << "Number of accepted reaction instances: " << accepted_rule_matches.size() << "\n";
+//        std::cout << "Number of accepted reaction instances: " << accepted_rule_matches.size() << "\n";
 
         //rule instances are only accepted if they contain the new components and phi maps them to the current cell
         //if phi maps them to a different cell, we may be able to add them to a separate future validations
         // list rather than do nothing with them
-        std::cout << "Size of rule instances before phi: " << rule_matches.size() << "\n";
-        std::cout << "Size of rules mapped to the geocell before phi: " << rule_map.size() << "\n";
+//        std::cout << "Size of rule instances before phi: " << rule_matches.size() << "\n";
+//        std::cout << "Size of rules mapped to the geocell before phi: " << rule_map.size() << "\n";
         for(auto& inst : accepted_rule_matches)
         {
             auto max_cell = min_dim_phi(inst, system_graph, geoplex2D, component_matches);
-            std::cout << "we are in cell " << cell_k << " and accepted instance of type " << inst.name << " maps to cell " << max_cell << "\n";
+//            std::cout << "we are in cell " << cell_k << " and accepted instance of type " << inst.name << " maps to cell " << max_cell << "\n";
             //this cell owns the instance so it can add it back in
             if(max_cell == cell_k)
             {
@@ -511,19 +513,21 @@ namespace DGGML
                 }
             } else
             {
-                std::cout << "####################REJECTED#################\n";
-                std::cout << "reject rule is of type: " << inst.name << "\n";
+//                std::cout << "####################REJECTED#################\n";
+//                std::cout << "reject rule is of type: " << inst.name << "\n";
                 geocell_properties.rejected_rule_matches.push_back({cell_k, inst});
                 //std::cin.get();
             }
         }
-        std::cout << "Size of rule instances after phi: " << rule_matches.size() << "\n";
-        std::cout << "Size of rules mapped to the geocell after phi: " << rule_map.size() << "\n";
-        {int count = 0;
+//        std::cout << "Size of rule instances after phi: " << rule_matches.size() << "\n";
+//        std::cout << "Size of rules mapped to the geocell after phi: " << rule_map.size() << "\n";
+        {
+            int count = 0;
             for(auto& item : rule_map)
                 if(rule_matches[item].category == "deterministic")
                     count++;
-        std::cout << "Number of deterministic rules: " << count << "\n";}
+//            std::cout << "Number of deterministic rules: " << count << "\n";
+        }
     }
 }
 #endif //DGGML_INCREMENTALUPDATE_HPP

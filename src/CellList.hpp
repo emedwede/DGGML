@@ -74,11 +74,11 @@ struct CellList
         cell_range = std::ceil(1/cell_ratio);
 
         //build the cell list from the system graph 
-        std::cout << "Building cell list\n";
+//        std::cout << "Building cell list\n";
         for(auto it = component_matches->begin(); it != component_matches->end(); it++) insert_match(it);
-        std::cout << "Cell list has been built\n";
-        std::cout << "The cell list has " << totalNumCells() << " reaction cells\n"; 
-        std::cout << "Components mapped: " << getTotalSize() << "\n";
+//        std::cout << "Cell list has been built\n";
+//        std::cout << "The cell list has " << totalNumCells() << " reaction cells\n";
+//        std::cout << "Components mapped: " << getTotalSize() << "\n";
     }
     
     std::size_t getCellSize(const int cell)
@@ -122,7 +122,7 @@ struct CellList
         {
             if(comp_iter->first == data[c][i]) {
                 found = true;
-                std::cout << "Found component " << comp_iter->first << " in cell " << c << " at index " << i << "\n";
+//                std::cout << "Found component " << comp_iter->first << " in cell " << c << " at index " << i << "\n";
                 auto outIter = data.begin()+c;
                 auto inIter = outIter->begin()+i;
                 return iterator_pair{outIter, inIter};
@@ -138,13 +138,13 @@ struct CellList
                 for(auto j = jmin; j < jmax; j++)
                 {
                     auto d = grid.cardinalCellIndex(i, j);
-                    std::cout << "Searching in cell " << d << "\n";
+//                    std::cout << "Searching in cell " << d << "\n";
                     //if(d == c) continue;
                     for(auto k = 0; k < data[d].size(); k++)
                     {
                         if(comp_iter->first == data[d][k]) {
                             found = true;
-                            std::cout << "Found component " << comp_iter->first << " in cell " << d << " at index " << k << "\n";
+//                            std::cout << "Found component " << comp_iter->first << " in cell " << d << " at index " << k << "\n";
                             auto outIter = data.begin()+d;
                             auto inIter = outIter->begin()+k;
                             return iterator_pair{outIter, inIter};
@@ -167,14 +167,14 @@ struct CellList
 
     void rebuild()
     {
-        std::cout << "Rebuilding cell list\n";
+//        std::cout << "Rebuilding cell list\n";
         for(auto& cell : data)
             cell.clear();
-        std::cout << "Cleared cell list mapped components: " << getTotalSize() << "\n";
+//        std::cout << "Cleared cell list mapped components: " << getTotalSize() << "\n";
         for(auto it = component_matches->begin(); it != component_matches->end(); it++) insert_match(it);
-        std::cout << "Cell list has been built\n";
-        std::cout << "The cell list has " << totalNumCells() << " reaction cells\n";
-        std::cout << "Components mapped after reset: " << getTotalSize() << "\n";
+//        std::cout << "Cell list has been built\n";
+//        std::cout << "The cell list has " << totalNumCells() << " reaction cells\n";
+//        std::cout << "Components mapped after reset: " << getTotalSize() << "\n";
     }
 
     std::size_t totalNumCells() { return grid.totalNumCells(); }

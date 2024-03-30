@@ -137,7 +137,7 @@ namespace DGGML {
                 }
             }
             if(valid && pass) {
-                std::cout << "found: "; for(auto& item : result) std::cout << item << " "; std::cout << "\n";
+                //std::cout << "found: "; for(auto& item : result) std::cout << item << " "; std::cout << "\n";
                 RuleMatch<std::size_t> inst;
                 inst.name = name;
                 if(auto search = grammar_analysis.with_rules.find(name); search != grammar_analysis.with_rules.end())

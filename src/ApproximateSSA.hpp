@@ -37,7 +37,7 @@ void approximate_ssa(ComponentMatchMap<T1>& component_matches, AnalyzedGrammar<T
     auto& gen = model->gen;
     auto reaction_radius = model->settings.MAXIMAL_REACTION_RADIUS;
 
-    std::cout << "Cell " << k << " has " << rule_map[k].size() << " rules\n";
+//    std::cout << "Cell " << k << " has " << rule_map[k].size() << " rules\n";
 
     double delta_t, geocell_propensity;
     std::size_t events, steps;
@@ -49,14 +49,14 @@ void approximate_ssa(ComponentMatchMap<T1>& component_matches, AnalyzedGrammar<T
     {
         double uniform_sample = RandomRealsBetween(0.0, 1.0)();
         exp_sample = -log(1-uniform_sample);
-        std::cout << "Warped wating time: " << exp_sample << "\n";
+//        std::cout << "Warped wating time: " << exp_sample << "\n";
     }
 
     std::vector<std::size_t> solving_rules;
     for(auto& item : rule_map[k])
         if(rule_matches[item].category == "deterministic")
             solving_rules.push_back(item);
-    std::cout << "There are " << solving_rules.size() << " solving rules\n";
+//    std::cout << "There are " << solving_rules.size() << " solving rules\n";
 
     // the number of equations is defined by the parameters of the nodes
     // involved in all the ode rule types, it's up to the user to get the number per
@@ -106,10 +106,10 @@ void approximate_ssa(ComponentMatchMap<T1>& component_matches, AnalyzedGrammar<T
                 {
                     if(rule_matches[item.first].name == name) sum += item.second;
                 }
-                std::cout << "Rule " << name << " has total propensity of " << sum << "\n";
+//                std::cout << "Rule " << name << " has total propensity of " << sum << "\n";
                 geocell_propensity += sum;
             }
-            std::cout << "Geocell " << k << " has total propensity of " << geocell_propensity << "\n";
+            //std::cout << "Geocell " << k << " has total propensity of " << geocell_propensity << "\n";
 
             //the step adapts based on propensity or systems fastest dynamic
             //settings.DELTA_T_MIN = std::min(1.0/(10.0*geocell_propensity), settings.DELTA_DELTA_T);
@@ -118,9 +118,9 @@ void approximate_ssa(ComponentMatchMap<T1>& component_matches, AnalyzedGrammar<T
             ode_system.step();
             //TODO: make sure the step is adaptively solving to the event, meaning many events can happen between a
             // delta_delta_t
-            std::cout << "finished stepping\n";
+//            std::cout << "finished stepping\n";
             ode_system.copy_back();
-            std::cout << "finished copying\n";
+//            std::cout << "finished copying\n";
             // STEP(3) : advance the loop timer
             delta_t = ode_system.t;
             steps++;
@@ -138,7 +138,7 @@ void approximate_ssa(ComponentMatchMap<T1>& component_matches, AnalyzedGrammar<T
             //determine which rule to fire and fire it
             auto lam = [](double& s, auto& rp) { return s+rp.second; };
             auto sum = std::accumulate(propensity_space.begin(), propensity_space.end(), 0.0, lam);
-            std::cout << "Size of sample space: " << sum << "\n";
+            //std::cout << "Size of sample space: " << sum << "\n";
 
             auto local_sample = RandomRealsBetween(0.0, 1.0)();
 
@@ -154,9 +154,9 @@ void approximate_ssa(ComponentMatchMap<T1>& component_matches, AnalyzedGrammar<T
             auto fired_id = propensity_space[eventFired].first;
             auto inst = rule_matches[fired_id];
             auto fired_name = inst.name;
-            std::cout << "Selected rule id " << fired_id << " of type " << fired_name  << " with components: { ";
-            for(auto& c : inst.components) std::cout << c << " ";
-            std::cout << "}\n";
+//            std::cout << "Selected rule id " << fired_id << " of type " << fired_name  << " with components: { ";
+//            for(auto& c : inst.components) std::cout << c << " ";
+//            std::cout << "}\n";
 //            if(fired_name == "retraction")
 //                std::cin.get();
 
@@ -167,7 +167,7 @@ void approximate_ssa(ComponentMatchMap<T1>& component_matches, AnalyzedGrammar<T
             //TODO: a big thing to decide is how phi partitions the match and component set
             auto [changes, removals] = perform_invalidations_and_rewrite(inst, component_matches, gen, grammar_analysis,
                                                              system_graph, rule_matches, rule_map[k], cell_list, geocell_properties);
-            changes.print();
+//            changes.print();
             //TODO: incrementally update the in memory set of matches
             //Once we have updated the graph, we need to invalidated any old matches and then search for the
             //new ones!
@@ -187,7 +187,7 @@ void approximate_ssa(ComponentMatchMap<T1>& component_matches, AnalyzedGrammar<T
 //            auto removals = perform_invalidations<graph_t>(changes, component_matches,
 //                                                           grammar_analysis, rule_matches,
 //                                                           rule_map[k], cell_list);
-            removals.print();
+//            removals.print();
 
             find_new_matches(changes, system_graph, component_matches,grammar_analysis,
                              rule_matches, rule_map[k], cell_list, geoplex2D,k, reaction_radius, geocell_properties);
@@ -209,13 +209,13 @@ void approximate_ssa(ComponentMatchMap<T1>& component_matches, AnalyzedGrammar<T
             for(auto& item : rule_map[k])
                 if(rule_matches[item].category == "deterministic")
                     solving_rules.push_back(item);
-            std::cout << "Number of deterministic rules: " << solving_rules.size() << "\n";
+//            std::cout << "Number of deterministic rules: " << solving_rules.size() << "\n";
             ode_system.reinit(solving_rules);
         }
         //break; //makes only one reaction occur break point
     }
-    std::cout << "Total steps taken: " << steps << "\n";
-    ode_system.print_stats();
+//    std::cout << "Total steps taken: " << steps << "\n";
+//    ode_system.print_stats();
     //std::cin.get();
     geocell_properties.tau = tau;
     geocell_properties.exp_sample = exp_sample;

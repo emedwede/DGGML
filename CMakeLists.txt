@@ -2,7 +2,7 @@
 cmake_minimum_required(VERSION 3.16)
 
 #set the project name
-project(DGGML VERSION 0.0 LANGUAGES CXX)
+project(DGGML VERSION 1.0 LANGUAGES CXX)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
@@ -22,7 +22,7 @@ endif()
 # Add debugging option
 option(USE_DEBUG "Enter debug mode" ON)
 if (USE_DEBUG)
-	add_definitions(-DDGGML_DEBUG)
+	#add_compile_definitions(DGGML_DEBUG)
 endif()
 
 # In the build script simpy do this:

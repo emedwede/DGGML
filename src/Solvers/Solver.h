@@ -88,10 +88,10 @@ namespace DGGML {
             t_final = RCONST(user_data.model->settings.DELTA);
 
             flag = SUNContext_Create(NULL, &ctx);
-            if(!DGGML::SundialsUtils::check_flag(&flag, "SUNContext_Create", 1))
-                std::cout << "Passed the error check, suncontext created\n";
+//            if(!DGGML::SundialsUtils::check_flag(&flag, "SUNContext_Create", 1))
+//                std::cout << "Passed the error check, suncontext created\n";
 
-            std::cout << "*****NumEQ="<<num_eq<<"*****\n";
+//            std::cout << "*****NumEQ="<<num_eq<<"*****\n";
             y = NULL;
             y = N_VNew_Serial(num_eq, ctx);
 
@@ -108,14 +108,14 @@ namespace DGGML {
                 //auto induced_graph = induce_from_set(inst, user_data.component_matches, user_data.model->system_graph);
                 std::map<std::size_t, std::size_t> lhs_vertex_map;
                 construct_grammar_match_map(inst, user_data.grammar_analysis, lhs_vertex_map, user_data.component_matches);
-                std::cout << "for rule " << item << " we have a map: ";
-                for(auto& [k, v] : lhs_vertex_map)
-                    std::cout << "{ " << k << " -> " << v << " } ";
-                std::cout << "\n";
+//                std::cout << "for rule " << item << " we have a map: ";
+//                for(auto& [k, v] : lhs_vertex_map)
+//                    std::cout << "{ " << k << " -> " << v << " } ";
+//                std::cout << "\n";
                 ode.ic(user_data.model->system_graph, lhs_vertex_map, varset);
             }
             NV_Ith_S(y, varset.size()) = user_data.tau;
-            std::cout << "size of varset: " << varset.size() << "\n";
+//            std::cout << "size of varset: " << varset.size() << "\n";
             std::size_t idx = 0;
             for(auto item : varset)
             {
@@ -144,18 +144,18 @@ namespace DGGML {
 
             //ERKStepSetMinStep(arkode_mem, user_data.settings.DELTA_T_MIN/10.0);
             ERKStepSetMaxStep(arkode_mem, dt_out);//dt_out/10.0);
-            std::cout << "Created solver\n";
+//            std::cout << "Created solver\n";
         }
 
         void step()
         {
             if(num_eq == 0) return;
             flag = ERKStepEvolve(arkode_mem, tout, y, &t, ARK_NORMAL);
-            std::cout << "t: " << t << ", tout: " << tout << "\n";
+            //std::cout << "t: " << t << ", tout: " << tout << "\n";
             if(flag == ARK_ROOT_RETURN)
             {
                 root_flag = ERKStepGetRootInfo(arkode_mem, roots_found);
-                std::cout << "A root has been found\n";
+                //std::cout << "A root has been found\n";
             }
                 //successful solve
             else if(flag >= 0)
@@ -228,8 +228,8 @@ namespace DGGML {
                 num_eq += user_data.grammar_analysis.solving_rules.find(name)->second.num_eq;
             }
             num_eq++; //one extra equation for tau
-            std::cout << "Previo # of eq: " << pre_eq << "\n";
-            std::cout << "Reinit # of eq: " << num_eq << "\n";
+            //std::cout << "Previo # of eq: " << pre_eq << "\n";
+            //std::cout << "Reinit # of eq: " << num_eq << "\n";
             N_VDestroy(y);
             y = N_VNew_Serial(num_eq, ctx);
 
@@ -251,9 +251,9 @@ namespace DGGML {
             }
             NV_Ith_S(y, varset.size()) = user_data.tau;
             std::size_t idx = 0;
-            std::cout << "Global length: " << N_VGetLength(y) << "\n";
-            std::cout << "Local length: " << N_VGetLocalLength(y) << "\n";
-            std::cout << "Varset length: " << varset.size() << "\n";
+            //std::cout << "Global length: " << N_VGetLength(y) << "\n";
+            //std::cout << "Local length: " << N_VGetLocalLength(y) << "\n";
+            //std::cout << "Varset length: " << varset.size() << "\n";
             for(auto item : varset)
             {
                 user_data.varmap.insert({item, idx});
@@ -293,9 +293,9 @@ namespace DGGML {
         ~Solver()
         {
             //std::cout << "Starting solver destruction\n";
-            std::cout << "Global length: " << N_VGetLength(y) << "\n";
-            std::cout << "Local length: " << N_VGetLocalLength(y) << "\n";
-            std::cout << "Varset length: " << user_data.varmap.size() << "\n";
+            //std::cout << "Global length: " << N_VGetLength(y) << "\n";
+            //std::cout << "Local length: " << N_VGetLocalLength(y) << "\n";
+            //std::cout << "Varset length: " << user_data.varmap.size() << "\n";
             N_VDestroy(y);
             //std::cout << "Destroyed y vector\n";
             ERKStepFree(&arkode_mem); //free the solver memory

@@ -55,8 +55,8 @@ namespace DGGML {
             std::cout << "Initializing " << model->name << "\n";
             model->initialize();
 
-            std::cout << "Printing grammar rules...\n";
-            model->gamma.print();
+//            std::cout << "Printing grammar rules...\n";
+//            model->gamma.print();
 
             std::cout << "Performing grammar analysis and building analyzed grammar data structure\n";
             grammar_analysis = AnalyzedGrammar<graph_type>(model->gamma);
@@ -77,7 +77,7 @@ namespace DGGML {
             set_geocell_propensities();
 
             model->collect();
-            model->print_metrics();
+            //model->print_metrics();
 
             // A cell list is used to accelerate the spatial geometric search, but
             // we could use other methods like a bounding volume hierarchy(ArborX), kd-trees etc
@@ -94,7 +94,6 @@ namespace DGGML {
 
         void run() {
             //return;
-
             for(auto i = 0; i <= 2; i++) {
                 auto countNd = std::count_if(rule_map.begin(), rule_map.end(),
                                              [&](auto &iter) {
@@ -127,9 +126,9 @@ namespace DGGML {
                         auto stop = std::chrono::high_resolution_clock::now();
                         auto duration =
                                 std::chrono::duration_cast<std::chrono::milliseconds>(stop-start);
-                        std::cout << "Cell " << k << " took " << duration.count()
-                                  << " milliseconds and has a current tau "
-                                  << geocell_properties_list[k].tau << "\n";
+//                        std::cout << "Cell " << k << " took " << duration.count()
+//                                  << " milliseconds and has a current tau "
+//                                  << geocell_properties_list[k].tau << "\n";
                         dim_time += duration.count();
                         //break;//return;
                     }
@@ -142,7 +141,7 @@ namespace DGGML {
                     {
                         auto k = bucket.first;
                         auto& geocell_properties = geocell_properties_list[k];
-                        geocell_properties.print();
+//                        geocell_properties.print();
                         //reset the rules fired counter
                         geocell_properties.current_rules_fired = 0;
                         if(!geocell_properties.rejected_rule_matches.empty())
@@ -171,11 +170,11 @@ namespace DGGML {
                         }
                         //TODO: check to see if lower dimension have any rules containing invalidated components
                         ExpandedComplex2D<>& geoplex2D = model->geoplex2D;
-                        std::cout << "geocell " << k << " has nbrs: { ";
+//                        std::cout << "geocell " << k << " has nbrs: { ";
                         //for(auto& nbr : geoplex2D.graph.out_neighbors(k))
                         for(auto& [nbr, value] : model->geoplex2D.graph.getNodeSetRef())
                         {
-                            std::cout << nbr << " ";
+//                            std::cout << nbr << " ";
                             std::vector<std::size_t> invalid_rids; //rule ids
                             std::vector<std::size_t> invalid_idxs; //indices
                             for(auto idx = 0; idx < rule_map[nbr].size(); idx++)
@@ -187,8 +186,9 @@ namespace DGGML {
                                     {
                                         if(geocell_properties.invalidated_components.find(comp) != geocell_properties.invalidated_components.end())
                                         {
+
                                             //the rule is invalid
-                                            std::cout << "rule id " << rid << " in cell " << nbr << " contains component " << comp << "\n";
+//                                            std::cout << "rule id " << rid << " in cell " << nbr << " contains component " << comp << "\n";
 
                                             invalid_rids.push_back(rid);
                                             invalid_idxs.push_back(idx);
@@ -208,37 +208,37 @@ namespace DGGML {
 //                                auto id = std::find(rule_map[nbr].begin(), rule_map[nbr].end(), invalid_rids[iter]);
 //                                if(id != rule_map[nbr].end())
 //                                    rule_map[nbr].erase(id);
-                                if(rule_map.find(nbr) == rule_map.end())
-                                    std::cout << "nbr " << nbr << " does not exists\n";
-                                if(invalid_idxs[iter] >= rule_map[nbr].size()) {
-                                    std::cout << "index " << invalid_idxs[iter] << " dne\n";
-                                    std::cout << "max size is " << rule_map[nbr].size() << "\n";
-                                    std::cout << "originally: ";
-                                    std::cout << "max size was " << cpy.size() << "and we had rules: \n";
-                                    for(auto ii = 0; ii < cpy.size(); ii++)
-                                        std::cout << "{ " << ii << ", " << cpy[ii] << "} ";
-                                    std::cout << "\n";
-                                    std::cout << "we wanted to remove: ";
-                                    for(auto& item : invalid_idxs)
-                                        std::cout << item << " ";
-                                    std::cout << "\n";
-                                }
+//                                if(rule_map.find(nbr) == rule_map.end())
+//                                    std::cout << "nbr " << nbr << " does not exists\n";
+//                                if(invalid_idxs[iter] >= rule_map[nbr].size()) {
+//                                    std::cout << "index " << invalid_idxs[iter] << " dne\n";
+//                                    std::cout << "max size is " << rule_map[nbr].size() << "\n";
+//                                    std::cout << "originally: ";
+//                                    std::cout << "max size was " << cpy.size() << "and we had rules: \n";
+//                                    for(auto ii = 0; ii < cpy.size(); ii++)
+//                                        std::cout << "{ " << ii << ", " << cpy[ii] << "} ";
+//                                    std::cout << "\n";
+//                                    std::cout << "we wanted to remove: ";
+//                                    for(auto& item : invalid_idxs)
+//                                        std::cout << item << " ";
+//                                    std::cout << "\n";
+//                                }
                                 rule_map[nbr].erase(rule_map[nbr].begin()+invalid_idxs[iter]);
                             }
                         }
-                        std::cout << " }\n";
+//                        std::cout << " }\n";
                         geocell_properties.invalidated_components.clear();
                     }
                     tot_time += dim_time;
                     std::cout << (2 - d) << "D took " << dim_time << " milliseconds\n";
 
-                    std::cout << "Synchronizing work\n";
+                    //std::cout << "Synchronizing work\n";
                 }
 
-                std::cout << "Running the checkpointer\n";
+                //std::cout << "Running the checkpointer\n";
                 write_system_graph(i+1);
                 model->collect();
-                model->print_metrics();
+//                model->print_metrics();
                 std::cout << "Total dimensional time is " << tot_time << " milliseconds\n";
                 //time_count.push_back(tot_time);
                 std::cout << model->system_graph << "\n";
@@ -253,10 +253,12 @@ namespace DGGML {
                 }
                 //remap rules to geocells
                 map_rule_matches_to_geocells();
+                //std::cin.get();
                 //if(i == 1)
                     //std::cin.get();
                 //if(i == 3) return;
             }
+            model->print_metrics();
             //return;
         }
     //private:
@@ -321,26 +323,26 @@ namespace DGGML {
                     inst.anchor = match[0];
                     component_matches.insert(inst);
                 }
-                std::cout << "Found " << matches.size() << " instances\n";
+                //std::cout << "Found " << matches.size() << " instances\n";
             }
 
             //for(auto& [k, p] : instances)
-            for(auto& [k, pattern] : grammar_analysis.unique_components)
-            {
-                std::cout << "Component " << k << " has " << component_matches.count(k) << " instances\n";
-            }
+//            for(auto& [k, pattern] : grammar_analysis.unique_components)
+//            {
+//                //std::cout << "Component " << k << " has " << component_matches.count(k) << " instances\n";
+//            }
         }
 
         void compute_all_rule_matches()
         {
-            for(auto& [name, rule] : grammar_analysis.with_rules) {
-                auto count = std::count_if(rule_matches.begin(), rule_matches.end(), [&](auto& iter) { return iter.second.name == name; });
-                std::cout << "So far we have found " << count << " instances of with rule " << name << "\n";
-            }
-            for(auto& [name, rule] : grammar_analysis.solving_rules) {
-                auto count = std::count_if(rule_matches.begin(), rule_matches.end(), [&](auto& iter) { return iter.second.name == name; });
-                std::cout << "So far we have found " << count << " instances of solving rule " << name << "\n";
-            }
+//            for(auto& [name, rule] : grammar_analysis.with_rules) {
+//                auto count = std::count_if(rule_matches.begin(), rule_matches.end(), [&](auto& iter) { return iter.second.name == name; });
+//                std::cout << "So far we have found " << count << " instances of with rule " << name << "\n";
+//            }
+//            for(auto& [name, rule] : grammar_analysis.solving_rules) {
+//                auto count = std::count_if(rule_matches.begin(), rule_matches.end(), [&](auto& iter) { return iter.second.name == name; });
+//                std::cout << "So far we have found " << count << " instances of solving rule " << name << "\n";
+//            }
             // This is a recursive backtracking function, and it is memory efficient because it does a DFS (inorder traversal)
             // so only one vector is need for finding the result
 
@@ -363,13 +365,13 @@ namespace DGGML {
                 }
             }
 
-            auto sum  = 0;
-            for(auto& name : grammar_analysis.rule_names) {
-                auto count = std::count_if(rule_matches.begin(), rule_matches.end(), [&](auto& iter) { return iter.second.name == name; });
-                std::cout << "Rule " << name << " has " << count << " instances\n";
-                sum += count;
-            }
-            std::cout << "There are " << sum << " rule instances in total\n";
+//            auto sum  = 0;
+//            for(auto& name : grammar_analysis.rule_names) {
+//                auto count = std::count_if(rule_matches.begin(), rule_matches.end(), [&](auto& iter) { return iter.second.name == name; });
+//                std::cout << "Rule " << name << " has " << count << " instances\n";
+//                sum += count;
+//            }
+//            std::cout << "There are " << sum << " rule instances in total\n";
         }
 
         void map_rule_matches_to_geocells()
@@ -383,31 +385,31 @@ namespace DGGML {
                 //auto max_cell = anchored_phi(inst, model->system_graph, model->geoplex2D);
                 auto max_cell = min_dim_phi(inst, model->system_graph, model->geoplex2D, component_matches);
                 //TODO: fix this error where we get an invalid max cell for some reason
-                for(auto i = 0; i < inst.components.size(); i++)
-                {
-                    if(auto search = component_matches.find(inst.components[i]); search == component_matches.end())
-                    {
-                        std::cout << "did not find component " << i << "\n";
-                    }
-                    else if (auto& m = component_matches[inst.components[i]].match; m.size() == 0)
-                    {
-                        std::cout << "max_cell: " << max_cell << ", for rule id " << key << " has size " << inst.components.size() << "\n";
-                        std::cout << "found component " << inst.components[i] << " in an invalid state\n";
-                    }
-                }
+//                for(auto i = 0; i < inst.components.size(); i++)
+//                {
+//                    if(auto search = component_matches.find(inst.components[i]); search == component_matches.end())
+//                    {
+//                        std::cout << "did not find component " << i << "\n";
+//                    }
+//                    else if (auto& m = component_matches[inst.components[i]].match; m.size() == 0)
+//                    {
+//                        std::cout << "max_cell: " << max_cell << ", for rule id " << key << " has size " << inst.components.size() << "\n";
+//                        std::cout << "found component " << inst.components[i] << " in an invalid state\n";
+//                    }
+//                }
                 rule_map[max_cell].push_back(key);
             }
 
-            auto sum = 0;
-            for(auto& [key, value] : rule_map)
-            {
-                if(model->geoplex2D.getGraph().findNode(key)->second.getData().interior) {
-                    auto dim = model->geoplex2D.getGraph().findNode(key)->second.getData().type;
-                    std::cout << "Rules mapped to " << (2 - dim) << "D cell " << key << ": " << value.size() << "\n";
-                }
-                sum += value.size();
-            }
-            std::cout << "Total rules mapped " << sum << "\n";
+//            auto sum = 0;
+//            for(auto& [key, value] : rule_map)
+//            {
+//                if(model->geoplex2D.getGraph().findNode(key)->second.getData().interior) {
+//                    auto dim = model->geoplex2D.getGraph().findNode(key)->second.getData().type;
+//                    std::cout << "Rules mapped to " << (2 - dim) << "D cell " << key << ": " << value.size() << "\n";
+//                }
+//                sum += value.size();
+//            }
+//            std::cout << "Total rules mapped " << sum << "\n";
         }
 
         //TODO: maybe not shared, but unique?

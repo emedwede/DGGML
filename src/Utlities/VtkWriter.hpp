@@ -39,15 +39,15 @@ class VtkFileWriter : public FileWriter<DataType> {
     using data_type = typename FileWriter<DataType>::data_type;
     protected:
         void create_file() const override {
-            std::cout << "File is created when written\n";
+            //std::cout << "File is created when written\n";
         }
 
         void open_file() const override {
-            std::cout << "Current file writing does not support appending\n";
+            //std::cout << "Current file writing does not support appending\n";
         }
 
         void format_data(data_type data) override {
-            std::cout << "Formating the data to be vtk compatibile\n";
+            //std::cout << "Formating the data to be vtk compatibile\n";
             //std::cout << data;
             
             //first rekey the points for vtk format
@@ -113,7 +113,7 @@ class VtkFileWriter : public FileWriter<DataType> {
         }
 
         void close_file() override {
-            std::cout << "Closing the file\n";
+            //std::cout << "Closing the file\n";
             rekey.clear();
             points.clear();
             keyData.clear();
@@ -145,15 +145,15 @@ class GridFileWriter : public FileWriter<std::pair<CartesianGrid2D, std::vector<
     using data_type = typename FileWriter<std::pair<CartesianGrid2D, std::vector<int>>>::data_type;
     protected:
         void create_file() const override {
-            std::cout << "File is created when written\n";
+            //std::cout << "File is created when written\n";
         }
 
         void open_file() const override {
-            std::cout << "Current file writing does not support appending\n";
+            //std::cout << "Current file writing does not support appending\n";
         }
 
         void format_data(data_type _data) override {
-            std::cout << "Formating the data to be vtk compatibile\n";
+            //std::cout << "Formating the data to be vtk compatibile\n";
             auto data = _data.first;
             auto labels = _data.second;
             auto n = data._nx;

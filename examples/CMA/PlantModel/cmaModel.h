@@ -426,7 +426,7 @@ namespace CMA {
                                                       double par_u[3];
                                                       //DGGML::perfect_deflection(u2, dat2.position, u3, par_u);
                                                       auto theta = DGGML::compute_theta(u2, dat2.position, u3);
-                                                      std::cout << theta << "\n";
+                                                      //std::cout << theta << "\n";
                                                       //std::cin.get();
                                                       DGGML::parallel_deflection(u2, dat2.position, u3, par_u);
                                                       std::get<Plant::Intermediate>(rhs[m2[2]].data).unit_vec[0] = std::get<Plant::Intermediate>(lhs[m1[3]].data).unit_vec[0];
@@ -568,7 +568,7 @@ namespace CMA {
 
                                                       //TODO: determine how strict we need to be with the collision point
                                                       if(sol[0] > 0.0 && sol[1] >= 0.0 && sol[1] <= 1.0) {
-                                                          return 8000.0;
+                                                          return 500.0;
                                                       }
                                                   }
                                               }
@@ -1089,7 +1089,7 @@ namespace CMA {
             clasp_creation_rhs_graph1.addEdge(3, 4);
 
             DGGML::WithRule<GT> clasp_creation_case1("clasp_creation_case1", clasp_creation_lhs_graph1, clasp_creation_rhs_graph1,
-                                               [](auto& lhs, auto& m) { return 5*0.01; },
+                                               [](auto& lhs, auto& m) { return 10*0.01; },
                                                [&](auto& lhs, auto& rhs, auto& m1, auto& m2) {
                                                    auto& lhs_node1 = lhs.findNode(m1[1])->second.getData();
                                                    auto& lhs_node2 = rhs.findNode(m1[2])->second.getData();
@@ -1452,8 +1452,8 @@ namespace CMA {
             //1x1 micrometer domain
             settings.CELL_NX = 1;//1;
             settings.CELL_NY = 1;//1;
-            settings.CELL_DX = 1;//;0.5;//1.0;
-            settings.CELL_DY = 1;//0.5;//1.0;
+            settings.CELL_DX = 4;//;0.5;//1.0;
+            settings.CELL_DY = 1.5;//0.5;//1.0;
 
             //non ghosted complex
             settings.GHOSTED = false;

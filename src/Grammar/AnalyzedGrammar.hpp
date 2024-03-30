@@ -188,10 +188,10 @@ namespace DGGML
             for(auto& [name, rule] : with_rules)
                 with_rewrites.insert({name, Rewrite<GraphType>{rule.lhs_graph, rule.rhs_graph}});
 
-            for(auto& item : with_rewrites)
-            {
-                item.second.print_node_sets(item.first);
-            }
+//            for(auto& item : with_rewrites)
+//            {
+//                item.second.print_node_sets(item.first);
+//            }
 
             // compute the unique set of connected components
             std::size_t unique_component_key = 0;
@@ -258,11 +258,11 @@ namespace DGGML
                         rst.add_node(path[i].first, parent);
                     }
                 }
-                std::cout << "RST path: ";
-                for(auto iter = rst.begin(); iter != rst.end(); iter++)
-                    std::cout << rst.indexed_key(*iter) << " ";
-                std::cout << "\n";
-                rst.print_preorder();
+//                std::cout << "RST path: ";
+//                for(auto iter = rst.begin(); iter != rst.end(); iter++)
+//                    std::cout << rst.indexed_key(*iter) << " ";
+//                std::cout << "\n";
+//                rst.print_preorder();
                 //auto v = g1.findNode(rst.indexed_key(idx));
                 //******
                 for(auto& item : path)

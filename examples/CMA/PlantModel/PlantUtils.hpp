@@ -286,7 +286,7 @@ namespace Plant
         }
         //note: the previous gets carried over!
         //left side interior, bottom to top
-        for(auto j = reaction_grid._nx-2; j > 0; j--)
+        for(auto j = reaction_grid._ny-2; j > 0; j--)
         {
             auto cardinal = reaction_grid.cardinalCellIndex(0, j);
             double px, py;
