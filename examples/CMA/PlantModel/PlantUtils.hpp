@@ -239,6 +239,8 @@ namespace Plant
 
         DGGML::CartesianGrid2D& reaction_grid = cplex.reaction_grid;
 
+        //TODO: make it so the end points are aligned with the cell corners, but have custom spacing
+        // between the points
         //create the boundary
         //bottom, left to right
         key_type prev_key; //only the first step doesn't have a prev

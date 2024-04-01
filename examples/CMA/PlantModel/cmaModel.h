@@ -1072,7 +1072,113 @@ namespace CMA {
                                                       DGGML::set_unit_vector(rhs_pos4, rhs_pos3, u4);
 
             });
-            gamma.addRule(creation_case1);
+
+            //gamma.addRule(creation_case1);
+
+            GT clasp_boundary_cross_lhs_graph1;
+            clasp_boundary_cross_lhs_graph1.addNode({1, {Plant::Intermediate{}}});
+            clasp_boundary_cross_lhs_graph1.addNode({2, {Plant::Positive{}}});
+            clasp_boundary_cross_lhs_graph1.addNode({3, {Plant::Boundary{}}});
+            clasp_boundary_cross_lhs_graph1.addNode({4, {Plant::Boundary{}}});
+            clasp_boundary_cross_lhs_graph1.addEdge(1, 2);
+            clasp_boundary_cross_lhs_graph1.addEdge(3, 4);
+
+            GT clasp_boundary_cross_rhs_graph1;
+            clasp_boundary_cross_rhs_graph1.addNode({1, {Plant::Intermediate{}}});
+            clasp_boundary_cross_rhs_graph1.addNode({2, {Plant::Intermediate{}}});
+            clasp_boundary_cross_rhs_graph1.addNode({3, {Plant::Boundary{}}});
+            clasp_boundary_cross_rhs_graph1.addNode({4, {Plant::Boundary{}}});
+            clasp_boundary_cross_rhs_graph1.addEdge(1, 2);
+            clasp_boundary_cross_rhs_graph1.addEdge(2, 3);
+            clasp_boundary_cross_rhs_graph1.addEdge(2, 4);
+
+            DGGML::WithRule<GT> clasp_boundary_cross_case1("clasp_boundary_cross_case1", clasp_boundary_cross_lhs_graph1, clasp_boundary_cross_rhs_graph1,
+                                                        [](auto& lhs, auto& m) {
+                                                            //find all the node data
+                                                            auto& dat1 = lhs.findNode(m[1])->second.getData();
+                                                            auto& dat2 = lhs.findNode(m[2])->second.getData();
+                                                            auto& dat3 = lhs.findNode(m[3])->second.getData();
+                                                            auto& dat4 = lhs.findNode(m[4])->second.getData();
+
+                                                            //get references to position vector
+                                                            auto& pos1 = dat1.position;
+                                                            auto& pos2 = dat2.position;
+                                                            auto& pos3 = dat3.position;
+                                                            auto& pos4 = dat4.position;
+
+                                                            //get references to unit vectors
+                                                            auto& u1 = std::get<Plant::Intermediate>(dat1.data).unit_vec;
+                                                            auto& u2 = std::get<Plant::Positive>(dat2.data).unit_vec;
+                                                            double u3[3];
+                                                            DGGML::set_unit_vector(pos3, pos4, u3);
+
+                                                            //distance from positive node to line segment
+                                                            auto d = DGGML::distanceToLineSegment(pos3[0], pos3[1], pos4[0], pos4[1], pos2[0], pos2[1]);
+                                                            if(d <= 0.025) {
+                                                                auto theta = DGGML::compute_theta(u2, dat2.position,u3);
+                                                                //std::cout << "Distance, Theta : { " << d << ", " << theta << " }\n";
+                                                                if (theta < 45.0) {
+                                                                    double sol[2];
+                                                                    DGGML::paramaterized_intersection(pos2, pos4, pos3,u2, sol);
+                                                                    //std::cout << "Solution: { " << sol[0] << " " << sol[1] << " }\n";
+                                                                    //std::cin.get();
+                                                                    //TODO: determine how strict we need to be with the collision point
+                                                                    if (sol[0] > 0.0 && sol[1] >= 0.0 &&
+                                                                        sol[1] <= 1.0) {
+                                                                        //std::cout << "passed\n";
+                                                                        //std::cin.get();
+                                                                        return 4000.0;
+                                                                    }
+                                                                }
+                                                            }
+                                                            return 0.0;
+                                                        },
+                                                        [&](auto& lhs, auto& rhs, auto& m1, auto& m2) {
+                                                            auto& lhs_node2 = lhs.findNode(m1[2])->second.getData();
+                                                            auto& lhs_node3 = lhs.findNode(m1[3])->second.getData();
+                                                            auto& lhs_node4 = rhs.findNode(m1[4])->second.getData();
+                                                            auto& rhs_node1 = rhs.findNode(m2[1])->second.getData();
+                                                            auto& rhs_node2 = rhs.findNode(m2[2])->second.getData();
+
+                                                            auto& lhs_pos2 = lhs_node2.position;
+                                                            auto& lhs_pos3 = lhs_node3.position;
+                                                            auto& lhs_pos4 = lhs_node4.position;
+                                                            auto& rhs_pos1 = rhs_node1.position;
+                                                            auto& rhs_pos2 = rhs_node2.position;
+
+                                                            auto& u3 = std::get<Plant::Intermediate>(rhs_node1.data).unit_vec;
+                                                            auto& u4 = std::get<Plant::Intermediate>(rhs_node2.data).unit_vec;
+
+                                                            // place in center
+                                                            //for(int i = 0; i < 3; i++)
+                                                            //    rhs_pos2[i] = (lhs_pos3[i] + lhs_pos4[i]) / 2.0;
+
+                                                            // place at parameterized intersection point
+                                                            auto& u2 = std::get<Plant::Positive>(lhs_node2.data).unit_vec;
+                                                            double sol[2];
+                                                            DGGML::paramaterized_intersection(lhs_pos2, lhs_pos4, lhs_pos3,u2, sol);
+                                                            for(int i = 0; i < 3; i++)
+                                                                rhs_pos2[i] = lhs_pos4[i]+(lhs_pos3[i] - lhs_pos4[i])*sol[1];
+
+                                                            DGGML::set_unit_vector(rhs_pos2, rhs_pos1, u4);
+                                                            DGGML::set_unit_vector(rhs_pos2, rhs_pos1, u3);
+
+//                                                            double sol[2];
+//                                                            DGGML::paramaterized_intersection(pos2, pos4, pos3, u2, sol);
+//                                                            for(int i = 0; i < 3; i++)
+//                                                                rhs[m2[2]].position[i] = lhs[m2[4]].position[i]+(lhs[m2[3]].position[i] - lhs[m2[4]].position[i])*sol[1];
+//                                                            DGGML::set_unit_vector(rhs[m2[2]].position, rhs[m2[1]].position, std::get<Plant::Junction>(rhs[m2[2]].data).unit_vec);
+//                                                            DGGML::set_unit_vector(rhs[m2[2]].position, rhs[m2[1]].position, std::get<Plant::Intermediate>(rhs[m2[1]].data).unit_vec);
+//                                                            for(int i = 0; i < 3; i++)
+//                                                                rhs[m2[5]].position[i] = rhs[m1[2]].position[i]+0.01*std::get<Plant::Junction>(rhs[m1[2]].data).unit_vec[i];
+//                                                            DGGML::set_unit_vector(rhs[m2[5]].position, rhs[m2[2]].position, std::get<Plant::Intermediate>(rhs[m2[5]].data).unit_vec);
+//                                                            for(int i = 0; i < 3; i++)
+//                                                                rhs[m2[6]].position[i] = rhs[m1[2]].position[i]+0.011*std::get<Plant::Junction>(rhs[m1[2]].data).unit_vec[i];
+//                                                            DGGML::set_unit_vector(rhs[m2[6]].position, rhs[m2[2]].position, std::get<Plant::Positive>(rhs[m2[6]].data).unit_vec);
+
+
+                                                        });
+            gamma.addRule(clasp_boundary_cross_case1);
 
             GT clasp_creation_lhs_graph1;
             clasp_creation_lhs_graph1.addNode({1, {Plant::Boundary{}}});
@@ -1089,7 +1195,7 @@ namespace CMA {
             clasp_creation_rhs_graph1.addEdge(3, 4);
 
             DGGML::WithRule<GT> clasp_creation_case1("clasp_creation_case1", clasp_creation_lhs_graph1, clasp_creation_rhs_graph1,
-                                               [](auto& lhs, auto& m) { return 10*0.01; },
+                                               [](auto& lhs, auto& m) { return 0.005; },
                                                [&](auto& lhs, auto& rhs, auto& m1, auto& m2) {
                                                    auto& lhs_node1 = lhs.findNode(m1[1])->second.getData();
                                                    auto& lhs_node2 = rhs.findNode(m1[2])->second.getData();
@@ -1450,10 +1556,10 @@ namespace CMA {
             settings.EXPERIMENT_NAME = "alignment_debug";
 
             //1x1 micrometer domain
-            settings.CELL_NX = 1;//1;
-            settings.CELL_NY = 1;//1;
-            settings.CELL_DX = 4;//;0.5;//1.0;
-            settings.CELL_DY = 1.5;//0.5;//1.0;
+            settings.CELL_NX = 2;//1;
+            settings.CELL_NY = 2;//1;
+            settings.CELL_DX = 1;//;0.5;//1.0;
+            settings.CELL_DY = 1;//0.5;//1.0;
 
             //non ghosted complex
             settings.GHOSTED = false;
@@ -1468,7 +1574,7 @@ namespace CMA {
             settings.LENGTH_DIV_FACTOR = 1.2;
 
             //actual MTs are 23 to 27 nm in diameter and up to 50 micrometers (um) long
-            settings.DIV_LENGTH = 3*0.025; //MT segments are approximated as 25 nm long
+            settings.DIV_LENGTH = 0.025; //4*0.025 //MT segments are approximated as 25 nm long
             settings.DIV_LENGTH_RETRACT = 0.0025;
 
             //growing and shrinking velocities in micrometers per second
@@ -1478,10 +1584,10 @@ namespace CMA {
             settings.SIGMOID_K = 10.0;
 
             //0.05 micrometers = 50 nanometers
-            settings.MAXIMAL_REACTION_RADIUS = 2*0.05;
+            settings.MAXIMAL_REACTION_RADIUS = 0.05; // 2*0.05
 
             //simulation time in seconds
-            settings.TOTAL_TIME = 20.0;//25.0;//20.0;
+            settings.TOTAL_TIME = 9*20.0;//25.0;//20.0;
             settings.DELTA = 0.5/8.0; //unit of seconds
 
             //The internal step of the solver should be at least smaller than delta
