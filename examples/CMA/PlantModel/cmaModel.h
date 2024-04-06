@@ -368,12 +368,14 @@ namespace CMA {
 
             GT zippering_rhs_graph1;
             zippering_rhs_graph1.addNode({1, {Plant::Intermediate{}}});
-            zippering_rhs_graph1.addNode({2, {Plant::Intermediate{}}});
+            zippering_rhs_graph1.addNode({2, {Plant::Zipper{}}});
+            zippering_rhs_graph1.addNode({6, {Plant::Intermediate{}}});
             zippering_rhs_graph1.addNode({5, {Plant::Positive{}}});
             zippering_rhs_graph1.addNode({3, {Plant::Intermediate{}}});
             zippering_rhs_graph1.addNode({4, {Plant::Intermediate{}}});
             zippering_rhs_graph1.addEdge(1, 2);
-            zippering_rhs_graph1.addEdge(2, 5);
+            zippering_rhs_graph1.addEdge(2, 6);
+            zippering_rhs_graph1.addEdge(6, 5);
             zippering_rhs_graph1.addEdge(3, 4);
 
             DGGML::WithRule<GT> zippering_case1("zippering_case1", zippering_lhs_graph1, zippering_rhs_graph1,
@@ -429,9 +431,17 @@ namespace CMA {
                                                       //std::cout << theta << "\n";
                                                       //std::cin.get();
                                                       DGGML::parallel_deflection(u2, dat2.position, u3, par_u);
-                                                      std::get<Plant::Intermediate>(rhs[m2[2]].data).unit_vec[0] = std::get<Plant::Intermediate>(lhs[m1[3]].data).unit_vec[0];
-                                                      std::get<Plant::Intermediate>(rhs[m2[2]].data).unit_vec[1] = std::get<Plant::Intermediate>(lhs[m1[3]].data).unit_vec[1];
-                                                      std::get<Plant::Intermediate>(rhs[m2[2]].data).unit_vec[2] = std::get<Plant::Intermediate>(lhs[m1[3]].data).unit_vec[2];
+                                                      std::get<Plant::Zipper>(rhs[m2[2]].data).unit_vec[0] = std::get<Plant::Intermediate>(lhs[m1[3]].data).unit_vec[0];
+                                                      std::get<Plant::Zipper>(rhs[m2[2]].data).unit_vec[1] = std::get<Plant::Intermediate>(lhs[m1[3]].data).unit_vec[1];
+                                                      std::get<Plant::Zipper>(rhs[m2[2]].data).unit_vec[2] = std::get<Plant::Intermediate>(lhs[m1[3]].data).unit_vec[2];
+
+                                                      std::get<Plant::Intermediate>(rhs[m2[6]].data).unit_vec[0] = par_u[0];
+                                                      std::get<Plant::Intermediate>(rhs[m2[6]].data).unit_vec[1] = par_u[1];
+                                                      std::get<Plant::Intermediate>(rhs[m2[6]].data).unit_vec[2] = par_u[2];
+
+                                                      rhs[m2[6]].position[0] = lhs[m1[2]].position[0]+0.005*std::get<Plant::Intermediate>(rhs[m2[6]].data).unit_vec[0];
+                                                      rhs[m2[6]].position[1] = lhs[m1[2]].position[1]+0.005*std::get<Plant::Intermediate>(rhs[m2[6]].data).unit_vec[1];
+                                                      rhs[m2[6]].position[2] = lhs[m1[2]].position[2]+0.005*std::get<Plant::Intermediate>(rhs[m2[6]].data).unit_vec[2];
 
                                                       std::get<Plant::Positive>(rhs[m2[5]].data).unit_vec[0] = par_u[0];
                                                       std::get<Plant::Positive>(rhs[m2[5]].data).unit_vec[1] = par_u[1];
@@ -447,6 +457,76 @@ namespace CMA {
 
             gamma.addRule(zippering_case1);
 
+            GT zipper_catastrophe_lhs_graph1;
+            zipper_catastrophe_lhs_graph1.addNode({1, {Plant::Intermediate{}}});
+            zipper_catastrophe_lhs_graph1.addNode({2, {Plant::Positive{}}});
+            zipper_catastrophe_lhs_graph1.addNode({3, {Plant::Zipper{}}});
+            zipper_catastrophe_lhs_graph1.addNode({4, {Plant::Intermediate{}}});
+            zipper_catastrophe_lhs_graph1.addNode({5, {Plant::Intermediate{}}});
+            zipper_catastrophe_lhs_graph1.addEdge(3, 4);
+            zipper_catastrophe_lhs_graph1.addEdge(3, 5);
+            //zipper_catastrophe_lhs_graph1.addNode({4, {Plant::Intermediate{}}});
+            zipper_catastrophe_lhs_graph1.addEdge(1, 2);
+            //zipper_catastrophe_lhs_graph1.addEdge(3, 4);
+
+            GT zipper_catastrophe_rhs_graph1;
+            zipper_catastrophe_rhs_graph1.addNode({1, {Plant::Intermediate{}}});
+            zipper_catastrophe_rhs_graph1.addNode({2, {Plant::Negative{}}});
+            zipper_catastrophe_rhs_graph1.addNode({3, {Plant::Zipper{}}});
+            zipper_catastrophe_rhs_graph1.addNode({4, {Plant::Intermediate{}}});
+            zipper_catastrophe_rhs_graph1.addNode({5, {Plant::Intermediate{}}});
+            zipper_catastrophe_rhs_graph1.addEdge(3, 4);
+            zipper_catastrophe_rhs_graph1.addEdge(3, 5);
+            //zipper_catastrophe_rhs_graph1.addNode({4, {Plant::Intermediate{}}});
+            zipper_catastrophe_rhs_graph1.addEdge(1, 2);
+            //zipper_catastrophe_rhs_graph1.addEdge(3, 4);
+
+            DGGML::WithRule<GT> zipper_catastrophe("zipper_catastrophe", zipper_catastrophe_lhs_graph1, zipper_catastrophe_rhs_graph1,
+                                                   [&](auto& lhs, auto& m) {
+                                                       //find all the node data
+                                                       auto& dat1 = lhs.findNode(m[1])->second.getData();
+                                                       auto& dat2 = lhs.findNode(m[2])->second.getData();
+                                                       auto& dat3 = lhs.findNode(m[3])->second.getData();
+                                                       //auto& dat4 = lhs.findNode(m[4])->second.getData();
+
+                                                       //get references to position vector
+                                                       auto& pos1 = dat1.position;
+                                                       auto& pos2 = dat2.position;
+                                                       auto& pos3 = dat3.position;
+                                                       //auto& pos4 = dat4.position;
+
+                                                       //get references to unit vectors
+                                                       auto& u1 = std::get<Plant::Intermediate>(dat1.data).unit_vec;
+                                                       auto& u2 = std::get<Plant::Positive>(dat2.data).unit_vec;
+                                                       auto& u3 = std::get<Plant::Zipper>(dat3.data).unit_vec;
+                                                       //auto& u4 = std::get<Plant::Intermediate>(dat4.data).unit_vec;
+
+                                                       //distance from positive node to line segment
+                                                       //auto d = DGGML::distanceToLineSegment(pos3[0], pos3[1], pos4[0], pos4[1], pos2[0], pos2[1]);
+                                                       auto d = DGGML::calculate_distance(pos2, pos3);
+                                                       if(d <= 0.025) {
+                                                           //auto theta = DGGML::compute_theta(u2, dat2.position, u3);
+                                                           //if(theta < 45.0)
+                                                           //{
+                                                               //double sol[2];
+                                                               //DGGML::paramaterized_intersection(pos2, pos4, pos3, u2, sol);
+
+                                                               //TODO: determine how strict we need to be with the collision point
+                                                               //if(sol[0] > 0.0){// && sol[1] >= 0.0 && sol[1] <= 1.0) {
+                                                                   return 4000.0;
+                                                               //}
+                                                           //}
+                                                       }
+                                                       return 0.0;
+                                                   },
+                                                   [](auto& lhs, auto& rhs, auto& m1, auto& m2)
+                                                   {
+                                                       std::get<Plant::Negative>(rhs[m2[2]].data).unit_vec[0] = -std::get<Plant::Positive>(lhs[m1[2]].data).unit_vec[0];
+                                                       std::get<Plant::Negative>(rhs[m2[2]].data).unit_vec[1] = -std::get<Plant::Positive>(lhs[m1[2]].data).unit_vec[1];
+                                                       std::get<Plant::Negative>(rhs[m2[2]].data).unit_vec[2] = -std::get<Plant::Positive>(lhs[m1[2]].data).unit_vec[2];
+                                                   });
+
+            gamma.addRule(zipper_catastrophe);
 //            GT crossover_lhs_graph;
 //            crossover_lhs_graph.addNode({1, {Plant::Intermediate{}}});
 //            crossover_lhs_graph.addNode({2, {Plant::Positive{}}});
@@ -1000,7 +1080,7 @@ namespace CMA {
             creation_rhs_graph1.addEdge(3, 4);
 
             DGGML::WithRule<GT> creation_case1("creation_case1", creation_lhs_graph1, creation_rhs_graph1,
-                                                  [](auto& lhs, auto& m) { return 0.5/100.0; },
+                                                  [](auto& lhs, auto& m) { return 5*0.5/100.0; },
                                                   [&](auto& lhs, auto& rhs, auto& m1, auto& m2) {
                                                       //std::cin.get();
                                                       //find all the node data for the left
@@ -1073,7 +1153,7 @@ namespace CMA {
 
             });
 
-            //gamma.addRule(creation_case1);
+            gamma.addRule(creation_case1);
 
             GT clasp_boundary_cross_lhs_graph1;
             clasp_boundary_cross_lhs_graph1.addNode({1, {Plant::Intermediate{}}});
@@ -1438,6 +1518,36 @@ namespace CMA {
 
             gamma.addRule(r7);
 
+            //TODO: the retracting end could switch back to grow state, leaving an open funnel point
+            // this rule needs more work to guard against that
+            //stochastic retraction rule
+            GT zipper_retraction_lhs_graph1;
+            zipper_retraction_lhs_graph1.addNode({1, {Plant::Negative{}}});
+            zipper_retraction_lhs_graph1.addNode({2, {Plant::Intermediate{}}});
+            zipper_retraction_lhs_graph1.addNode({3, {Plant::Zipper{}}});
+            zipper_retraction_lhs_graph1.addEdge(1, 2);
+            zipper_retraction_lhs_graph1.addEdge(2, 3);
+
+            GT zipper_retraction_rhs_graph1;
+            zipper_retraction_rhs_graph1.addNode({1, {Plant::Negative{}}});
+            zipper_retraction_rhs_graph1.addNode({3, {Plant::Intermediate{}}});
+            zipper_retraction_rhs_graph1.addEdge(1, 3);
+
+            DGGML::WithRule<GT> zipper_retraction("zipper_retraction", zipper_retraction_lhs_graph1, zipper_retraction_rhs_graph1,
+                                   [&](auto& lhs, auto& m)
+                                   {
+                                       auto& node_i_data = lhs.findNode(m[1])->second.getData();
+                                       auto& node_j_data = lhs.findNode(m[2])->second.getData();
+                                       auto len = DGGML::calculate_distance(node_i_data.position, node_j_data.position);
+                                       double propensity = 10.0*DGGML::heaviside(settings.DIV_LENGTH_RETRACT, len);
+                                       return propensity;
+                                   }, [](auto& lhs, auto& rhs, auto& m1, auto& m2) {
+                        //reset the unit vector
+                        DGGML::set_unit_vector(rhs[m2[3]].position, rhs[m2[1]].position, std::get<Plant::Negative>(rhs[m2[1]].data).unit_vec);
+                    });
+
+            gamma.addRule(zipper_retraction);
+
             //TODO: bug, flipping the ordering of the lhs to {1: negative, 2: intermediate}
             // and rhs to {1: positive, 2: intermediate} causes a bad variant access
             GT rescue_lhs;
@@ -1553,13 +1663,13 @@ namespace CMA {
         }
 
         void set_parameters() {
-            settings.EXPERIMENT_NAME = "alignment_debug";
+            settings.EXPERIMENT_NAME = "alignment_debug2";
 
             //1x1 micrometer domain
-            settings.CELL_NX = 2;//1;
-            settings.CELL_NY = 2;//1;
-            settings.CELL_DX = 1;//;0.5;//1.0;
-            settings.CELL_DY = 1;//0.5;//1.0;
+            settings.CELL_NX = 1;//1;
+            settings.CELL_NY = 1;//1;
+            settings.CELL_DX = 2.5;//;0.5;//1.0;
+            settings.CELL_DY = 1.0;//0.5;//1.0;
 
             //non ghosted complex
             settings.GHOSTED = false;
@@ -1574,7 +1684,7 @@ namespace CMA {
             settings.LENGTH_DIV_FACTOR = 1.2;
 
             //actual MTs are 23 to 27 nm in diameter and up to 50 micrometers (um) long
-            settings.DIV_LENGTH = 0.025; //4*0.025 //MT segments are approximated as 25 nm long
+            settings.DIV_LENGTH = 3*0.025; //3*0.025 //MT segments are approximated as 25 nm long
             settings.DIV_LENGTH_RETRACT = 0.0025;
 
             //growing and shrinking velocities in micrometers per second
@@ -1584,10 +1694,10 @@ namespace CMA {
             settings.SIGMOID_K = 10.0;
 
             //0.05 micrometers = 50 nanometers
-            settings.MAXIMAL_REACTION_RADIUS = 0.05; // 2*0.05
+            settings.MAXIMAL_REACTION_RADIUS = 2*0.05; // 2*0.05
 
             //simulation time in seconds
-            settings.TOTAL_TIME = 9*20.0;//25.0;//20.0;
+            settings.TOTAL_TIME = 4*20.0;//25.0;//20.0;
             settings.DELTA = 0.5/8.0; //unit of seconds
 
             //The internal step of the solver should be at least smaller than delta
