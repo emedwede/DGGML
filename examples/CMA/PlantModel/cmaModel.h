@@ -83,7 +83,7 @@ namespace CMA {
         {
             std::cout << "Initializing the plant model simulation\n";
 
-            set_parameters();
+            //set_parameters();
             name = settings.EXPERIMENT_NAME;
             std::cout << "Creating the grammar\n";
             using GT = Plant::graph_type;
@@ -1710,45 +1710,45 @@ namespace CMA {
 
         void set_parameters(simdjson::ondemand::document& interface)
         {
-            std::string_view temp = interface["META"]["EXPERIMENT"];
+            std::string_view temp = interface["EXPERIMENT"];
             settings.EXPERIMENT_NAME = static_cast<std::string>(temp);
 
             name = settings.EXPERIMENT_NAME;
 
             std::cout << settings.EXPERIMENT_NAME << "+++\n";
-            settings.CELL_NX = int64_t(interface["SETTINGS"]["CELL_NX"]);
-            settings.CELL_NY = int64_t(interface["SETTINGS"]["CELL_NY"]);
+            settings.CELL_NX = int64_t(interface["CELL_NX"]);
+            settings.CELL_NY = int64_t(interface["CELL_NY"]);
 
-            settings.CELL_DX = double(interface["SETTINGS"]["CELL_DX"]);
-            settings.CELL_DY = double(interface["SETTINGS"]["CELL_DY"]);
-            settings.GHOSTED = bool(interface["SETTINGS"]["GHOSTED"]);
+            settings.CELL_DX = double(interface["CELL_DX"]);
+            settings.CELL_DY = double(interface["CELL_DY"]);
+            settings.GHOSTED = bool(interface["GHOSTED"]);
 
-            settings.NUM_MT = int64_t(interface["SETTINGS"]["NUM_MT"]);
-            settings.MT_MIN_SEGMENT_INIT = double(interface["SETTINGS"]["MT_MIN_SEGMENT_INIT"]);
-            settings.MT_MAX_SEGMENT_INIT = double(interface["SETTINGS"]["MT_MAX_SEGMENT_INIT"]);
+            settings.NUM_MT = int64_t(interface["NUM_MT"]);
+            settings.MT_MIN_SEGMENT_INIT = double(interface["MT_MIN_SEGMENT_INIT"]);
+            settings.MT_MAX_SEGMENT_INIT = double(interface["MT_MAX_SEGMENT_INIT"]);
 
-            settings.LENGTH_DIV_FACTOR = double(interface["SETTINGS"]["LENGTH_DIV_FACTOR"]);
-            settings.DIV_LENGTH = double(interface["SETTINGS"]["DIV_LENGTH"]);
-            settings.DIV_LENGTH_RETRACT = double(interface["SETTINGS"]["DIV_LENGTH_RETRACT"]);
-            settings.V_PLUS = double(interface["SETTINGS"]["V_PLUS"]);
-            settings.V_MINUS = double(interface["SETTINGS"]["V_MINUS"]);
+            settings.LENGTH_DIV_FACTOR = double(interface["LENGTH_DIV_FACTOR"]);
+            settings.DIV_LENGTH = double(interface["DIV_LENGTH"]);
+            settings.DIV_LENGTH_RETRACT = double(interface["DIV_LENGTH_RETRACT"]);
+            settings.V_PLUS = double(interface["V_PLUS"]);
+            settings.V_MINUS = double(interface["V_MINUS"]);
 
-            settings.SIGMOID_K = double(interface["SETTINGS"]["SIGMOID_K"]);
+            settings.SIGMOID_K = double(interface["SIGMOID_K"]);
 
             settings.MAXIMAL_REACTION_RADIUS = settings.DIV_LENGTH*2.0;
 
             //Simulate until the specified unit time
-            settings.TOTAL_TIME = double(interface["SETTINGS"]["TOTAL_TIME"]);
+            settings.TOTAL_TIME = double(interface["TOTAL_TIME"]);
             //Delta should be big, but not to big. In this case, the maximum amount of time it would
             //take one MT to grow a single unit of MT
             //e.g. something like: 0.25*settings.MAXIMAL_REACTION_RADIUS / std::max(settings.V_PLUS, settings.V_MINUS);
-            settings.DELTA = double(interface["SETTINGS"]["DELTA"]);
+            settings.DELTA = double(interface["DELTA"]);
             //The internal step of the solver should be at least smaller than delta
             settings.DELTA_DELTA_T = settings.DELTA / 20.0;// / settings.NUM_INTERNAL_STEPS;
             settings.DELTA_T_MIN = settings.DELTA_DELTA_T;
             settings.NUM_STEPS = settings.TOTAL_TIME / settings.DELTA;
 
-            settings.RHO_TEST_RATE = double(interface["EXPERIMENTAL"]["RHO_TEST_RATE"]);
+            settings.RHO_TEST_RATE = double(interface["RHO_TEST_RATE"]);
         }
 
         //TODO: separate core settings out into the base class
