@@ -541,5 +541,46 @@ namespace Plant {
         double max_distance = std::max(settings.CELL_NX*settings.CELL_DX, settings.CELL_NY*settings.CELL_DY);
         return two_point_correlation_alpha(points, bin_size, max_distance);
     }
+
+    template<typename GraphType, typename ParamType>
+    std::vector<std::size_t> compute_orientation_histogram(GraphType &system_graph, ParamType &settings) {
+        std::vector<Point> points;
+        for(auto& node : system_graph.getNodeSetRef())
+        {
+            auto& node_data = node.second.getData();
+            if(std::holds_alternative<Plant::Intermediate>(node_data.data)) {
+                auto p = node_data.position;
+                auto u = std::get<Plant::Intermediate>(node_data.data).unit_vec;
+
+                points.push_back({p[0], p[1], u[0], u[1]});
+            }
+            else if(std::holds_alternative<Plant::Positive>(node_data.data)) {
+                auto p = node_data.position;
+                auto u = std::get<Plant::Positive>(node_data.data).unit_vec;
+
+                points.push_back({p[0], p[1], u[0], u[1]});
+            }
+            else if(std::holds_alternative<Plant::Negative>(node_data.data)) {
+                auto p = node_data.position;
+                auto u = std::get<Plant::Negative>(node_data.data).unit_vec;
+
+                points.push_back({p[0], p[1], u[0], u[1]});
+            }
+        }
+        //build bins in 5 degree increments
+        std::size_t num_bins = 90/5;
+        std::cout << "Point size " << points.size() << "\n";
+        std::vector<std::size_t> orientation_histogram(num_bins);
+        for(auto& p : points)
+        {
+            auto angle = p.u_x == 0 ? 0.0 : std::atan(std::abs(p.u_y)/std::abs(p.u_x))*(180.0/3.14);
+            std::cout << angle << " ";
+            int bid = std::floor(angle/5.0);
+            orientation_histogram[bid]++;
+        }
+        std::cout << "\n";
+        std::cout << "hist total: " << std::accumulate(orientation_histogram.begin(), orientation_histogram.end(), 0) << "\n";
+        return orientation_histogram;
+    }
 }
 #endif
