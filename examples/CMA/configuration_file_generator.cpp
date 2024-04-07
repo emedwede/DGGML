@@ -5,6 +5,7 @@
 struct Parameters
 {
     std::string EXPERIMENT_NAME{};
+    std::string RESULTS_DIR{};
     double DELTA{};
     double DELTA_DELTA_T{};
     std::size_t CELL_NX{};
@@ -39,6 +40,7 @@ void serialize(Parameters& settings, std::string filename)
 
     outfile << "{\n";
     outfile << "\t\"EXPERIMENT\": \"" <<  settings.EXPERIMENT_NAME << "\",\n";
+    outfile << "\t\"RESULTS_DIR\": \"" <<  settings.RESULTS_DIR << "\",\n";
     outfile << "\t\"TOTAL_TIME\": " << settings.TOTAL_TIME << ",\n";
     outfile << "\t\"CELL_NX\": " << settings.CELL_NX << ",\n";
     outfile << "\t\"CELL_NY\": " << settings.CELL_NY << ",\n";
@@ -53,6 +55,7 @@ void serialize(Parameters& settings, std::string filename)
     outfile << "\t\"DIV_LENGTH_RETRACT\": " << settings.DIV_LENGTH_RETRACT << ",\n";
     outfile << "\t\"V_PLUS\": " << settings.V_PLUS << ",\n";
     outfile << "\t\"V_MINUS\": " << settings.V_MINUS << ",\n";
+    outfile << "\t\"MAXIMAL_REACTION_RADIUS\": " << settings.MAXIMAL_REACTION_RADIUS << ",\n";
     outfile << "\t\"RHO_TEST_RATE\": " << settings.RHO_TEST_RATE << ",\n";
     outfile << "\t\"DELTA\": " << settings.DELTA << ",\n";
     outfile << "\t\"SIGMOID_K\": " << settings.SIGMOID_K << "\n";
@@ -65,7 +68,7 @@ void serialize(Parameters& settings, std::string filename)
 void set_default(Parameters& settings)
 {
     settings.EXPERIMENT_NAME = "my_test";
-
+    settings.RESULTS_DIR = settings.EXPERIMENT_NAME + "_results";
     //1x1 micrometer domain
     settings.CELL_NX = 1;//1;
     settings.CELL_NY = 1;//1;
