@@ -266,7 +266,7 @@ namespace DGGML {
         void create_save_directory()
         {
             std::cout << "Cleaning up old results folder if it exists and creating a new one\n";
-            results_dir_name = model->name + "_results";
+            results_dir_name = model->settings.RESULTS_DIR;
             std::filesystem::remove_all(results_dir_name);
             std::filesystem::create_directory(results_dir_name);
         }

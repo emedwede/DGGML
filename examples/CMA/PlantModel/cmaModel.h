@@ -1,5 +1,6 @@
 #ifndef DGGML_CMAMODEL_H
 #define DGGML_CMAMODEL_H
+#include <fstream>
 
 #include "DGGML.h"
 #include "PlantGrammar.hpp"
@@ -10,24 +11,36 @@
 #include "YAGL_Algorithms.hpp"
 
 namespace CMA {
-
-    template <typename DataType>
-    void print_numpy_array_stats(DataType& data, std::string var_name)
+    template <typename StreamType, typename DataType>
+    void print_numpy_array_stats(StreamType& out, DataType& data, std::string var_name)
     {
-        std::cout << var_name << " = np.asarray([";
+        out << var_name << " = np.asarray([";
         for(auto i = 0; i < data.size(); i++)
         {
-            if(i != 0 && i % 20 == 0) std::cout << "\n";
+            if(i != 0 && i % 20 == 0) out << "\n";
             if(i != data.size() - 1)
-                std::cout << data[i] << ", ";
+                out << data[i] << ", ";
             else
-                std::cout << data[i];
+                out << data[i];
         }
-        std::cout << "]);\n";
+        out << "]);\n";
     }
 
-    //TODO: user and system params should be split
-    // This also may be more appropriate for the base class
+    template <typename StreamType, typename DataType>
+    void print_numpy_array_stats_csv(StreamType& out, DataType& data, std::string var_name)
+    {
+        out << var_name << ", ";
+        for(auto i = 0; i < data.size(); i++)
+        {
+            if(i != data.size() - 1)
+                out << data[i] << ", ";
+            else
+                out << data[i];
+        }
+        out << "\n";
+    }
+
+    //TODO: user and system params should be split, so that the user subclasses from a core params class
     struct Parameters
     {
         std::string EXPERIMENT_NAME;
@@ -52,8 +65,10 @@ namespace CMA {
         double MAXIMAL_REACTION_RADIUS;
         double DELTA_T_MIN;
         double RHO_TEST_RATE; //a tunable test parameter for MT dynamics
+        std::string RESULTS_DIR;
     };
 
+    std::string metric_filename;
     //checks if we're outside a box boundary
     bool boundary_check_2D(Parameters& settings, double x, double y, double padding = 0.0)
     {
@@ -648,7 +663,7 @@ namespace CMA {
 
                                                       //TODO: determine how strict we need to be with the collision point
                                                       if(sol[0] > 0.0 && sol[1] >= 0.0 && sol[1] <= 1.0) {
-                                                          return 500.0;
+                                                          return 4000.0;
                                                       }
                                                   }
                                               }
@@ -1275,7 +1290,7 @@ namespace CMA {
             clasp_creation_rhs_graph1.addEdge(3, 4);
 
             DGGML::WithRule<GT> clasp_creation_case1("clasp_creation_case1", clasp_creation_lhs_graph1, clasp_creation_rhs_graph1,
-                                               [](auto& lhs, auto& m) { return 0.005; },
+                                               [](auto& lhs, auto& m) { return 10*0.005; },
                                                [&](auto& lhs, auto& rhs, auto& m1, auto& m2) {
                                                    auto& lhs_node1 = lhs.findNode(m1[1])->second.getData();
                                                    auto& lhs_node2 = rhs.findNode(m1[2])->second.getData();
@@ -1346,7 +1361,7 @@ namespace CMA {
                                                    DGGML::set_unit_vector(rhs_pos4, rhs_pos3, u4);
 
                                                });
-            gamma.addRule(clasp_creation_case1);
+            //gamma.addRule(clasp_creation_case1);
 
 
             GT clasp_catastrophe_lhs_graph1;
@@ -1563,7 +1578,7 @@ namespace CMA {
             DGGML::WithRule<GT> rescue("rescue", rescue_lhs, rescue_rhs,
                                    [&](auto& lhs, auto& m)
                                    {
-                                       return 10*0.0016;
+                                       return 30*0.0016;
                                    }, [](auto& lhs, auto& rhs, auto& m1, auto& m2) {
                         std::get<Plant::Positive>(rhs[m2[2]].data).unit_vec[0] = -std::get<Plant::Negative>(lhs[m1[2]].data).unit_vec[0];
                         std::get<Plant::Positive>(rhs[m2[2]].data).unit_vec[1] = -std::get<Plant::Negative>(lhs[m1[2]].data).unit_vec[1];
@@ -1604,6 +1619,7 @@ namespace CMA {
             std::vector<std::size_t> total_nodes;
             std::vector<std::size_t> type_counts[5];
             std::vector<double> time_count;
+            std::vector<std::vector<double>> angular_correlation;
 
             std::size_t junction_count;
             std::size_t positive_count;
@@ -1648,18 +1664,29 @@ namespace CMA {
 
             metrics.total_nodes.push_back(metrics.negative_count + metrics.positive_count +
             metrics.intermediate_count + metrics.junction_count + metrics.zipper_count);
+            //metrics.angular_correlation.push_back(compute_two_point_correlation_alpha(system_graph, settings));
         }
 
         void print_metrics() override
         {
-            print_numpy_array_stats(metrics.con_com, "con_com");
-            print_numpy_array_stats(metrics.type_counts[0], "negative");
-            print_numpy_array_stats(metrics.type_counts[1], "positive");
-            print_numpy_array_stats(metrics.type_counts[2], "intermediate");
-            print_numpy_array_stats(metrics.type_counts[3], "junction");
-            print_numpy_array_stats(metrics.type_counts[4], "zipper");
-            print_numpy_array_stats(metrics.total_nodes, "total_nodes");
-            print_numpy_array_stats(metrics.time_count, "time_count");
+            // Open the file for appending, create if it doesn't exist
+            std::string filename = settings.RESULTS_DIR+"/"+"metrics.csv";
+            std::ofstream outputFile(filename, std::ios::app | std::ios::out);
+            print_numpy_array_stats_csv(outputFile, metrics.con_com, "con_com");
+            print_numpy_array_stats_csv(outputFile, metrics.type_counts[0], "negative");
+            print_numpy_array_stats_csv(outputFile, metrics.type_counts[1], "positive");
+            print_numpy_array_stats_csv(outputFile, metrics.type_counts[2], "intermediate");
+            print_numpy_array_stats_csv(outputFile, metrics.type_counts[3], "junction");
+            print_numpy_array_stats_csv(outputFile, metrics.type_counts[4], "zipper");
+            print_numpy_array_stats_csv(outputFile, metrics.total_nodes, "total_nodes");
+            auto start = 0;
+            auto end = metrics.angular_correlation.size()-1;
+            //print_numpy_array_stats_csv(outputFile, metrics.angular_correlation[start], "angle_corr_start");
+            //print_numpy_array_stats_csv(outputFile, metrics.angular_correlation[end], "angle_corr_end");
+            auto result = compute_two_point_correlation_alpha(system_graph, settings);
+            print_numpy_array_stats_csv(outputFile, result, "angle_corr_end");
+            //print_numpy_array_stats_csv(outputFile, metrics.time_count, "time_count");
+            outputFile.close();
         }
 
         void set_parameters() {
@@ -1712,8 +1739,9 @@ namespace CMA {
         {
             std::string_view temp = interface["EXPERIMENT"];
             settings.EXPERIMENT_NAME = static_cast<std::string>(temp);
-
             name = settings.EXPERIMENT_NAME;
+            temp = interface["RESULTS_DIR"];
+            settings.RESULTS_DIR = static_cast<std::string>(temp);
 
             std::cout << settings.EXPERIMENT_NAME << "+++\n";
             settings.CELL_NX = int64_t(interface["CELL_NX"]);
@@ -1735,7 +1763,7 @@ namespace CMA {
 
             settings.SIGMOID_K = double(interface["SIGMOID_K"]);
 
-            settings.MAXIMAL_REACTION_RADIUS = settings.DIV_LENGTH*2.0;
+            settings.MAXIMAL_REACTION_RADIUS = double(interface["MAXIMAL_REACTION_RADIUS"]);
 
             //Simulate until the specified unit time
             settings.TOTAL_TIME = double(interface["TOTAL_TIME"]);
@@ -1744,7 +1772,7 @@ namespace CMA {
             //e.g. something like: 0.25*settings.MAXIMAL_REACTION_RADIUS / std::max(settings.V_PLUS, settings.V_MINUS);
             settings.DELTA = double(interface["DELTA"]);
             //The internal step of the solver should be at least smaller than delta
-            settings.DELTA_DELTA_T = settings.DELTA / 20.0;// / settings.NUM_INTERNAL_STEPS;
+            settings.DELTA_DELTA_T = settings.DELTA / 5.0;//20.0;// / settings.NUM_INTERNAL_STEPS;
             settings.DELTA_T_MIN = settings.DELTA_DELTA_T;
             settings.NUM_STEPS = settings.TOTAL_TIME / settings.DELTA;
 
