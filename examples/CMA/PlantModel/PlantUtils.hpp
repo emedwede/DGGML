@@ -225,10 +225,9 @@ namespace Plant
 } //end namespace Plant
 } //end namespace DGGML
 
-namespace Plant
-{
-    template <typename GraphType, typename CplexType, typename ParamType, typename GenType>
-    void microtubule_uniform_scatter(GraphType& graph, CplexType& cplex, ParamType& settings, GenType& gen) {
+namespace Plant {
+    template<typename GraphType, typename CplexType, typename ParamType, typename GenType>
+    void microtubule_uniform_scatter(GraphType &graph, CplexType &cplex, ParamType &settings, GenType &gen) {
         using node_type = typename GraphType::node_type;
         using key_type = typename node_type::key_type;
         double epsilon_min = settings.DIV_LENGTH;//settings.MT_MIN_SEGMENT_INIT;
@@ -237,7 +236,7 @@ namespace Plant
         std::mt19937 random_engine(random_device());
         auto &grid = cplex.getCoarseGrid();
 
-        DGGML::CartesianGrid2D& reaction_grid = cplex.reaction_grid;
+        DGGML::CartesianGrid2D &reaction_grid = cplex.reaction_grid;
 
         //TODO: make it so the end points are aligned with the cell corners, but have custom spacing
         // between the points
@@ -245,8 +244,7 @@ namespace Plant
         //bottom, left to right
         key_type prev_key; //only the first step doesn't have a prev
         key_type first_key; //needed to complete the loop around the boundary
-        for(auto i = 0; i < reaction_grid._nx; i++)
-        {
+        for (auto i = 0; i < reaction_grid._nx; i++) {
             auto cardinal = reaction_grid.cardinalCellIndex(i, 0);
             double px, py;
             reaction_grid.cardinalCellToPoint(px, py, cardinal);
@@ -254,15 +252,14 @@ namespace Plant
             node_type node_n = {curr_key, {Plant::Boundary{}, px, py, 0.0}};
             graph.addNode(node_n);
             //connect to previous node or its the first
-            if(i >= 1) graph.addEdge(prev_key, curr_key);
+            if (i >= 1) graph.addEdge(prev_key, curr_key);
             else first_key = curr_key;
             prev_key = curr_key;
         }
         //note: the previous gets carried over!
         //right side interior, bottom to top
-        for(auto j = 1; j < reaction_grid._ny-1; j++)
-        {
-            auto cardinal = reaction_grid.cardinalCellIndex(reaction_grid._nx-1, j);
+        for (auto j = 1; j < reaction_grid._ny - 1; j++) {
+            auto cardinal = reaction_grid.cardinalCellIndex(reaction_grid._nx - 1, j);
             double px, py;
             reaction_grid.cardinalCellToPoint(px, py, cardinal);
             key_type curr_key = gen.get_key();
@@ -274,9 +271,8 @@ namespace Plant
         }
         //note: the previous gets carried over!
         //top, right to left
-        for(auto i = reaction_grid._nx-1; i >= 0; i--)
-        {
-            auto cardinal = reaction_grid.cardinalCellIndex(i, reaction_grid._ny-1);
+        for (auto i = reaction_grid._nx - 1; i >= 0; i--) {
+            auto cardinal = reaction_grid.cardinalCellIndex(i, reaction_grid._ny - 1);
             double px, py;
             reaction_grid.cardinalCellToPoint(px, py, cardinal);
             key_type curr_key = gen.get_key();
@@ -288,8 +284,7 @@ namespace Plant
         }
         //note: the previous gets carried over!
         //left side interior, bottom to top
-        for(auto j = reaction_grid._ny-2; j > 0; j--)
-        {
+        for (auto j = reaction_grid._ny - 2; j > 0; j--) {
             auto cardinal = reaction_grid.cardinalCellIndex(0, j);
             double px, py;
             reaction_grid.cardinalCellToPoint(px, py, cardinal);
@@ -304,16 +299,14 @@ namespace Plant
         graph.addEdge(prev_key, first_key);
 
         //create the nucleators
-        for(auto i = 1; i < reaction_grid._nx-1; i++)
-        {
-            for(auto j = 1; j < reaction_grid._ny-1; j++)
-            {
+        for (auto i = 1; i < reaction_grid._nx - 1; i++) {
+            for (auto j = 1; j < reaction_grid._ny - 1; j++) {
                 ///if(i % 3 == 0 && j % 3 == 0) {
-                    auto cardinal = reaction_grid.cardinalCellIndex(i, j);
-                    double px, py;
-                    reaction_grid.cardinalCellToPoint(px, py, cardinal);
-                    node_type node_n = {gen.get_key(), {Plant::Nucleator{}, px, py, 0.0}};
-                    graph.addNode(node_n);
+                auto cardinal = reaction_grid.cardinalCellIndex(i, j);
+                double px, py;
+                reaction_grid.cardinalCellToPoint(px, py, cardinal);
+                node_type node_n = {gen.get_key(), {Plant::Nucleator{}, px, py, 0.0}};
+                graph.addNode(node_n);
                 //}
             }
         }
@@ -397,19 +390,19 @@ namespace Plant
             DGGML::set_unit_vector(p3, p2, u2);
             Plant::graph_type tg;
             node_type node_l = {gen.get_key(),//i*segments,
-                        {Plant::Negative{0.0,0.0,0.0,
-                                             u2[0], u2[1], u2[2]},
-                         x_l, y_l, z_l}};
+                                {Plant::Negative{0.0, 0.0, 0.0,
+                                                 u2[0], u2[1], u2[2]},
+                                 x_l, y_l, z_l}};
 
-            node_type node_c ={gen.get_key(),//i*segments+1,
-                        {Plant::Intermediate{0.0,0.0,0.0,
-                                             u1[0], u1[1], u1[2]},
-                         x_c, y_c, z_c}};
+            node_type node_c = {gen.get_key(),//i*segments+1,
+                                {Plant::Intermediate{0.0, 0.0, 0.0,
+                                                     u1[0], u1[1], u1[2]},
+                                 x_c, y_c, z_c}};
 
-            node_type node_r ={gen.get_key(),//i*segments+2,
-                        {Plant::Positive{0.0,0.0,0.0,
-                                             u2[0], u2[1], u2[2]},
-                         x_r, y_r, z_r}};
+            node_type node_r = {gen.get_key(),//i*segments+2,
+                                {Plant::Positive{0.0, 0.0, 0.0,
+                                                 u2[0], u2[1], u2[2]},
+                                 x_r, y_r, z_r}};
 
             graph.addNode(node_l);
             graph.addNode(node_c);
@@ -419,6 +412,134 @@ namespace Plant
             graph.addEdge(node_r, node_c);
         }
     }
-}
 
+
+    double compute_correlation(const std::vector<double> &x, const std::vector<double> &y) {
+        // Compute means
+        double mean_x = std::accumulate(x.begin(), x.end(), 0.0) / x.size();
+        double mean_y = std::accumulate(y.begin(), y.end(), 0.0) / y.size();
+
+        // Compute variances
+        double var_x = std::accumulate(x.begin(), x.end(), 0.0,
+                                       [mean_x](double acc, double xi) {
+                                           return acc + (xi - mean_x) * (xi - mean_x);
+                                       }) / (x.size() - 1);
+        double var_y = std::accumulate(y.begin(), y.end(), 0.0,
+                                       [mean_y](double acc, double yi) {
+                                           return acc + (yi - mean_y) * (yi - mean_y);
+                                       }) / (y.size() - 1);
+
+        // Check for zero variance
+        if (var_x == 0 || var_y == 0) {
+            return 0; // or any other value you choose to return in this case
+        }
+
+        // Compute covariance
+        double cov = 0;
+        for (size_t i = 0; i < x.size(); ++i) {
+            cov += (x[i] - mean_x) * (y[i] - mean_y);
+        }
+        cov /= x.size() - 1;
+
+        // Compute correlation coefficient
+        double corr = cov / std::sqrt(var_x * var_y);
+
+        return corr;
+    }
+
+
+    struct Point {
+        double p_x, p_y;
+        double u_x, u_y;
+    };
+
+    double dot_product(Point &p1, Point &p2) {
+        return p1.u_x * p2.u_x + p1.u_y * p2.u_y;
+    }
+
+    double angle_ref(Point &p1, Point &p2) {
+        double dot_prod = dot_product(p1, p2);
+        return std::acos(std::min(std::abs(dot_prod), 1.0));
+    }
+
+    template<typename GraphType>
+    double compute_correlation(GraphType &system_graph) {
+        std::vector<double> x;
+        std::vector<double> y;
+        for (auto &node: system_graph.getNodeSetRef()) {
+            auto &u = node.second.getData().unit_vec;
+            double u0 = u[0];
+            double u1 = u[1];
+
+            x.push_back(u0);
+            y.push_back(u1);
+        }
+
+        return compute_correlation(x, y);
+    }
+
+    std::vector<double> two_point_correlation_alpha(std::vector<Point> &points, double bin_size, double max_distance) {
+        std::size_t num_bins = std::ceil(max_distance / bin_size);
+        std::vector<double> correlation(num_bins, 0.0);
+
+        std::vector<int> num_pairs(num_bins, 0);
+
+        auto num_points = points.size();
+        for (int i = 0; i < num_points; i++) {
+            Point p1 = points[i];
+            for (int j = i + 1; j < num_points; j++) {
+                Point p2 = points[j];
+                double distance = hypot(p1.p_x - p2.p_x, p1.p_y - p2.p_y);
+                if (distance <= max_distance) {
+                    double angle = angle_ref(p1, p2);
+                    //if (angle >= alpha1 && angle <= alpha2) {
+                    int bin_index = floor(distance / bin_size);
+                    auto abs_dot = dot_product(p1, p2) * dot_product(p1, p2);//std::abs(dot_product(p1, p2));
+                    if (abs_dot > 1.0) abs_dot = 1.0;
+                    correlation[bin_index] += abs_dot;//std::acos(abs_dot); //std::cos(angle);
+                    num_pairs[bin_index]++;
+                    //}
+                }
+            }
+        }
+
+        for (int i = 0; i < num_bins; i++) {
+            if (num_pairs[i] > 0) {
+                correlation[i] /= num_pairs[i];
+            }
+        }
+        return correlation;
+    }
+
+    template<typename GraphType, typename ParamType>
+    std::vector<double> compute_two_point_correlation_alpha(GraphType &system_graph, ParamType &settings) {
+        std::vector<Point> points;
+        for(auto& node : system_graph.getNodeSetRef())
+        {
+            auto& node_data = node.second.getData();
+            if(std::holds_alternative<Plant::Intermediate>(node_data.data)) {
+                auto p = node_data.position;
+                auto u = std::get<Plant::Intermediate>(node_data.data).unit_vec;
+
+                points.push_back({p[0], p[1], u[0], u[1]});
+            }
+            else if(std::holds_alternative<Plant::Positive>(node_data.data)) {
+                auto p = node_data.position;
+                auto u = std::get<Plant::Positive>(node_data.data).unit_vec;
+
+                points.push_back({p[0], p[1], u[0], u[1]});
+            }
+            else if(std::holds_alternative<Plant::Negative>(node_data.data)) {
+                auto p = node_data.position;
+                auto u = std::get<Plant::Negative>(node_data.data).unit_vec;
+
+                points.push_back({p[0], p[1], u[0], u[1]});
+            }
+        }
+
+        double bin_size = settings.MAXIMAL_REACTION_RADIUS/2.0;
+        double max_distance = std::max(settings.CELL_NX*settings.CELL_DX, settings.CELL_NY*settings.CELL_DY);
+        return two_point_correlation_alpha(points, bin_size, max_distance);
+    }
+}
 #endif
