@@ -66,6 +66,8 @@ namespace CMA {
         double DELTA_T_MIN;
         double RHO_TEST_RATE; //a tunable test parameter for MT dynamics
         std::string RESULTS_DIR;
+        bool CLASP_ENTRY;
+        bool CLASP_EXIT;
     };
 
     std::string metric_filename;
@@ -1273,7 +1275,8 @@ namespace CMA {
 
 
                                                         });
-            gamma.addRule(clasp_boundary_cross_case1);
+            if(settings.CLASP_EXIT)
+                gamma.addRule(clasp_boundary_cross_case1);
 
             GT clasp_creation_lhs_graph1;
             clasp_creation_lhs_graph1.addNode({1, {Plant::Boundary{}}});
@@ -1361,7 +1364,8 @@ namespace CMA {
                                                    DGGML::set_unit_vector(rhs_pos4, rhs_pos3, u4);
 
                                                });
-            //gamma.addRule(clasp_creation_case1);
+            if(settings.CLASP_ENTRY)
+                gamma.addRule(clasp_creation_case1);
 
 
             GT clasp_catastrophe_lhs_graph1;
@@ -1685,6 +1689,8 @@ namespace CMA {
             //print_numpy_array_stats_csv(outputFile, metrics.angular_correlation[end], "angle_corr_end");
             auto result = compute_two_point_correlation_alpha(system_graph, settings);
             print_numpy_array_stats_csv(outputFile, result, "angle_corr_end");
+            auto hist = compute_orientation_histogram(system_graph, settings);
+            print_numpy_array_stats_csv(outputFile, hist, "orientation_hist");
             //print_numpy_array_stats_csv(outputFile, metrics.time_count, "time_count");
             outputFile.close();
         }
@@ -1750,6 +1756,8 @@ namespace CMA {
             settings.CELL_DX = double(interface["CELL_DX"]);
             settings.CELL_DY = double(interface["CELL_DY"]);
             settings.GHOSTED = bool(interface["GHOSTED"]);
+            settings.CLASP_ENTRY = bool(interface["CLASP"]["ENTRY"]);
+            settings.CLASP_EXIT = bool(interface["CLASP"]["EXIT"]);
 
             settings.NUM_MT = int64_t(interface["NUM_MT"]);
             settings.MT_MIN_SEGMENT_INIT = double(interface["MT_MIN_SEGMENT_INIT"]);
