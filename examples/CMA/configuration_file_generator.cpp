@@ -118,7 +118,7 @@ int main() {
 
     Parameters settings;
     set_default(settings);
-    serialize(settings, "test.json");
+    serialize(settings, "test_test.json");
 
     return 0;
 }

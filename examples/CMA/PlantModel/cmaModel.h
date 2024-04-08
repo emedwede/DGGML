@@ -46,6 +46,7 @@ namespace CMA {
         std::string EXPERIMENT_NAME;
         double DELTA;
         double DELTA_DELTA_T;
+        double MIN_DELTA_STEPS;
         std::size_t CELL_NX;
         std::size_t CELL_NY;
         double CELL_DX;
@@ -1743,48 +1744,69 @@ namespace CMA {
 
         void set_parameters(simdjson::ondemand::document& interface)
         {
-            std::string_view temp = interface["EXPERIMENT"];
+            // -----------------------
+            // Core Parameter Settings
+            // -----------------------
+            std::string_view temp = interface["CORE"]["EXPERIMENT"];
             settings.EXPERIMENT_NAME = static_cast<std::string>(temp);
             name = settings.EXPERIMENT_NAME;
-            temp = interface["RESULTS_DIR"];
+            temp = interface["CORE"]["RESULTS_DIR"];
             settings.RESULTS_DIR = static_cast<std::string>(temp);
-
-            std::cout << settings.EXPERIMENT_NAME << "+++\n";
-            settings.CELL_NX = int64_t(interface["CELL_NX"]);
-            settings.CELL_NY = int64_t(interface["CELL_NY"]);
-
-            settings.CELL_DX = double(interface["CELL_DX"]);
-            settings.CELL_DY = double(interface["CELL_DY"]);
-            settings.GHOSTED = bool(interface["GHOSTED"]);
-            settings.CLASP_ENTRY = bool(interface["CLASP"]["ENTRY"]);
-            settings.CLASP_EXIT = bool(interface["CLASP"]["EXIT"]);
-
-            settings.NUM_MT = int64_t(interface["NUM_MT"]);
-            settings.MT_MIN_SEGMENT_INIT = double(interface["MT_MIN_SEGMENT_INIT"]);
-            settings.MT_MAX_SEGMENT_INIT = double(interface["MT_MAX_SEGMENT_INIT"]);
-
-            settings.LENGTH_DIV_FACTOR = double(interface["LENGTH_DIV_FACTOR"]);
-            settings.DIV_LENGTH = double(interface["DIV_LENGTH"]);
-            settings.DIV_LENGTH_RETRACT = double(interface["DIV_LENGTH_RETRACT"]);
-            settings.V_PLUS = double(interface["V_PLUS"]);
-            settings.V_MINUS = double(interface["V_MINUS"]);
-
-            settings.SIGMOID_K = double(interface["SIGMOID_K"]);
-
-            settings.MAXIMAL_REACTION_RADIUS = double(interface["MAXIMAL_REACTION_RADIUS"]);
-
-            //Simulate until the specified unit time
-            settings.TOTAL_TIME = double(interface["TOTAL_TIME"]);
+            settings.TOTAL_TIME = double(interface["CORE"]["TOTAL_TIME"]);
             //Delta should be big, but not to big. In this case, the maximum amount of time it would
             //take one MT to grow a single unit of MT
             //e.g. something like: 0.25*settings.MAXIMAL_REACTION_RADIUS / std::max(settings.V_PLUS, settings.V_MINUS);
-            settings.DELTA = double(interface["DELTA"]);
+            settings.DELTA = double(interface["CORE"]["DELTA"]);
+            settings.MIN_DELTA_STEPS = double(interface["CORE"]["MIN_DELTA_STEPS"]);
             //The internal step of the solver should be at least smaller than delta
-            settings.DELTA_DELTA_T = settings.DELTA / 5.0;//20.0;// / settings.NUM_INTERNAL_STEPS;
+            settings.DELTA_DELTA_T = settings.DELTA / settings.MIN_DELTA_STEPS;
             settings.DELTA_T_MIN = settings.DELTA_DELTA_T;
             settings.NUM_STEPS = settings.TOTAL_TIME / settings.DELTA;
+            settings.MAXIMAL_REACTION_RADIUS = double(interface["CORE"]["MAXIMAL_REACTION_RADIUS"]);
+            std::cout << "Core parameter settings parsed...\n";
 
+            // ------------------------------
+            // Expanded cell complex settings
+            // ------------------------------
+            settings.CELL_NX = int64_t(interface["EXPANDED_CELL_COMPLEX"]["CELL_NX"]);
+            settings.CELL_NY = int64_t(interface["EXPANDED_CELL_COMPLEX"]["CELL_NY"]);
+            settings.CELL_DX = double(interface["EXPANDED_CELL_COMPLEX"]["CELL_DX"]);
+            settings.CELL_DY = double(interface["EXPANDED_CELL_COMPLEX"]["CELL_DY"]);
+            settings.GHOSTED = bool(interface["EXPANDED_CELL_COMPLEX"]["GHOSTED"]);
+            std::cout << "Expanded cell complex settings parsed...\n";
+
+            // -----------------------
+            // Initialization settings
+            // -----------------------
+            settings.NUM_MT = int64_t(interface["INITIALIZATION"]["NUM_MT"]);
+            settings.MT_MIN_SEGMENT_INIT = double(interface["INITIALIZATION"]["MT_MIN_SEGMENT_INIT"]);
+            settings.MT_MAX_SEGMENT_INIT = double(interface["INITIALIZATION"]["MT_MAX_SEGMENT_INIT"]);
+            std::cout << "Initialization settings parsed...\n";
+
+            // ----------------
+            // Grammar settings
+            // ----------------
+            // Growth rules
+            settings.V_PLUS = double(interface["GRAMMAR"]["GROWTH_RULES"]["GROWTH_RATE"]);
+            settings.LENGTH_DIV_FACTOR = double(interface["GRAMMAR"]["GROWTH_RULES"]["LENGTH_DIV_FACTOR"]);
+            settings.DIV_LENGTH = double(interface["GRAMMAR"]["GROWTH_RULES"]["DIV_LENGTH"]);
+            std::cout << "Growth rule settings parsed...\n";
+
+            // Retraction rules
+            settings.DIV_LENGTH_RETRACT = double(interface["GRAMMAR"]["RETRACTION_RULES"]["DIV_LENGTH_RETRACT"]);
+            settings.V_MINUS = double(interface["GRAMMAR"]["RETRACTION_RULES"]["RETRACTION_RATE"]);
+            std::cout << "Retraction rule settings parsed...\n";
+
+            // Clasp rules
+            settings.CLASP_ENTRY = bool(interface["GRAMMAR"]["CLASP_RULES"]["ENABLE_ENTRY"]);
+            settings.CLASP_EXIT = bool(interface["GRAMMAR"]["CLASP_RULES"]["ENABLE_EXIT"]);
+            std::cout << "Clasp rule settings parsed...\n";
+
+            std::cout << "Grammar settings parsed...\n";
+            settings.SIGMOID_K = double(interface["SIGMOID_K"]);
             settings.RHO_TEST_RATE = double(interface["RHO_TEST_RATE"]);
+
+
         }
 
         //TODO: separate core settings out into the base class
