@@ -3,7 +3,6 @@
 #include <fstream>
 
 #include "DGGML.h"
-#include "PlantGrammar.hpp"
 #include "PlantUtils.hpp"
 #include "MathUtils.hpp"
 #include "simdjson.h"
