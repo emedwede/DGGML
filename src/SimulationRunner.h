@@ -66,25 +66,15 @@ namespace DGGML {
             for(auto& [key, value] : model->geoplex2D.graph.getNodeSetRef())
                 rule_map.insert({key, {}});
 
-            //order matters here, which indicates maybe I should have a
-            //file writer class which initializes with the save directory?
-            create_save_directory();
-            write_cell_complex();
-            write_system_graph(0);
-
+            model->checkpoint(0);
             compute_single_component_matches();
-
             set_geocell_propensities();
-
-            model->collect();
-            //model->print_metrics();
 
             // A cell list is used to accelerate the spatial geometric search, but
             // we could use other methods like a bounding volume hierarchy(ArborX), kd-trees etc
             // see books on collision detection like gpu-gems or Real-Time Collision Detection
             cell_list = CellList<graph_type>(model->geoplex2D.reaction_grid, &model->system_graph, &component_matches);
             compute_all_rule_matches();
-
             map_rule_matches_to_geocells();
 
             //TODO: deprecate and refactor
@@ -102,7 +92,7 @@ namespace DGGML {
                 std::cout << "Total number of expanded " << (2 - i) << "D cells: " << countNd << "\n";
             }
 
-            for(auto i = 0; i <= model->settings.NUM_STEPS; i++)
+            for(auto i = 1; i <= model->settings.NUM_STEPS; i++)
             {
                 std::cout << "Running step " << i << "\n";
 
@@ -234,11 +224,7 @@ namespace DGGML {
 
                     //std::cout << "Synchronizing work\n";
                 }
-
-                //std::cout << "Running the checkpointer\n";
-                write_system_graph(i+1);
-                model->collect();
-//                model->print_metrics();
+                model->checkpoint(i);
                 std::cout << "Total dimensional time is " << tot_time << " milliseconds\n";
                 //time_count.push_back(tot_time);
                 std::cout << model->system_graph << "\n";
@@ -258,42 +244,16 @@ namespace DGGML {
                     //std::cin.get();
                 //if(i == 3) return;
             }
-            model->print_metrics();
+            //model->print_metrics();
             //return;
         }
     //private:
-
-        void create_save_directory()
-        {
-            std::cout << "Cleaning up old results folder if it exists and creating a new one\n";
-            results_dir_name = model->settings.RESULTS_DIR;
-            std::filesystem::remove_all(results_dir_name);
-            std::filesystem::create_directory(results_dir_name);
-        }
 
         void set_geocell_propensities()
         {
             std::cout << "Setting intial cell propensities to zero\n";
             for(auto& [key, value] : model->geoplex2D.graph.getNodeSetRef())
                 geocell_properties_list[key];
-        }
-
-        void write_cell_complex()
-        {
-            //Save expanded cell complex graph
-            DGGML::VtkFileWriter<typename DGGML::ExpandedComplex2D<>::types::graph_type> writer;
-            writer.save(model->geoplex2D.getGraph(), results_dir_name+"/factory_geoplex");
-            DGGML::GridFileWriter grid_writer;
-            grid_writer.save({model->geoplex2D.reaction_grid,
-                              model->geoplex2D.dim_label},
-                             results_dir_name+"/expanded_cell_complex");
-        }
-
-        void write_system_graph(std::size_t step)
-        {
-            std::string title = results_dir_name+"/simulation_step_";
-            std::cout << "Saving the initial state of the system graph\n";
-            vtk_writer.save(model->system_graph, title+std::to_string(step));
         }
 
         void compute_single_component_matches()
@@ -433,8 +393,7 @@ namespace DGGML {
         std::map<gplex_key_type, std::vector<key_type>> bucketsND[3];
 
         GeocellPropertiesList<gplex_key_type, node_key_type> geocell_properties_list;
-        DGGML::VtkFileWriter<typename ModelType::graph_type> vtk_writer;
-        std::string results_dir_name;
+        //DGGML::VtkFileWriter<typename ModelType::graph_type> vtk_writer;
     };
 }
 

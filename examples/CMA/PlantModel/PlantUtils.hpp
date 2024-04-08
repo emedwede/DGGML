@@ -573,6 +573,7 @@ namespace Plant {
         std::vector<std::size_t> orientation_histogram(num_bins);
         for(auto& p : points)
         {
+            //TODO: fix this so that we are in the right half of the plane!
             auto angle = p.u_x == 0 ? 0.0 : std::atan(std::abs(p.u_y)/std::abs(p.u_x))*(180.0/3.14);
             std::cout << angle << " ";
             int bid = std::floor(angle/5.0);

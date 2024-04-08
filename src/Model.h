@@ -18,8 +18,9 @@ namespace DGGML {
 
         virtual void initialize() = 0;
 
-        virtual void collect() { std::cout << "Base collect\n"; };
-        virtual void print_metrics() { std::cout << "Base print_metrics\n"; }
+        virtual void collect() { std::cout << "Base collect does nothing by default\n"; };
+        virtual void print_metrics() { std::cout << "Base print_metrics does nothing by default\n"; }
+        virtual void checkpoint(std::size_t step) { std::cout << "Base checkpointing does nothing by default\n"; }
 
         virtual ~Model() = default;
 

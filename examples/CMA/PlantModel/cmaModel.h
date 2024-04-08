@@ -44,6 +44,7 @@ namespace CMA {
     struct Parameters
     {
         std::string EXPERIMENT_NAME;
+        std::size_t CHECKPOINT_FREQUENCY;
         double DELTA;
         double DELTA_DELTA_T;
         double MIN_DELTA_STEPS;
@@ -1696,6 +1697,50 @@ namespace CMA {
             outputFile.close();
         }
 
+        // Checkpoint uses basic file writing functionality provided by the VTK file writer
+        void checkpoint(std::size_t step) override
+        {
+            auto results_dir_name = settings.RESULTS_DIR;
+            // on the first step of the simulation
+            if(step == 0)
+            {
+                std::cout << "Running the checkpoint for step " << step << "\n";
+                // Create the local save directory
+                std::cout << "Cleaning up old results folder if it exists and creating a new one\n";
+                std::filesystem::remove_all(results_dir_name);
+                std::filesystem::create_directory(results_dir_name);
+
+                // Save expanded cell complex graph
+                //DGGML::VtkFileWriter<typename DGGML::ExpandedComplex2D<>::types::graph_type> writer;
+                //writer.save(model->geoplex2D.getGraph(), results_dir_name+"/factory_geoplex");
+                DGGML::GridFileWriter grid_writer;
+                grid_writer.save({geoplex2D.reaction_grid,geoplex2D.dim_label},
+                                 results_dir_name+"/expanded_cell_complex");
+
+                std::string title = results_dir_name+"/simulation_step_";
+                std::cout << "Saving the initial state of the system graph\n";
+                DGGML::VtkFileWriter<graph_type> vtk_writer;
+                vtk_writer.save(system_graph, title+std::to_string(step));
+                collect();
+            }
+            //save every 10 steps
+            if(step != 0 && step % settings.CHECKPOINT_FREQUENCY == 0)
+            {
+                std::cout << "Running the checkpoint for step " << step << "\n";
+                std::cout << "Saving the system graph\n";
+                std::string title = results_dir_name+"/simulation_step_";
+                DGGML::VtkFileWriter<graph_type> vtk_writer;
+                vtk_writer.save(system_graph, title+std::to_string(step));
+                collect();
+            }
+            if(step == settings.NUM_STEPS)
+            {
+                std::cout << "Writing the final metrics to a file\n";
+                print_metrics();
+            }
+            //std::cin.get();
+        }
+
         void set_parameters() {
             settings.EXPERIMENT_NAME = "alignment_debug2";
 
@@ -1763,6 +1808,8 @@ namespace CMA {
             settings.DELTA_T_MIN = settings.DELTA_DELTA_T;
             settings.NUM_STEPS = settings.TOTAL_TIME / settings.DELTA;
             settings.MAXIMAL_REACTION_RADIUS = double(interface["CORE"]["MAXIMAL_REACTION_RADIUS"]);
+            settings.CHECKPOINT_FREQUENCY = double(interface["CORE"]["CHECKPOINT_FREQUENCY"]);
+
             std::cout << "Core parameter settings parsed...\n";
 
             // ------------------------------
