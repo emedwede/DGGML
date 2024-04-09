@@ -22,17 +22,56 @@ namespace CMA {
             name = settings.EXPERIMENT_NAME;
             std::cout << "Creating the grammar\n";
 
-            create_growing_rules(gamma, system_graph, settings);
-            create_growing_rules(gamma, system_graph, settings);
-            create_retraction_rules(gamma, system_graph, settings);
-            create_boundary_rules(gamma, system_graph, settings);
-            create_zippering_rules(gamma, system_graph, settings);
-            create_crossover_rules(gamma, system_graph, settings);
-            create_collision_rules(gamma, system_graph, settings);
-            create_destruction_rules(gamma, system_graph, settings);
-            create_creation_rules(gamma, system_graph, settings);
-            create_clasp_rules(gamma, system_graph, settings);
-            create_recovery_rules(gamma, system_graph, settings);
+            if(settings.ENABLE_GROWTH)
+                create_with_mt_growing_rule(gamma, system_graph,settings);
+
+            if(settings.ENABLE_GROWTH)
+                create_ode_mt_growing_rule(gamma, system_graph,settings);
+
+            if(settings.ENABLE_RETRACTION)
+                create_with_mt_retraction_rule(gamma, system_graph,settings);
+
+            if(settings.ENABLE_RETRACTION)
+                create_ode_mt_retraction_rule(gamma, system_graph,settings);
+
+            if(settings.ENABLE_STANDARD_BOUNDARY_CATASTROPHE)
+                create_with_standard_boundary_catastrophe(gamma, system_graph,settings);
+
+            if(settings.ENABLE_CLASP_BOUNDARY_CATASTROPHE)
+                create_with_clasp_boundary_catastrophe(gamma, system_graph,settings);
+
+            if(settings.ENABLE_INTERMEDIATE_CIC)
+                create_with_intermediate_cic(gamma, system_graph,settings);
+
+            if(settings.ENABLE_NEGATIVE_CIC)
+                create_with_negative_cic(gamma, system_graph,settings);
+
+            if(settings.ENABLE_POSITIVE_CIC)
+                create_with_positive_cic(gamma, system_graph,settings);
+
+            if(settings.ENABLE_CROSSOVER)
+                create_with_crossover_rule(gamma, system_graph, settings);
+
+            if(settings.ENABLE_ZIPPERING)
+                create_with_zippering_rules(gamma, system_graph, settings);
+
+            if(settings.CLASP_ENABLE_ENTRY)
+                create_with_clasp_entry_rule(gamma, system_graph, settings);
+
+            if(settings.CLASP_ENABLE_EXIT)
+                create_with_clasp_exit_rule(gamma, system_graph, settings);
+
+            if(settings.CLASP_ENABLE_CAT)
+                create_with_clasp_catastrophe(gamma, system_graph, settings);
+
+            if(settings.ENABLE_MT_DESTRUCTION)
+                create_with_destruction_rule(gamma, system_graph, settings);
+
+            if(settings.ENABLE_CREATION)
+                create_with_creation_rule(gamma, system_graph, settings);
+
+            if(settings.ENABLE_RECOVERY)
+                create_with_recovery_rule(gamma, system_graph, settings);
 
             std::cout << "Generating the expanded cell complex\n";
             geoplex2D.init(settings.CELL_NX,
