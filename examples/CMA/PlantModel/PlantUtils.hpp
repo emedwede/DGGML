@@ -10,6 +10,33 @@
 
 #include "CartesianGrid2D.hpp"
 
+namespace CMA {
+
+    template<typename StreamType, typename DataType>
+    void print_numpy_array_stats(StreamType &out, DataType &data, std::string var_name) {
+        out << var_name << " = np.asarray([";
+        for (auto i = 0; i < data.size(); i++) {
+            if (i != 0 && i % 20 == 0) out << "\n";
+            if (i != data.size() - 1)
+                out << data[i] << ", ";
+            else
+                out << data[i];
+        }
+        out << "]);\n";
+    }
+
+    template<typename StreamType, typename DataType>
+    void print_numpy_array_stats_csv(StreamType &out, DataType &data, std::string var_name) {
+        out << var_name << ", ";
+        for (auto i = 0; i < data.size(); i++) {
+            if (i != data.size() - 1)
+                out << data[i] << ", ";
+            else
+                out << data[i];
+        }
+        out << "\n";
+    }
+}
 namespace Plant {
     template<typename GraphType, typename CplexType, typename ParamType, typename GenType>
     void microtubule_uniform_scatter(GraphType &graph, CplexType &cplex, ParamType &settings, GenType &gen) {
