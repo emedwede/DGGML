@@ -1,25 +1,103 @@
 {
-  "META": {
-    "EXPERIMENT": "treadmilling"
+  "CORE": {
+    "EXPERIMENT": "my_test",
+    "RESULTS_DIR": "my_test_results",
+    "TOTAL_TIME": 20,
+    "DELTA": 0.0625,
+    "MIN_DELTA_STEPS": 5,
+    "MAXIMAL_REACTION_RADIUS": 0.1,
+    "CHECKPOINT_FREQUENCY": 10
   },
-  "SETTINGS": {
-    "TOTAL_TIME": 5.0,
-    "CELL_NX": 2,
-    "CELL_NY": 2,
-    "CELL_DX": 15.0,
-    "CELL_DY": 15.0,
-    "GHOSTED": true,
-    "NUM_MT": 64,
-    "MT_MIN_SEGMENT_INIT": 0.5,
-    "MT_MAX_SEGMENT_INIT": 0.8,
-    "LENGTH_DIV_FACTOR": 1.2,
-    "DIV_LENGTH": 1.0,
-    "DIV_LENGTH_RETRACT": 0.125,
-    "V_PLUS": 1.0,
-    "V_MINUS": 0.25,
-    "SIGMOID_K": 10.0
+  "EXPANDED_CELL_COMPLEX":
+  {
+    "CELL_NX": 1,
+    "CELL_NY": 1,
+    "CELL_DX": 1.5,
+    "CELL_DY": 1.5,
+    "GHOSTED": false
   },
-  "EXPERIMENTAL": {
-    "RHO_TEST_RATE": 10.0
-  }
+  "INITIALIZATION":
+  {
+    "NUM_MT": 1,
+    "MT_MIN_SEGMENT_INIT": 0.005,
+    "MT_MAX_SEGMENT_INIT": 0.01
+  },
+  "GRAMMAR": {
+    "GROWTH_RULES": {
+      "ENABLE_GROWTH": true,
+      "WITH_GROWTH_RATE_FACTOR": 100.0,
+      "GROWTH_VELOCITY": 0.246,
+      "DIV_LENGTH": 0.075,
+      "LENGTH_DIV_FACTOR": 1.2
+    },
+    "RETRACTION_RULES":
+    {
+      "ENABLE_RETRACTION": true,
+      "WITH_RETRACTION_RATE_FACTOR": 10.0,
+      "RETRACTION_VELOCITY": 0.03532,
+      "DIV_LENGTH_RETRACT": 0.0025
+    },
+    "BOUNDARY_RULES":
+    {
+      "ENABLE_STANDARD": true,
+      "STANDARD_RATE": 1000.0,
+      "ENABLE_CLASP": true,
+      "CLASP_RATE": 1000.0
+    },
+    "CATASTROPHE_RULES":
+    {
+      "ENABLE_INTERMEDIATE_CIC": true,
+      "INTERMEDIATE_CIC_RATE": 4000.0,
+      "ENABLE_POSITIVE_CIC": true,
+      "POSITIVE_CIC_RATE": 1000.0,
+      "ENABLE_NEGATIVE_CIC": true,
+      "NEGATIVE_CIC_RATE": 4000.0,
+      "CATASTROPHE_ANGLE": 45.0
+    },
+    "ZIPPERING_RULES":
+    {
+      "ENABLE_ZIPPERING": true,
+      "ZIPPERING_HIT_RATE": 4000.0,
+      "ZIPPERING_GUARD_RATE": 4000.0,
+      "ZIPPERING_RETRACTION_RATE": 10.0,
+      "CRITICAL_ANGLE": 45.0,
+      "SEPARATION_DISTANCE": 0.025
+    },
+    "CROSSOVER_RULES":
+    {
+      "ENABLE_CROSSOVER": false,
+      "CROSSOVER_RATE": 4000.0,
+      "CROSSOVER_ANGLE": 45.0
+    },
+    "CLASP_RULES": {
+      "CLASP_ENABLE_ENTRY": true,
+      "CLASP_ENTRY_RATE": 0.05,
+      "CLASP_ENTRY_ANGLE": 15.0,
+      "CLASP_ENABLE_EXIT": true,
+      "CLASP_EXIT_RATE": 1000.0,
+      "CLASP_EXIT_ANGLE": 15.0,
+      "CLASP_ENABLE_CAT": true,
+      "CLASP_CAT_RATE": 1000.0
+    },
+    "DESTRUCTION_RULES": {
+      "ENABLE_MT_DESTRUCTION": true,
+      "MT_DESTRUCTION_RATE": 10.0
+    },
+    "CREATION_RULES":
+    {
+      "ENABLE_CREATION": true,
+      "CREATION_RATE": 0.005,
+      "CREATION_FACTOR": 5.0
+    },
+    "RECOVERY_RULES":
+    {
+      "ENABLE_RECOVERY": true,
+      "RECOVERY_RATE": 0.0016,
+      "RECOVERY_FACTOR": 30.0
+    }
+  },
+  "RHO_TEST_RATE": 10,
+  "SIGMOID_K": 10,
+  "COLLISION_DISTANCE": 0.025
 }
+
