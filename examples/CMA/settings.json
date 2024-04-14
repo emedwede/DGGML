@@ -69,7 +69,9 @@
     {
       "ENABLE_CROSSOVER": false,
       "CROSSOVER_RATE": 4000.0,
-      "CROSSOVER_ANGLE": 45.0
+      "CROSSOVER_ANGLE": 45.0,
+      "ENABLE_UNCROSSOVER": false,
+      "UNCROSSOVER_RATE": 0.01
     },
     "CLASP_RULES": {
       "CLASP_ENABLE_ENTRY": true,

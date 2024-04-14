@@ -72,6 +72,8 @@ struct Parameters
     bool ENABLE_CROSSOVER;
     double CROSSOVER_RATE;
     double CROSSOVER_ANGLE;
+    bool ENABLE_UNCROSSOVER;
+    double UNCROSSOVER_RATE;
 
     // Clasp rule settings
     bool CLASP_ENABLE_ENTRY;
@@ -133,8 +135,8 @@ struct Parameters
         // ------------------------------
         // Expanded cell complex settings
         // ------------------------------
-        CELL_NX = 1;
-        CELL_NY = 1;
+        CELL_NX = 2;
+        CELL_NY = 2;
         CELL_DX = 1.5;
         CELL_DY = 1.5;
         GHOSTED = false;
@@ -143,7 +145,7 @@ struct Parameters
         // -----------------------
         // Initialization settings
         // -----------------------
-        NUM_MT = 1;
+        NUM_MT = 20;
         MT_MIN_SEGMENT_INIT = 0.005;
         MT_MAX_SEGMENT_INIT = 0.01;
         std::cout << "Initialization settings parsed...\n";
@@ -199,6 +201,9 @@ struct Parameters
         ENABLE_CROSSOVER = true;
         CROSSOVER_RATE = 4000.0;
         CROSSOVER_ANGLE = 45.0;
+        ENABLE_UNCROSSOVER = true;
+        UNCROSSOVER_RATE = 0.01; // a rate of one => occurs once per unit of time
+        //in this case, 1 => onces per second on average
         std::cout << "Crossover rule settings parsed...\n";
 
         // Clasp rule settings
@@ -333,6 +338,8 @@ struct Parameters
 //        ENABLE_CROSSOVER = bool(interface["GRAMMAR"]["CROSSOVER_RULES"]["ENABLE_CROSSOVER"]);
 //        CROSSOVER_RATE = double(interface["GRAMMAR"]["CROSSOVER_RULES"]["CROSSOVER_RATE"]);
 //        CROSSOVER_ANGLE = double(interface["GRAMMAR"]["CROSSOVER_RULES"]["CROSSOVER_ANGLE"]);
+//        ENABLE_UNCROSSOVER = bool(interface["GRAMMAR"]["CROSSOVER_RULES"]["ENABLE_UNCROSSOVER"]);
+//        UNCROSSOVER_RATE = double(interface["GRAMMAR"]["CROSSOVER_RULES"]["UNCROSSOVER_RATE"]);
 //        std::cout << "Crossover rule settings parsed...\n";
 //
 //        // Clasp rule settings

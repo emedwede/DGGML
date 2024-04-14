@@ -52,6 +52,9 @@ namespace CMA {
             if(settings.ENABLE_CROSSOVER)
                 create_with_crossover_rule(gamma, system_graph, settings);
 
+            if(settings.ENABLE_UNCROSSOVER)
+                create_with_uncrossover_rule(gamma, system_graph, settings);
+
             if(settings.ENABLE_ZIPPERING)
                 create_with_zippering_rules(gamma, system_graph, settings);
 

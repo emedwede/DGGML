@@ -749,6 +749,87 @@ namespace CMA {
         gamma.addRule(crossover);
     }
 
+    void create_with_uncrossover_rule(DGGML::Grammar<Plant::graph_type> &gamma, Plant::graph_type &system_graph,
+                                    Parameters &settings) {
+        GT uncrossover_lhs_graph;
+        uncrossover_lhs_graph.addNode({1, {Plant::Negative{}}});
+        uncrossover_lhs_graph.addNode({2, {Plant::Intermediate{}}});
+        uncrossover_lhs_graph.addNode({3, {Plant::Intermediate{}}});
+        uncrossover_lhs_graph.addNode({4, {Plant::Intermediate{}}});
+        uncrossover_lhs_graph.addNode({5, {Plant::Junction{}}});
+        uncrossover_lhs_graph.addEdge(1, 2);
+        uncrossover_lhs_graph.addEdge(2, 5);
+        uncrossover_lhs_graph.addEdge(3, 5);
+        uncrossover_lhs_graph.addEdge(4, 5);
+
+        GT uncrossover_rhs_graph;
+        uncrossover_rhs_graph.addNode({1, {Plant::Negative{}}});
+        uncrossover_rhs_graph.addNode({2, {Plant::Intermediate{}}});
+        uncrossover_rhs_graph.addNode({3, {Plant::Intermediate{}}});
+        uncrossover_rhs_graph.addNode({4, {Plant::Intermediate{}}});
+        uncrossover_rhs_graph.addNode({5, {Plant::Intermediate{}}});
+        uncrossover_rhs_graph.addEdge(1, 2);
+        uncrossover_rhs_graph.addEdge(2, 5);
+        uncrossover_rhs_graph.addEdge(3, 4);
+
+
+        DGGML::WithRule<GT> uncrossover("uncrossover", uncrossover_lhs_graph, uncrossover_rhs_graph,
+                                      [&](auto &lhs, auto &m) {
+                                          //can set it to only fire if nodes 3 and 4 are nearly parallel
+                                          auto &dat1 = lhs.findNode(m[1])->second.getData();
+                                          auto &dat2 = lhs.findNode(m[2])->second.getData();
+                                          auto &pos1 = dat1.position;
+                                          auto &pos2 = dat2.position;
+                                          auto dist = DGGML::calculate_distance(pos1, pos2);
+                                          auto &dat3 = lhs.findNode(m[3])->second.getData();
+                                          auto &dat4 = lhs.findNode(m[4])->second.getData();
+                                          auto &u3 = std::get<Plant::Intermediate>(dat3.data).unit_vec;
+                                          auto &u4 = std::get<Plant::Intermediate>(dat4.data).unit_vec;
+                                          auto res = std::abs(DGGML::unit_dot_product(u3, u4));
+                                          if(res > 0.95 && dist < settings.DIV_LENGTH_RETRACT)
+                                            return settings.UNCROSSOVER_RATE;
+                                          else
+                                              return 0.0;
+                                      },
+                                      [](auto &lhs, auto &rhs, auto &m1, auto &m2) {
+//                                          auto &dat2 = lhs.findNode(m1[2])->second.getData();
+//                                          auto &dat3 = lhs.findNode(m1[3])->second.getData();
+//                                          auto &dat4 = lhs.findNode(m1[4])->second.getData();
+//                                          auto &pos2 = dat2.position;
+//                                          auto &pos3 = dat3.position;
+//                                          auto &pos4 = dat4.position;
+//                                          auto &u2 = std::get<Plant::Positive>(dat2.data).unit_vec;
+//                                          auto &u3 = std::get<Plant::Intermediate>(dat3.data).unit_vec;
+//                                          double sol[2];
+//                                          DGGML::paramaterized_intersection(pos2, pos4, pos3, u2, sol);
+//                                          for (int i = 0; i < 3; i++)
+//                                              rhs[m2[2]].position[i] = lhs[m2[4]].position[i] +
+//                                                                       (lhs[m2[3]].position[i] -
+//                                                                        lhs[m2[4]].position[i]) * sol[1];
+//                                          DGGML::set_unit_vector(rhs[m2[2]].position, rhs[m2[1]].position,
+//                                                                 std::get<Plant::Junction>(rhs[m2[2]].data).unit_vec);
+//                                          DGGML::set_unit_vector(rhs[m2[2]].position, rhs[m2[1]].position,
+//                                                                 std::get<Plant::Intermediate>(
+//                                                                         rhs[m2[1]].data).unit_vec);
+//                                          for (int i = 0; i < 3; i++)
+//                                              rhs[m2[5]].position[i] = rhs[m1[2]].position[i] + 0.01 *
+//                                                                                                std::get<Plant::Junction>(
+//                                                                                                        rhs[m1[2]].data).unit_vec[i];
+//                                          DGGML::set_unit_vector(rhs[m2[5]].position, rhs[m2[2]].position,
+//                                                                 std::get<Plant::Intermediate>(
+//                                                                         rhs[m2[5]].data).unit_vec);
+//                                          for (int i = 0; i < 3; i++)
+//                                              rhs[m2[6]].position[i] = rhs[m1[2]].position[i] + 0.011 *
+//                                                                                                std::get<Plant::Junction>(
+//                                                                                                        rhs[m1[2]].data).unit_vec[i];
+//                                          DGGML::set_unit_vector(rhs[m2[6]].position, rhs[m2[2]].position,
+//                                                                 std::get<Plant::Positive>(rhs[m2[6]].data).unit_vec);
+
+                                      });
+
+        gamma.addRule(uncrossover);
+    }
+
     void create_with_zippering_rules(DGGML::Grammar<Plant::graph_type> &gamma, Plant::graph_type &system_graph,
                                 Parameters &settings) {
         GT zippering_lhs_graph1;
