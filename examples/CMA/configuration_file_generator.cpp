@@ -92,8 +92,8 @@ void set_default(Parameters& settings)
     settings.DIV_LENGTH_RETRACT = 0.0025;
 
     //growing and shrinking velocities in micrometers per second
-    settings.V_PLUS = 4*0.0615; // 3.69um/min to um/s, shaw et al. (2003)
-    settings.V_MINUS = 4*0.00883; // 0.53um/min to um/s, shaw et al. (2003)
+    settings.V_PLUS = 4*0.0615; // 3.69um/min to um/s, shaw et al. (2003) //0.246
+    settings.V_MINUS = 4*0.00883; // 0.53um/min to um/s, shaw et al. (2003) //0.03532
 
     settings.SIGMOID_K = 10.0;
 

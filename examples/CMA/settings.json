@@ -28,7 +28,9 @@
       "WITH_GROWTH_RATE_FACTOR": 100.0,
       "GROWTH_VELOCITY": 0.246,
       "DIV_LENGTH": 0.075,
-      "LENGTH_DIV_FACTOR": 1.2
+      "LENGTH_DIV_FACTOR": 1.2,
+      "ENABLE_WOBBLE": false,
+      "WOBBLE_ANGLE": 2.0
     },
     "RETRACTION_RULES":
     {

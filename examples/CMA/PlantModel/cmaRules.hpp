@@ -55,7 +55,7 @@ namespace CMA {
                                                              settings.WITH_GROWTH_RATE_FACTOR * DGGML::heaviside(len, settings.DIV_LENGTH);
                                                      //double propensity = DGGML::sigmoid((len/settings.DIV_LENGTH) - 1.0, settings.SIGMOID_K);
                                                      return propensity;
-                                                 }, [](auto &lhs, auto &rhs, auto &m1, auto &m2) {
+                                                 }, [&](auto &lhs, auto &rhs, auto &m1, auto &m2) {
                     rhs[m2[3]].position[0] =
                             lhs[m1[2]].position[0] - (lhs[m1[2]].position[0] - lhs[m1[1]].position[0]) / 100.0;
                     rhs[m2[3]].position[1] =
@@ -63,12 +63,30 @@ namespace CMA {
                     rhs[m2[3]].position[2] =
                             lhs[m1[2]].position[2] - (lhs[m1[2]].position[2] - lhs[m1[1]].position[2]) / 100.0;
                     //next set the unit vector
-                    std::get<Plant::Intermediate>(rhs[m2[3]].data).unit_vec[0] = std::get<Plant::Intermediate>(
-                            lhs[m1[1]].data).unit_vec[0];
-                    std::get<Plant::Intermediate>(rhs[m2[3]].data).unit_vec[1] = std::get<Plant::Intermediate>(
-                            lhs[m1[1]].data).unit_vec[1];
-                    std::get<Plant::Intermediate>(rhs[m2[3]].data).unit_vec[2] = std::get<Plant::Intermediate>(
-                            lhs[m1[1]].data).unit_vec[2];
+                    auto& rhs_node3 = rhs[m2[3]];
+                    auto& rhs_node3_data = std::get<Plant::Intermediate>(rhs_node3.data);
+                    auto& u3 = rhs_node3_data.unit_vec;
+                    u3[0] = std::get<Plant::Intermediate>(lhs[m1[1]].data).unit_vec[0];
+                    u3[1] = std::get<Plant::Intermediate>(lhs[m1[1]].data).unit_vec[1];
+                    u3[2] = std::get<Plant::Intermediate>(lhs[m1[1]].data).unit_vec[2];
+
+                    //randomly wobble the growth direction of u2 on update
+                    auto wobble_angle = settings.WOBBLE_ANGLE;
+                    if(settings.ENABLE_WOBBLE) {
+                        auto &rhs_node2 = rhs[m2[2]];
+                        auto &rhs_node2_data = std::get<Plant::Positive>(rhs_node2.data);
+                        auto &u2 = rhs_node2_data.unit_vec;
+                        //rotate
+                        std::random_device random_device;
+                        std::mt19937 random_engine(random_device());
+                        std::uniform_real_distribution<double> distribution_angle(-wobble_angle * (3.14 / 180.0),
+                                                                                  wobble_angle * (3.14 / 180.0));
+                        double angle = distribution_angle(random_engine);
+                        double x = u2[0];
+                        double y = u2[1];
+                        u2[0] = x * cos(angle) - y * sin(angle);
+                        u2[1] = x * sin(angle) + y * cos(angle);
+                    }
                 });
 
         gamma.addRule(stochastic_mt_growth);
