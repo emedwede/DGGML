@@ -61,6 +61,9 @@ namespace CMA {
             if(settings.CLASP_ENABLE_EXIT)
                 create_with_clasp_exit_rule(gamma, system_graph, settings);
 
+            if(settings.CLASP_ENABLE_DETACHMENT)
+                create_with_clasp_detachment(gamma, system_graph, settings);
+
             if(settings.CLASP_ENABLE_CAT)
                 create_with_clasp_catastrophe(gamma, system_graph, settings);
 

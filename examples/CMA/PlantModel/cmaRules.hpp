@@ -1189,6 +1189,7 @@ namespace CMA {
         gamma.addRule(clasp_boundary_cross_case1);
     }
 
+
     void create_with_clasp_catastrophe(DGGML::Grammar<Plant::graph_type> &gamma, Plant::graph_type &system_graph,
                             Parameters &settings) {
 
@@ -1231,6 +1232,52 @@ namespace CMA {
                                                     [&](auto &lhs, auto &rhs, auto &m1, auto &m2) {
                                                     });
         gamma.addRule(clasp_catastrophe_case1);
+    }
+
+    void create_with_clasp_detachment(DGGML::Grammar<Plant::graph_type> &gamma, Plant::graph_type &system_graph,
+                                       Parameters &settings) {
+
+        GT clasp_detachment_lhs_graph1;
+        clasp_detachment_lhs_graph1.addNode({1, {Plant::Boundary{}}});
+        clasp_detachment_lhs_graph1.addNode({2, {Plant::Boundary{}}});
+        clasp_detachment_lhs_graph1.addNode({3, {Plant::Intermediate{}}});
+        clasp_detachment_lhs_graph1.addNode({4, {Plant::Intermediate{}}});
+        clasp_detachment_lhs_graph1.addEdge(1, 3);
+        clasp_detachment_lhs_graph1.addEdge(3, 2);
+        clasp_detachment_lhs_graph1.addEdge(3, 4);
+
+        GT clasp_detachment_rhs_graph1;
+        clasp_detachment_rhs_graph1.addNode({1, {Plant::Boundary{}}});
+        clasp_detachment_rhs_graph1.addNode({2, {Plant::Boundary{}}});
+        clasp_detachment_rhs_graph1.addNode({3, {Plant::Negative{}}});
+        clasp_detachment_rhs_graph1.addNode({4, {Plant::Intermediate{}}});
+        clasp_detachment_rhs_graph1.addEdge(1, 2);
+        clasp_detachment_rhs_graph1.addEdge(3, 4);
+
+        DGGML::WithRule<GT> clasp_detachment_case1("clasp_detachment_case1", clasp_detachment_lhs_graph1,
+                                                    clasp_detachment_rhs_graph1,
+                                                    [&](auto &lhs, auto &m) {
+                                                        return settings.CLASP_DETACHMENT_RATE;
+                                                    },
+                                                    [&](auto &lhs, auto &rhs, auto &m1, auto &m2) {
+                                                        auto &dat3_lhs = lhs.findNode(m1[3])->second.getData();
+                                                        auto &dat4_lhs = lhs.findNode(m1[4])->second.getData();
+                                                        auto &dat3_rhs = rhs.findNode(m2[3])->second.getData();
+
+                                                        //get references to position vector
+                                                        auto &pos3_lhs = dat3_lhs.position;
+                                                        auto &pos4_lhs = dat4_lhs.position;
+                                                        auto &pos3_rhs = dat3_rhs.position;
+
+                                                        pos3_rhs[0] = pos3_lhs[0] - (pos3_lhs[0] - pos4_lhs[0]) / 20.0;
+                                                        pos3_rhs[1] = pos3_lhs[1] - (pos3_lhs[1] - pos4_lhs[1]) / 20.0;
+                                                        pos3_rhs[2] = pos3_lhs[2] - (pos3_lhs[2] - pos4_lhs[2]) / 20.0;
+
+                                                        //get references to unit vectors
+                                                        auto &u3 = std::get<Plant::Negative>(dat3_rhs.data).unit_vec;
+                                                        DGGML::set_unit_vector(pos4_lhs, pos3_rhs, u3);
+                                                    });
+        gamma.addRule(clasp_detachment_case1);
     }
 
     void create_with_destruction_rule(DGGML::Grammar<Plant::graph_type> &gamma, Plant::graph_type &system_graph,

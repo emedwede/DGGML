@@ -82,6 +82,8 @@ struct Parameters
     double CLASP_EXIT_ANGLE;
     bool CLASP_ENABLE_CAT;
     double CLASP_CAT_RATE;
+    bool CLASP_ENABLE_DETACHMENT;
+    double CLASP_DETACHMENT_RATE;
 
     // Destruction rule settings
     bool ENABLE_MT_DESTRUCTION;
@@ -113,7 +115,7 @@ struct Parameters
         EXPERIMENT_NAME = "my_test";
         auto name = EXPERIMENT_NAME;
         RESULTS_DIR = "my_test_results";
-        TOTAL_TIME = 60;
+        TOTAL_TIME = 180;
         //Delta should be big, but not to big. In this case, the maximum amount of time it would
         //take one MT to grow a single unit of MT
         //e.g. something like: 0.25*settings.MAXIMAL_REACTION_RADIUS / std::max(settings.V_PLUS, settings.V_MINUS);
@@ -141,7 +143,7 @@ struct Parameters
         // -----------------------
         // Initialization settings
         // -----------------------
-        NUM_MT = 0;
+        NUM_MT = 1;
         MT_MIN_SEGMENT_INIT = 0.005;
         MT_MAX_SEGMENT_INIT = 0.01;
         std::cout << "Initialization settings parsed...\n";
@@ -156,7 +158,7 @@ struct Parameters
         //actual MTs are 23 to 27 nm in diameter and up to 50 micrometers (um) long
         DIV_LENGTH = 0.075;
         LENGTH_DIV_FACTOR = 1.2;
-        ENABLE_WOBBLE = true;
+        ENABLE_WOBBLE = false;
         WOBBLE_ANGLE = 8.0;
         std::cout << "Growth rule settings parsed...\n";
 
@@ -194,20 +196,22 @@ struct Parameters
         std::cout << "Zippering rule settings parsed...\n";
 
         // Crossover rule settings
-        ENABLE_CROSSOVER = false;
+        ENABLE_CROSSOVER = true;
         CROSSOVER_RATE = 4000.0;
         CROSSOVER_ANGLE = 45.0;
         std::cout << "Crossover rule settings parsed...\n";
 
         // Clasp rule settings
-        CLASP_ENABLE_ENTRY = true;
+        CLASP_ENABLE_ENTRY = false;
         CLASP_ENTRY_RATE = 0.0005;
         CLASP_ENTRY_ANGLE = 15.0;
         CLASP_ENABLE_EXIT = true;
-        CLASP_EXIT_RATE = 1000.0;
-        CLASP_EXIT_ANGLE = 15.0;
+        CLASP_EXIT_RATE = 40000.0;
+        CLASP_EXIT_ANGLE = 45.0;
         CLASP_ENABLE_CAT = true;
         CLASP_CAT_RATE = 1000.0;
+        CLASP_ENABLE_DETACHMENT = true;
+        CLASP_DETACHMENT_RATE = 0.01;
         std::cout << "Clasp rule settings parsed...\n";
 
         // Destruction rule settings
@@ -218,11 +222,11 @@ struct Parameters
         // Creation rule settings
         ENABLE_CREATION = true;
         CREATION_RATE = 0.0026;
-        CREATION_FACTOR = 1.0;
+        CREATION_FACTOR = 0.2;
         std::cout << "Creation rule settings parsed...\n";
 
         // Recovery rule settings
-        ENABLE_RECOVERY = true;
+        ENABLE_RECOVERY = false;
         RECOVERY_RATE = 0.0016;
         RECOVERY_FACTOR = 30.0;
         std::cout << "Recovery rule settings parsed...\n";
@@ -340,6 +344,8 @@ struct Parameters
 //        CLASP_EXIT_ANGLE = double(interface["GRAMMAR"]["CLASP_RULES"]["CLASP_EXIT_ANGLE"]);
 //        CLASP_ENABLE_CAT = bool(interface["GRAMMAR"]["CLASP_RULES"]["CLASP_ENABLE_CAT"]);
 //        CLASP_CAT_RATE = double(interface["GRAMMAR"]["CLASP_RULES"]["CLASP_CAT_RATE"]);
+//        CLASP_ENABLE_DETACHMENT = bool(interface["GRAMMAR"]["CLASP_RULES"]["CLASP_ENABLE_DETACHMENT"]);
+//        CLASP_DETACHMENT_RATE = double(interface["GRAMMAR"]["CLASP_RULES"]["CLASP_DETACHMENT_RATE"]);
 //        std::cout << "Clasp rule settings parsed...\n";
 //
 //        // Destruction rule settings
