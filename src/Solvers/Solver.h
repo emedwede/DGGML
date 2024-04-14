@@ -15,15 +15,26 @@
 #define ESYM "e"
 #define FSYM "f"
 #endif
-
+//Added to fix depracated functionality in new version of sundials
+typedef double realtype;
+#define RCONST(x) x
 #include <vector>
 
 #include "SundialsUtils.hpp"
 #include "HelperFunctions.hpp"
 
+#include <stdio.h>
+
 // TODO: Need to generalize the sovler code and we need to add in the root finding fix from
 // CajeteCMA repo
 namespace DGGML {
+
+// Custom error handler function
+    void customErrHandler(int error_code, const char *module, const char *function,
+                          char *msg, void *eh_data) {
+        // Implement logic to handle or ignore errors
+        // For example, do nothing to effectively suppress the message
+    }
 
     template <typename ModelType, typename AnalyzedGrammarType, typename RuleMatchType, typename ComponentMatchType>
     struct Solver
@@ -131,8 +142,8 @@ namespace DGGML {
             //if (!DGGML::SundialsUtils::check_flag((void *)arkode_mem, "ERKStepCreate", 1))
             //    std::cout << "Passed the error check, stepper initialized\n";
 
-            reltol = 1.0e-4;//1.0e-6;
-            abstol = 1.0e-8;//1.0e-10;
+            reltol = 1.0e-2;//1.0e-4;//1.0e-6;
+            abstol = 1.0e-4;1.0e-8;//1.0e-10;
 
             flag = ERKStepSStolerances(arkode_mem, reltol, abstol);
 
@@ -145,6 +156,8 @@ namespace DGGML {
             //ERKStepSetMinStep(arkode_mem, user_data.settings.DELTA_T_MIN/10.0);
             ERKStepSetMaxStep(arkode_mem, dt_out);//dt_out/10.0);
 //            std::cout << "Created solver\n";
+            //set custom error handler for the solver
+            ERKStepSetErrHandlerFn(arkode_mem, customErrHandler, NULL);
         }
 
         void step()

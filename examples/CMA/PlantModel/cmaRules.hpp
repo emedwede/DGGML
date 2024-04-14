@@ -792,38 +792,6 @@ namespace CMA {
                                               return 0.0;
                                       },
                                       [](auto &lhs, auto &rhs, auto &m1, auto &m2) {
-//                                          auto &dat2 = lhs.findNode(m1[2])->second.getData();
-//                                          auto &dat3 = lhs.findNode(m1[3])->second.getData();
-//                                          auto &dat4 = lhs.findNode(m1[4])->second.getData();
-//                                          auto &pos2 = dat2.position;
-//                                          auto &pos3 = dat3.position;
-//                                          auto &pos4 = dat4.position;
-//                                          auto &u2 = std::get<Plant::Positive>(dat2.data).unit_vec;
-//                                          auto &u3 = std::get<Plant::Intermediate>(dat3.data).unit_vec;
-//                                          double sol[2];
-//                                          DGGML::paramaterized_intersection(pos2, pos4, pos3, u2, sol);
-//                                          for (int i = 0; i < 3; i++)
-//                                              rhs[m2[2]].position[i] = lhs[m2[4]].position[i] +
-//                                                                       (lhs[m2[3]].position[i] -
-//                                                                        lhs[m2[4]].position[i]) * sol[1];
-//                                          DGGML::set_unit_vector(rhs[m2[2]].position, rhs[m2[1]].position,
-//                                                                 std::get<Plant::Junction>(rhs[m2[2]].data).unit_vec);
-//                                          DGGML::set_unit_vector(rhs[m2[2]].position, rhs[m2[1]].position,
-//                                                                 std::get<Plant::Intermediate>(
-//                                                                         rhs[m2[1]].data).unit_vec);
-//                                          for (int i = 0; i < 3; i++)
-//                                              rhs[m2[5]].position[i] = rhs[m1[2]].position[i] + 0.01 *
-//                                                                                                std::get<Plant::Junction>(
-//                                                                                                        rhs[m1[2]].data).unit_vec[i];
-//                                          DGGML::set_unit_vector(rhs[m2[5]].position, rhs[m2[2]].position,
-//                                                                 std::get<Plant::Intermediate>(
-//                                                                         rhs[m2[5]].data).unit_vec);
-//                                          for (int i = 0; i < 3; i++)
-//                                              rhs[m2[6]].position[i] = rhs[m1[2]].position[i] + 0.011 *
-//                                                                                                std::get<Plant::Junction>(
-//                                                                                                        rhs[m1[2]].data).unit_vec[i];
-//                                          DGGML::set_unit_vector(rhs[m2[6]].position, rhs[m2[2]].position,
-//                                                                 std::get<Plant::Positive>(rhs[m2[6]].data).unit_vec);
 
                                       });
 
@@ -1350,9 +1318,9 @@ namespace CMA {
                                                         auto &pos4_lhs = dat4_lhs.position;
                                                         auto &pos3_rhs = dat3_rhs.position;
 
-                                                        pos3_rhs[0] = pos3_lhs[0] - (pos3_lhs[0] - pos4_lhs[0]) / 20.0;
-                                                        pos3_rhs[1] = pos3_lhs[1] - (pos3_lhs[1] - pos4_lhs[1]) / 20.0;
-                                                        pos3_rhs[2] = pos3_lhs[2] - (pos3_lhs[2] - pos4_lhs[2]) / 20.0;
+                                                        pos3_rhs[0] = pos3_lhs[0] - (pos3_lhs[0] - pos4_lhs[0]) / 2.0;
+                                                        pos3_rhs[1] = pos3_lhs[1] - (pos3_lhs[1] - pos4_lhs[1]) / 2.0;
+                                                        pos3_rhs[2] = pos3_lhs[2] - (pos3_lhs[2] - pos4_lhs[2]) / 2.0;
 
                                                         //get references to unit vectors
                                                         auto &u3 = std::get<Plant::Negative>(dat3_rhs.data).unit_vec;

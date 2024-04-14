@@ -117,11 +117,11 @@ struct Parameters
         EXPERIMENT_NAME = "my_test";
         auto name = EXPERIMENT_NAME;
         RESULTS_DIR = "my_test_results";
-        TOTAL_TIME = 180;
+        TOTAL_TIME = 3600;
         //Delta should be big, but not to big. In this case, the maximum amount of time it would
         //take one MT to grow a single unit of MT
         //e.g. something like: 0.25*settings.MAXIMAL_REACTION_RADIUS / std::max(settings.V_PLUS, settings.V_MINUS);
-        DELTA = 0.0625;
+        DELTA = 0.4;//0.0625;
         MIN_DELTA_STEPS = 5;
         //The internal step of the solver should be at least smaller than delta
         DELTA_DELTA_T = DELTA / MIN_DELTA_STEPS;
@@ -135,17 +135,17 @@ struct Parameters
         // ------------------------------
         // Expanded cell complex settings
         // ------------------------------
-        CELL_NX = 2;
-        CELL_NY = 2;
-        CELL_DX = 1.5;
-        CELL_DY = 1.5;
+        CELL_NX = 6;
+        CELL_NY = 6;
+        CELL_DX = 1.666;
+        CELL_DY = 1.666;
         GHOSTED = false;
         std::cout << "Expanded cell complex settings parsed...\n";
 
         // -----------------------
         // Initialization settings
         // -----------------------
-        NUM_MT = 20;
+        NUM_MT = 0;
         MT_MIN_SEGMENT_INIT = 0.005;
         MT_MAX_SEGMENT_INIT = 0.01;
         std::cout << "Initialization settings parsed...\n";
@@ -198,10 +198,10 @@ struct Parameters
         std::cout << "Zippering rule settings parsed...\n";
 
         // Crossover rule settings
-        ENABLE_CROSSOVER = true;
+        ENABLE_CROSSOVER = false;
         CROSSOVER_RATE = 4000.0;
         CROSSOVER_ANGLE = 45.0;
-        ENABLE_UNCROSSOVER = true;
+        ENABLE_UNCROSSOVER = false;
         UNCROSSOVER_RATE = 0.01; // a rate of one => occurs once per unit of time
         //in this case, 1 => onces per second on average
         std::cout << "Crossover rule settings parsed...\n";
@@ -227,13 +227,13 @@ struct Parameters
         // Creation rule settings
         ENABLE_CREATION = true;
         CREATION_RATE = 0.0026;
-        CREATION_FACTOR = 0.2;
+        CREATION_FACTOR = 1.0;
         std::cout << "Creation rule settings parsed...\n";
 
         // Recovery rule settings
-        ENABLE_RECOVERY = false;
-        RECOVERY_RATE = 0.0016;
-        RECOVERY_FACTOR = 30.0;
+        ENABLE_RECOVERY = true;
+        RECOVERY_RATE = 0.016;
+        RECOVERY_FACTOR = 1.0;
         std::cout << "Recovery rule settings parsed...\n";
 
         std::cout << "Grammar settings parsed...\n";
