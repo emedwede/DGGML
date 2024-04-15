@@ -26,15 +26,15 @@ namespace CMA {
     }
 
     template<typename StreamType, typename DataType>
-    void print_numpy_array_stats_csv(StreamType &out, DataType &data, std::string var_name) {
-        out << var_name << ", ";
+    void print_json_array_stats(StreamType &out, DataType &data, std::string var_name) {
+        out << "\t\"" << var_name << "\": [";
         for (auto i = 0; i < data.size(); i++) {
             if (i != data.size() - 1)
                 out << data[i] << ", ";
             else
                 out << data[i];
         }
-        out << "\n";
+        out << "]";
     }
 }
 namespace Plant {
@@ -303,11 +303,16 @@ namespace Plant {
                 Point p2 = points[j];
                 double distance = hypot(p1.p_x - p2.p_x, p1.p_y - p2.p_y);
                 if (distance <= max_distance) {
-                    double angle = angle_ref(p1, p2);
+                    //double angle = angle_ref(p1, p2);
                     //if (angle >= alpha1 && angle <= alpha2) {
                     int bin_index = floor(distance / bin_size);
                     auto abs_dot = dot_product(p1, p2) * dot_product(p1, p2);//std::abs(dot_product(p1, p2));
+                    auto dot = dot_product(p1, p2);
+                    if (dot > 1.0001 || dot < -1.0001) {std::cout << dot << "\n"; std::cin.get();}
                     if (abs_dot > 1.0) abs_dot = 1.0;
+//                    if(bin_index < 0 || bin_index >= num_bins) {
+//                        std::cout << "bin index error " << bin_index << "\n"; std::cin.get();
+//                    }
                     correlation[bin_index] += abs_dot;//std::acos(abs_dot); //std::cos(angle);
                     num_pairs[bin_index]++;
                     //}
@@ -330,26 +335,26 @@ namespace Plant {
         {
             auto& node_data = node.second.getData();
             if(std::holds_alternative<Plant::Intermediate>(node_data.data)) {
-                auto p = node_data.position;
-                auto u = std::get<Plant::Intermediate>(node_data.data).unit_vec;
+                auto& p = node_data.position;
+                auto& u = std::get<Plant::Intermediate>(node_data.data).unit_vec;
 
                 points.push_back({p[0], p[1], u[0], u[1]});
             }
             else if(std::holds_alternative<Plant::Positive>(node_data.data)) {
-                auto p = node_data.position;
-                auto u = std::get<Plant::Positive>(node_data.data).unit_vec;
+                auto& p = node_data.position;
+                auto& u = std::get<Plant::Positive>(node_data.data).unit_vec;
 
                 points.push_back({p[0], p[1], u[0], u[1]});
             }
             else if(std::holds_alternative<Plant::Negative>(node_data.data)) {
-                auto p = node_data.position;
-                auto u = std::get<Plant::Negative>(node_data.data).unit_vec;
+                auto& p = node_data.position;
+                auto& u = std::get<Plant::Negative>(node_data.data).unit_vec;
 
                 points.push_back({p[0], p[1], u[0], u[1]});
             }
         }
 
-        double bin_size = settings.MAXIMAL_REACTION_RADIUS/2.0;
+        double bin_size = settings.MAXIMAL_REACTION_RADIUS;
         double max_distance = std::max(settings.CELL_NX*settings.CELL_DX, settings.CELL_NY*settings.CELL_DY);
         return two_point_correlation_alpha(points, bin_size, max_distance);
     }
@@ -361,39 +366,53 @@ namespace Plant {
         {
             auto& node_data = node.second.getData();
             if(std::holds_alternative<Plant::Intermediate>(node_data.data)) {
-                auto p = node_data.position;
-                auto u = std::get<Plant::Intermediate>(node_data.data).unit_vec;
+                auto& p = node_data.position;
+                auto& u = std::get<Plant::Intermediate>(node_data.data).unit_vec;
 
                 points.push_back({p[0], p[1], u[0], u[1]});
             }
             else if(std::holds_alternative<Plant::Positive>(node_data.data)) {
-                auto p = node_data.position;
-                auto u = std::get<Plant::Positive>(node_data.data).unit_vec;
+                auto& p = node_data.position;
+                auto& u = std::get<Plant::Positive>(node_data.data).unit_vec;
 
                 points.push_back({p[0], p[1], u[0], u[1]});
             }
             else if(std::holds_alternative<Plant::Negative>(node_data.data)) {
-                auto p = node_data.position;
-                auto u = std::get<Plant::Negative>(node_data.data).unit_vec;
+                auto& p = node_data.position;
+                auto& u = std::get<Plant::Negative>(node_data.data).unit_vec;
 
                 points.push_back({p[0], p[1], u[0], u[1]});
             }
         }
-        //build bins in 5 degree increments
-        std::size_t num_bins = 90/5;
+        //build bins in 10 degree increments
+        std::size_t num_bins = 180/10;
         std::cout << "Point size " << points.size() << "\n";
         std::vector<std::size_t> orientation_histogram(num_bins);
         for(auto& p : points)
         {
             //TODO: fix this so that we are in the right half of the plane!
-            auto angle = p.u_x == 0 ? 0.0 : std::atan(std::abs(p.u_y)/std::abs(p.u_x))*(180.0/3.14);
-            std::cout << angle << " ";
-            int bid = std::floor(angle/5.0);
-            orientation_histogram[bid]++;
+            //flip to quadrant 1, compute the angle with the terminal unit vector
+            double angle = std::acos(std::abs(p.u_x))*(180.0/3.14);
+            //if we are in originally in quadrant 2, we must create a mirror image in quadrant 4, so subtract 90
+            if(p.u_x < 0 && p.u_y > 0 || p.u_x > 0 && p.u_y < 0)
+                angle = -angle;
+            //if we are in quadrant 3, we must create a mirror image in quadrant 1
+            //Note: anything in quadrant 1 and 4 are as is
+            //auto angle = p.u_x == 0 ? 0.0 : std::atan(p.u_y/std::abs(p.u_x))*(180.0/3.14);
+            //angle += 90.0;
+            //std::cout << angle << " ";
+            //scale the angle
+            angle += 90.0;
+            angle = angle > 180.0 ? 180.0 : angle; //ensures precision errors don't break the code
+            angle = angle < 0.0 ? 0.0 : angle; //ensures precision errors don't break the code
+            int bid = angle == 0.0 ? 0 : int(std::ceil(angle/10.0))-1;
+            if(bid >= 0 && bid < num_bins)
+                orientation_histogram[bid]++;
         }
-        std::cout << "\n";
-        std::cout << "hist total: " << std::accumulate(orientation_histogram.begin(), orientation_histogram.end(), 0) << "\n";
-        return orientation_histogram;
+        //std::cout << "\n";
+        auto total = std::accumulate(orientation_histogram.begin(), orientation_histogram.end(), 0);
+        std::cout << "\nhist total: " << total << "\n";
+        return std::move(orientation_histogram);
     }
 }
 #endif

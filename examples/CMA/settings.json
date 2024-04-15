@@ -14,7 +14,7 @@
     "CELL_NY": 1,
     "CELL_DX": 1.5,
     "CELL_DY": 1.5,
-    "GHOSTED": false
+    "GHOSTED": true
   },
   "INITIALIZATION":
   {
@@ -54,7 +54,7 @@
       "POSITIVE_CIC_RATE": 1000.0,
       "ENABLE_NEGATIVE_CIC": true,
       "NEGATIVE_CIC_RATE": 4000.0,
-      "CATASTROPHE_ANGLE": 45.0
+      "CATASTROPHE_ANGLE": 50.0
     },
     "ZIPPERING_RULES":
     {
@@ -62,7 +62,7 @@
       "ZIPPERING_HIT_RATE": 4000.0,
       "ZIPPERING_GUARD_RATE": 4000.0,
       "ZIPPERING_RETRACTION_RATE": 10.0,
-      "CRITICAL_ANGLE": 45.0,
+      "CRITICAL_ANGLE": 50.0,
       "SEPARATION_DISTANCE": 0.025
     },
     "CROSSOVER_RULES":

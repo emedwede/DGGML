@@ -142,8 +142,8 @@ namespace DGGML {
             //if (!DGGML::SundialsUtils::check_flag((void *)arkode_mem, "ERKStepCreate", 1))
             //    std::cout << "Passed the error check, stepper initialized\n";
 
-            reltol = 1.0e-2;//1.0e-4;//1.0e-6;
-            abstol = 1.0e-4;1.0e-8;//1.0e-10;
+            reltol = 1.0e-4;//1.0e-4;//1.0e-6;
+            abstol = 1.0e-8;1.0e-8;//1.0e-10;
 
             flag = ERKStepSStolerances(arkode_mem, reltol, abstol);
 

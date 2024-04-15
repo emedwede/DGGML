@@ -121,24 +121,24 @@ struct Parameters
         //Delta should be big, but not to big. In this case, the maximum amount of time it would
         //take one MT to grow a single unit of MT
         //e.g. something like: 0.25*settings.MAXIMAL_REACTION_RADIUS / std::max(settings.V_PLUS, settings.V_MINUS);
-        DELTA = 0.4;//0.0625;
+        DELTA = 0.4;//0.4;//0.0625;
         MIN_DELTA_STEPS = 5;
         //The internal step of the solver should be at least smaller than delta
         DELTA_DELTA_T = DELTA / MIN_DELTA_STEPS;
         DELTA_T_MIN = DELTA_DELTA_T;
         NUM_STEPS = TOTAL_TIME / DELTA;
         MAXIMAL_REACTION_RADIUS = 0.1;
-        CHECKPOINT_FREQUENCY = 10;
+        CHECKPOINT_FREQUENCY = 30;
 
         std::cout << "Core parameter settings parsed...\n";
 
         // ------------------------------
         // Expanded cell complex settings
         // ------------------------------
-        CELL_NX = 6;
-        CELL_NY = 6;
-        CELL_DX = 1.666;
-        CELL_DY = 1.666;
+        CELL_NX = 3;
+        CELL_NY = 3;
+        CELL_DX = 1.66;//5.5;//1.666;
+        CELL_DY = 1.66;//2.0;//1.666;
         GHOSTED = false;
         std::cout << "Expanded cell complex settings parsed...\n";
 
@@ -173,9 +173,9 @@ struct Parameters
 
         // Boundary rules
         ENABLE_STANDARD_BOUNDARY_CATASTROPHE =  true;
-        STANDARD_BOUNDARY_CATASTROPHE_RATE = 1000.0;
+        STANDARD_BOUNDARY_CATASTROPHE_RATE = 40000.0;
         ENABLE_CLASP_BOUNDARY_CATASTROPHE = true;
-        CLASP_BOUNDARY_CATASTROPHE_RATE = 1000.0;
+        CLASP_BOUNDARY_CATASTROPHE_RATE = 40000.0;
         std::cout << "Boundary rule settings parsed...\n";
 
         // Catastrophe rule settings
@@ -185,7 +185,7 @@ struct Parameters
         POSITIVE_CIC_RATE = 1000.0;
         ENABLE_NEGATIVE_CIC = true;
         NEGATIVE_CIC_RATE = 4000.0;
-        CATASTROPHE_ANGLE = 45.0;
+        CATASTROPHE_ANGLE = 50.0;
         std::cout << "Catastrophe rule settings parsed...\n";
 
         // Zippering rule settings
@@ -193,15 +193,15 @@ struct Parameters
         ZIPPERING_HIT_RATE = 4000.0;
         ZIPPERING_GUARD_RATE = 4000.0;
         ZIPPERING_RETRACTION_RATE = 10.0;
-        CRITICAL_ANGLE = 45.0;
+        CRITICAL_ANGLE = 50.0;
         SEPARATION_DISTANCE = 0.025;
         std::cout << "Zippering rule settings parsed...\n";
 
         // Crossover rule settings
-        ENABLE_CROSSOVER = false;
-        CROSSOVER_RATE = 4000.0;
-        CROSSOVER_ANGLE = 45.0;
-        ENABLE_UNCROSSOVER = false;
+        ENABLE_CROSSOVER = true;
+        CROSSOVER_RATE = 40.0;
+        CROSSOVER_ANGLE = 50.0;
+        ENABLE_UNCROSSOVER = true;
         UNCROSSOVER_RATE = 0.01; // a rate of one => occurs once per unit of time
         //in this case, 1 => onces per second on average
         std::cout << "Crossover rule settings parsed...\n";
@@ -210,12 +210,12 @@ struct Parameters
         CLASP_ENABLE_ENTRY = false;
         CLASP_ENTRY_RATE = 0.0005;
         CLASP_ENTRY_ANGLE = 15.0;
-        CLASP_ENABLE_EXIT = true;
+        CLASP_ENABLE_EXIT = false;
         CLASP_EXIT_RATE = 40000.0;
-        CLASP_EXIT_ANGLE = 45.0;
+        CLASP_EXIT_ANGLE = 15.0;
         CLASP_ENABLE_CAT = true;
         CLASP_CAT_RATE = 1000.0;
-        CLASP_ENABLE_DETACHMENT = true;
+        CLASP_ENABLE_DETACHMENT = false;
         CLASP_DETACHMENT_RATE = 0.01;
         std::cout << "Clasp rule settings parsed...\n";
 

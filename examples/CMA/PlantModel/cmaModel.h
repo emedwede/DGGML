@@ -96,7 +96,10 @@ namespace CMA {
             std::vector<std::size_t> total_nodes;
             std::vector<std::size_t> type_counts[5];
             std::vector<double> time_count;
-            std::vector<std::vector<double>> angular_correlation;
+            std::vector<double> correlation_avg_global;
+            std::vector<double> correlation_avg_local;
+            std::vector<double> correlation_dist;
+            std::vector<std::size_t> angular_histogram;
 
             std::size_t junction_count;
             std::size_t positive_count;
@@ -111,17 +114,20 @@ namespace CMA {
                 negative_count = 0;
                 zipper_count = 0;
                 intermediate_count = 0;
+                correlation_dist.clear();
+                angular_histogram.clear();
+
             }
         } metrics;
 
-        void collect() override
+        void collect(std::size_t step) override
         {
             metrics.reset_count();
             metrics.con_com.push_back(YAGL::connected_components(system_graph));
 
             for(auto iter = system_graph.node_list_begin();
                 iter != system_graph.node_list_end(); iter++) {
-                auto itype = iter->second.getData();
+                auto& itype = iter->second.getData();
                 if(std::holds_alternative<Plant::Negative>(itype.data))
                     metrics.negative_count++;
                 if(std::holds_alternative<Plant::Positive>(itype.data))
@@ -141,29 +147,46 @@ namespace CMA {
 
             metrics.total_nodes.push_back(metrics.negative_count + metrics.positive_count +
             metrics.intermediate_count + metrics.junction_count + metrics.zipper_count);
-            //metrics.angular_correlation.push_back(compute_two_point_correlation_alpha(system_graph, settings));
+            metrics.correlation_dist = compute_two_point_correlation_alpha(system_graph, settings);
+            auto size = (double)metrics.correlation_dist.size();
+            auto avg = std::accumulate(metrics.correlation_dist.begin(), metrics.correlation_dist.end(), 0.0)/size;
+            metrics.correlation_avg_global.push_back(avg);
+            auto local_size = metrics.correlation_dist.size()/3;
+            auto local_avg =
+                    std::accumulate(metrics.correlation_dist.begin(), metrics.correlation_dist.begin()+local_size, 0.0)
+                    /((double)local_size);
+            metrics.correlation_avg_local.push_back(local_avg);
+            metrics.angular_histogram = compute_orientation_histogram(system_graph, settings);
         }
 
-        void print_metrics() override
+        void print_metrics(std::size_t step) override
         {
             // Open the file for appending, create if it doesn't exist
-            std::string filename = settings.RESULTS_DIR+"/"+"metrics.csv";
+            std::string filename = settings.RESULTS_DIR+"/"+"metrics" + std::to_string(step) +".json";
             std::ofstream outputFile(filename, std::ios::app | std::ios::out);
-            print_numpy_array_stats_csv(outputFile, metrics.con_com, "con_com");
-            print_numpy_array_stats_csv(outputFile, metrics.type_counts[0], "negative");
-            print_numpy_array_stats_csv(outputFile, metrics.type_counts[1], "positive");
-            print_numpy_array_stats_csv(outputFile, metrics.type_counts[2], "intermediate");
-            print_numpy_array_stats_csv(outputFile, metrics.type_counts[3], "junction");
-            print_numpy_array_stats_csv(outputFile, metrics.type_counts[4], "zipper");
-            print_numpy_array_stats_csv(outputFile, metrics.total_nodes, "total_nodes");
-            auto start = 0;
-            auto end = metrics.angular_correlation.size()-1;
-            //print_numpy_array_stats_csv(outputFile, metrics.angular_correlation[start], "angle_corr_start");
-            //print_numpy_array_stats_csv(outputFile, metrics.angular_correlation[end], "angle_corr_end");
-            auto result = compute_two_point_correlation_alpha(system_graph, settings);
-            print_numpy_array_stats_csv(outputFile, result, "angle_corr_end");
-            auto hist = compute_orientation_histogram(system_graph, settings);
-            print_numpy_array_stats_csv(outputFile, hist, "orientation_hist");
+            outputFile << "{";
+            print_json_array_stats(outputFile, metrics.con_com, "con_com");
+            outputFile << ",\n";
+            print_json_array_stats(outputFile, metrics.type_counts[0], "negative");
+            outputFile << ",\n";
+            print_json_array_stats(outputFile, metrics.type_counts[1], "positive");
+            outputFile << ",\n";
+            print_json_array_stats(outputFile, metrics.type_counts[2], "intermediate");
+            outputFile << ",\n";
+            print_json_array_stats(outputFile, metrics.type_counts[3], "junction");
+            outputFile << ",\n";
+            print_json_array_stats(outputFile, metrics.type_counts[4], "zipper");
+            outputFile << ",\n";
+            print_json_array_stats(outputFile, metrics.total_nodes, "total_nodes");
+            outputFile << ",\n";
+            print_json_array_stats(outputFile, metrics.correlation_avg_global, "correlation_avg_global");
+            outputFile << ",\n";
+            print_json_array_stats(outputFile, metrics.correlation_avg_local, "correlation_avg_local");
+            outputFile << ",\n";
+            print_json_array_stats(outputFile, metrics.correlation_dist, "correlation_dist");
+            outputFile << ",\n";
+            print_json_array_stats(outputFile, metrics.angular_histogram, "angular_hist");
+            outputFile << "\n}";
             //print_numpy_array_stats_csv(outputFile, metrics.time_count, "time_count");
             outputFile.close();
         }
@@ -192,22 +215,20 @@ namespace CMA {
                 std::cout << "Saving the initial state of the system graph\n";
                 DGGML::VtkFileWriter<graph_type> vtk_writer;
                 vtk_writer.save(system_graph, title+std::to_string(step));
-                collect();
+                collect(step);
             }
             //save every 10 steps
-            if(step != 0 && step % settings.CHECKPOINT_FREQUENCY == 0)
+            if(step != 0 && step % settings.CHECKPOINT_FREQUENCY == 0 || step == settings.NUM_STEPS)
             {
                 std::cout << "Running the checkpoint for step " << step << "\n";
                 std::cout << "Saving the system graph\n";
                 std::string title = results_dir_name+"/simulation_step_";
                 DGGML::VtkFileWriter<graph_type> vtk_writer;
                 vtk_writer.save(system_graph, title+std::to_string(step));
-                collect();
-            }
-            if(step == settings.NUM_STEPS)
-            {
-                std::cout << "Writing the final metrics to a file\n";
-                print_metrics();
+                std::cout << "Collecting metrics\n";
+                collect(step);
+                std::cout << "Writing the collected metrics to a file\n";
+                print_metrics(step);
             }
             //std::cin.get();
         }
