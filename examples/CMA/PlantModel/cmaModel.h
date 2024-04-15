@@ -6,7 +6,7 @@
 #include "PlantUtils.hpp"
 #include "cmaRules.hpp"
 #include "MathUtils.hpp"
-//#include "simdjson.h"
+#include "simdjson.h"
 #include "ExpandedComplex2D.hpp"
 #include "YAGL_Algorithms.hpp"
 #include "Parameters.hpp"
@@ -18,7 +18,7 @@ namespace CMA {
         void initialize() override
         {
             std::cout << "Initializing the plant model simulation\n";
-            settings.set_default();
+            //settings.set_default();
             name = settings.EXPERIMENT_NAME;
             std::cout << "Creating the grammar\n";
 
@@ -233,10 +233,10 @@ namespace CMA {
             //std::cin.get();
         }
 
-//        void set_parameters(simdjson::ondemand::document& interface)
-//        {
-//            settings.set_parameters(interface);
-//        }
+        void set_parameters(simdjson::ondemand::document& interface)
+        {
+            settings.set_parameters(interface);
+        }
 
         //TODO: separate core settings out into the base class
         Parameters settings;

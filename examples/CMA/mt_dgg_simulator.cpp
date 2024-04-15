@@ -3,7 +3,7 @@
 
 #include "DggFactory.hpp"
 #include "cmaModel.h"
-//#include "simdjson.h"
+#include "simdjson.h"
 
 int main(int argc, char* argv[])
 {
@@ -17,14 +17,14 @@ int main(int argc, char* argv[])
 
     std::string filename = argv[1];
     // The user defines the parser, loads, and parses configuration file.
-//    simdjson::ondemand::parser parser;
-//    simdjson::padded_string json = simdjson::padded_string::load(filename);
-//    simdjson::ondemand::document settings_file = parser.iterate(json);
+    simdjson::ondemand::parser parser;
+    simdjson::padded_string json = simdjson::padded_string::load(filename);
+    simdjson::ondemand::document settings_file = parser.iterate(json);
 
     auto start = std::chrono::high_resolution_clock::now();
     DGGML::SimulatorInterface<CMA::cmaModel> cma_simulation;
     CMA::cmaModel experiment1;
-    //experiment1.set_parameters(settings_file);
+    experiment1.set_parameters(settings_file);
     //return 0;
     cma_simulation.setModel(experiment1);
     cma_simulation.simulate();
