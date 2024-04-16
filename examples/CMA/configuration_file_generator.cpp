@@ -456,7 +456,7 @@ void create_main_bash(std::string root_dir, std::vector<std::string>& filenames)
     for(auto& filename : filenames) {
         std::string slurm_name = filename + "_slurm.sh";
         outfile << "cd " << filename << "\n";
-        outfile << "chmod +x " << filename << "\n";
+        outfile << "chmod +x " << slurm_name << "\n";
         outfile << "sbatch " << slurm_name << "\n";
         outfile << "cd ..\n";
     }
@@ -465,7 +465,7 @@ void create_main_bash(std::string root_dir, std::vector<std::string>& filenames)
 }
 
 int main() {
-
+    //TODO: make it so the output directory can be specified
     std::cout << "Generating all the configuration files for the experiment" << std::endl;
 
     std::vector<std::string> all_filenames;
