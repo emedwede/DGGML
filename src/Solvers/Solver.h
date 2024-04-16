@@ -29,6 +29,7 @@ typedef double realtype;
 // CajeteCMA repo
 namespace DGGML {
 
+    //TODO: Fix me!!! deprecated after version 7.0 of SUNDIALS, but will work with 6.7
 // Custom error handler function
     void customErrHandler(int error_code, const char *module, const char *function,
                           char *msg, void *eh_data) {
