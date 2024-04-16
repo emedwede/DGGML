@@ -1,6 +1,8 @@
 #include <iostream>
 #include <fstream>
 #include <string>
+#include <filesystem>
+#include <vector>
 
 struct Parameters
 {
@@ -127,7 +129,7 @@ struct Parameters
         MAXIMAL_REACTION_RADIUS = 0.1;
         CHECKPOINT_FREQUENCY = 30;
 
-        std::cout << "Core parameter settings parsed...\n";
+        //std::cout << "Core parameter settings parsed...\n";
 
         // ------------------------------
         // Expanded cell complex settings
@@ -137,7 +139,7 @@ struct Parameters
         CELL_DX = 1.66;//5.5;//1.666;
         CELL_DY = 1.66;//2.0;//1.666;
         GHOSTED = false;
-        std::cout << "Expanded cell complex settings parsed...\n";
+        //std::cout << "Expanded cell complex settings parsed...\n";
 
         // -----------------------
         // Initialization settings
@@ -145,7 +147,7 @@ struct Parameters
         NUM_MT = 0;
         MT_MIN_SEGMENT_INIT = 0.005;
         MT_MAX_SEGMENT_INIT = 0.01;
-        std::cout << "Initialization settings parsed...\n";
+        //std::cout << "Initialization settings parsed...\n";
 
         // ----------------
         // Grammar settings
@@ -159,21 +161,21 @@ struct Parameters
         LENGTH_DIV_FACTOR = 1.2;
         ENABLE_WOBBLE = false;
         WOBBLE_ANGLE = 8.0;
-        std::cout << "Growth rule settings parsed...\n";
+        //std::cout << "Growth rule settings parsed...\n";
 
         // Retraction rules
         ENABLE_RETRACTION = true;
         WITH_RETRACTION_RATE_FACTOR = 10.0;
         V_MINUS = 0.00883;
         DIV_LENGTH_RETRACT = 0.0025;
-        std::cout << "Retraction rule settings parsed...\n";
+        //std::cout << "Retraction rule settings parsed...\n";
 
         // Boundary rules
         ENABLE_STANDARD_BOUNDARY_CATASTROPHE =  true;
         STANDARD_BOUNDARY_CATASTROPHE_RATE = 40000.0;
         ENABLE_CLASP_BOUNDARY_CATASTROPHE = true;
         CLASP_BOUNDARY_CATASTROPHE_RATE = 40000.0;
-        std::cout << "Boundary rule settings parsed...\n";
+        //std::cout << "Boundary rule settings parsed...\n";
 
         // Catastrophe rule settings
         ENABLE_INTERMEDIATE_CIC = true;
@@ -183,7 +185,7 @@ struct Parameters
         ENABLE_NEGATIVE_CIC = true;
         NEGATIVE_CIC_RATE = 4000.0;
         CATASTROPHE_ANGLE = 50.0;
-        std::cout << "Catastrophe rule settings parsed...\n";
+        //std::cout << "Catastrophe rule settings parsed...\n";
 
         // Zippering rule settings
         ENABLE_ZIPPERING = true;
@@ -192,7 +194,7 @@ struct Parameters
         ZIPPERING_RETRACTION_RATE = 10.0;
         CRITICAL_ANGLE = 50.0;
         SEPARATION_DISTANCE = 0.025;
-        std::cout << "Zippering rule settings parsed...\n";
+        //std::cout << "Zippering rule settings parsed...\n";
 
         // Crossover rule settings
         ENABLE_CROSSOVER = true;
@@ -201,7 +203,7 @@ struct Parameters
         ENABLE_UNCROSSOVER = true;
         UNCROSSOVER_RATE = 0.01; // a rate of one => occurs once per unit of time
         //in this case, 1 => onces per second on average
-        std::cout << "Crossover rule settings parsed...\n";
+        //std::cout << "Crossover rule settings parsed...\n";
 
         // Clasp rule settings
         CLASP_ENABLE_ENTRY = false;
@@ -214,31 +216,31 @@ struct Parameters
         CLASP_CAT_RATE = 1000.0;
         CLASP_ENABLE_DETACHMENT = false;
         CLASP_DETACHMENT_RATE = 0.01;
-        std::cout << "Clasp rule settings parsed...\n";
+        //std::cout << "Clasp rule settings parsed...\n";
 
         // Destruction rule settings
         ENABLE_MT_DESTRUCTION = true;
         MT_DESTRUCTION_RATE = 10.0;
-        std::cout << "Destruction rule settings parsed...\n";
+        //std::cout << "Destruction rule settings parsed...\n";
 
         // Creation rule settings
         ENABLE_CREATION = true;
         CREATION_RATE = 0.0026;
         CREATION_FACTOR = 1.0;
-        std::cout << "Creation rule settings parsed...\n";
+        //std::cout << "Creation rule settings parsed...\n";
 
         // Recovery rule settings
         ENABLE_RECOVERY = true;
         RECOVERY_RATE = 0.016;
         RECOVERY_FACTOR = 1.0;
-        std::cout << "Recovery rule settings parsed...\n";
+        //std::cout << "Recovery rule settings parsed...\n";
 
-        std::cout << "Grammar settings parsed...\n";
+        //std::cout << "Grammar settings parsed...\n";
 
         RHO_TEST_RATE = 10.0;
         SIGMOID_K = 10.0;
         COLLISION_DISTANCE = 0.025;
-        std::cout << "Other settings parsed...\n";
+        //std::cout << "Other settings parsed...\n";
     }
 };
 
@@ -390,13 +392,116 @@ void serialize(Parameters& settings, std::string filename)
     outfile.close();
 }
 
+void create_slurm_script(std::string path, std::string filename, std::size_t n)
+{
+    std::string slurm_name = filename + "_slurm.sh";
+    std::ofstream outfile(path + "/"+filename);
+
+    // Check if the file was opened successfully
+    if (!outfile.is_open()) {
+        std::cerr << "Error opening file for writing." << std::endl;
+    }
+    outfile << "#SBATCH --job-name " << filename << "_ensemble   ## name that will show up in the queue\n";
+    outfile << "#SBATCH --output slurm-%j.out   ## filename of the output; the %j is equal to jobID; default is slurm-[jobID].out\n";
+    outfile << "#SBATCH --ntasks=" << n << " ## number of tasks (analyses) to run\n";
+    outfile << "#SBATCH --cpus-per-task=1  ## the number of threads allocated to each task\n";
+    outfile << "#SBATCH --mem-per-cpu=5000M   # memory per CPU core\n";
+    outfile << "#SBATCH --partition=ai4science.p  ## the partitions to run in (comma seperated)\n";
+    outfile << "#SBATCH --nodelist=blazar-1 ## Specifies the node list\n";
+    outfile << "#SBATCH --time=1-00:00:00  ## time for analysis (day-hour:min:sec)\n";
+    outfile << "#SBATCH --hint=nomultithread\n";
+    outfile << "## Load modules\n";
+
+    outfile << "## Your commands here\n";
+    outfile << "mkdir output\n";
+
+    outfile << "## Insert code, and run your programs here (use 'srun').\n";
+    for(auto i = 1; i <= n; i++)
+        outfile << "srun --ntasks=1 --cpus-per-task=1 ../../mt_dgg_simulator " << filename << i <<".json > output/out" << i <<".txt &\n";
+
+    outfile << "wait\n";
+
+    outfile.close();
+
+}
+
+//will set the file names, we just need set the other settings we want beforehand
+void create_experiment(Parameters& settings, std::string root_dir, std::string experiment_name, std::size_t num_runs)
+{
+    std::string experiment_dir = root_dir + "/" + experiment_name;
+    std::filesystem::create_directory(root_dir + "/" + experiment_name);
+
+    for(int i = 1; i <= num_runs; i++) {
+        std::string exp_name = experiment_name+std::to_string(i);
+        settings.EXPERIMENT_NAME = exp_name;
+        std::string results_dir = exp_name+"_results";
+        settings.RESULTS_DIR = results_dir;
+        std::string config_name = exp_name + ".json";
+        std::string path = root_dir + "/" + experiment_name + "/" + config_name;
+        serialize(settings, path);
+    }
+    create_slurm_script(experiment_dir, experiment_name, num_runs);
+}
+
+void create_main_bash(std::string root_dir, std::vector<std::string>& filenames)
+{
+    std::ofstream outfile(root_dir+"/"+"run_all.sh");
+    // Check if the file was opened successfully
+    if (!outfile.is_open()) {
+        std::cerr << "Error opening file for writing." << std::endl;
+    }
+    outfile << "#/bin/bash\n";
+
+    for(auto& filename : filenames) {
+        std::string slurm_name = filename + "_slurm.sh";
+        outfile << "cd " << filename << "\n";
+        outfile << "sbatch " << slurm_name << "\n";
+        outfile << "cd ..\n";
+    }
+
+    outfile.close();
+}
+
 int main() {
 
     std::cout << "Generating all the configuration files for the experiment" << std::endl;
 
+    std::vector<std::string> all_filenames;
     Parameters settings;
     settings.set_default();
-    serialize(settings, "test_test.json");
 
+    std::cout << "Creating the main experiment directory and removing if it exists...\n";
+    std::string root_dir = "exp";
+    std::filesystem::remove_all(root_dir);
+    std::filesystem::create_directory(root_dir);
+
+    std::size_t n = 12; //number of runs for the ensemble
+    create_experiment(settings, root_dir, "square_no_clasp",n);
+    all_filenames.push_back("square_no_clasp");
+
+    settings.CREATION_FACTOR = 0.2;
+    create_experiment(settings, root_dir, "square_no_clasp_low_creation",n);
+    all_filenames.push_back("square_no_clasp_low_creation");
+
+    settings.CREATION_FACTOR = 1.0;
+    settings.ENABLE_CROSSOVER = true;
+    settings.CROSSOVER_RATE = 4000.0;
+    create_experiment(settings, root_dir, "square_no_clasp_high_cross",n);
+    all_filenames.push_back("square_no_clasp_high_cross");
+
+    //resets to default
+    settings.set_default();
+    settings.CELL_NX = 1;
+    settings.CELL_NY = 1;
+    settings.CELL_DX = 8.3;
+    settings.CELL_DY = 3.0;
+    create_experiment(settings, root_dir, "rectangle_no_clasp", n);
+    all_filenames.push_back("rectangle_no_clasp");
+    settings.ENABLE_CROSSOVER = true;
+    settings.CROSSOVER_RATE = 4000.0;
+    create_experiment(settings, root_dir, "rectangle_no_clasp_high_cross",n);
+    all_filenames.push_back("rectangle_no_clasp_high_cross");
+
+    create_main_bash(root_dir, all_filenames);
     return 0;
 }
