@@ -395,7 +395,8 @@ void serialize(Parameters& settings, std::string filename)
 void create_slurm_script(std::string path, std::string filename, std::size_t n)
 {
     std::string slurm_name = filename + "_slurm.sh";
-    std::ofstream outfile(path + "/"+filename);
+    std::ofstream outfile(path + "/"+slurm_name);
+    outfile << "#!/bin/bash\n";
 
     // Check if the file was opened successfully
     if (!outfile.is_open()) {
@@ -417,7 +418,7 @@ void create_slurm_script(std::string path, std::string filename, std::size_t n)
 
     outfile << "## Insert code, and run your programs here (use 'srun').\n";
     for(auto i = 1; i <= n; i++)
-        outfile << "srun --ntasks=1 --cpus-per-task=1 ../../mt_dgg_simulator " << filename << i <<".json > output/out" << i <<".txt &\n";
+        outfile << "srun --ntasks=1 --cpus-per-task=1 ../../mt_dgg_simulator " << filename << "_" << i <<".json > output/out" << i <<".txt &\n";
 
     outfile << "wait\n";
 
@@ -432,7 +433,7 @@ void create_experiment(Parameters& settings, std::string root_dir, std::string e
     std::filesystem::create_directory(root_dir + "/" + experiment_name);
 
     for(int i = 1; i <= num_runs; i++) {
-        std::string exp_name = experiment_name+std::to_string(i);
+        std::string exp_name = experiment_name+"_"+std::to_string(i);
         settings.EXPERIMENT_NAME = exp_name;
         std::string results_dir = exp_name+"_results";
         settings.RESULTS_DIR = results_dir;
@@ -450,11 +451,12 @@ void create_main_bash(std::string root_dir, std::vector<std::string>& filenames)
     if (!outfile.is_open()) {
         std::cerr << "Error opening file for writing." << std::endl;
     }
-    outfile << "#/bin/bash\n";
+    outfile << "#!/bin/bash\n";
 
     for(auto& filename : filenames) {
         std::string slurm_name = filename + "_slurm.sh";
         outfile << "cd " << filename << "\n";
+        outfile << "chmod +x " << filename << "\n";
         outfile << "sbatch " << slurm_name << "\n";
         outfile << "cd ..\n";
     }
@@ -475,7 +477,7 @@ int main() {
     std::filesystem::remove_all(root_dir);
     std::filesystem::create_directory(root_dir);
 
-    std::size_t n = 12; //number of runs for the ensemble
+    std::size_t n = 16; //number of runs for the ensemble
     create_experiment(settings, root_dir, "square_no_clasp",n);
     all_filenames.push_back("square_no_clasp");
 
@@ -489,6 +491,22 @@ int main() {
     create_experiment(settings, root_dir, "square_no_clasp_high_cross",n);
     all_filenames.push_back("square_no_clasp_high_cross");
 
+    settings.set_default();
+    settings.CLASP_ENABLE_ENTRY = true;
+    settings.CLASP_ENTRY_RATE = 0.0005;
+    settings.CLASP_ENABLE_EXIT = true;
+    for(int i = 1; i <= 4; i ++)
+    {
+        settings.CLASP_EXIT_ANGLE = (double)(i)*15.0;
+        std::string name = "square_with_clasp_angle_"+std::to_string((int)settings.CLASP_EXIT_ANGLE);
+        create_experiment(settings, root_dir, name,n);
+        all_filenames.push_back(name);
+    }
+    settings.CLASP_EXIT_ANGLE = 15.0;
+    settings.CLASP_ENTRY_RATE = 0.005;
+    create_experiment(settings, root_dir, "square_with_clasp_angle_"+std::to_string((int)settings.CLASP_EXIT_ANGLE)+"_influx",n);
+    all_filenames.push_back("square_with_clasp_angle_"+std::to_string((int)settings.CLASP_EXIT_ANGLE)+"_influx");
+
     //resets to default
     settings.set_default();
     settings.CELL_NX = 1;
@@ -501,6 +519,22 @@ int main() {
     settings.CROSSOVER_RATE = 4000.0;
     create_experiment(settings, root_dir, "rectangle_no_clasp_high_cross",n);
     all_filenames.push_back("rectangle_no_clasp_high_cross");
+
+    settings.CROSSOVER_RATE = 40.0;
+    settings.CLASP_ENABLE_ENTRY = true;
+    settings.CLASP_ENTRY_RATE = 0.0005;
+    settings.CLASP_ENABLE_EXIT = true;
+    for(int i = 1; i <= 4; i ++)
+    {
+        settings.CLASP_EXIT_ANGLE = (double)(i)*15.0;
+        std::string name = "rectangle_with_clasp_angle_"+std::to_string((int)settings.CLASP_EXIT_ANGLE);
+        create_experiment(settings, root_dir, name,n);
+        all_filenames.push_back(name);
+    }
+    settings.CLASP_EXIT_ANGLE = 15.0;
+    settings.CLASP_ENTRY_RATE = 0.005;
+    create_experiment(settings, root_dir, "rectangle_with_clasp_angle_"+std::to_string((int)settings.CLASP_EXIT_ANGLE)+"_influx",n);
+    all_filenames.push_back("rectangle_with_clasp_angle_"+std::to_string((int)settings.CLASP_EXIT_ANGLE)+"_influx");
 
     create_main_bash(root_dir, all_filenames);
     return 0;
