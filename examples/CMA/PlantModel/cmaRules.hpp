@@ -963,7 +963,7 @@ namespace CMA {
                                                    //distance from positive node to line segment
                                                    //auto d = DGGML::distanceToLineSegment(pos3[0], pos3[1], pos4[0], pos4[1], pos2[0], pos2[1]);
                                                    auto d = DGGML::calculate_distance(pos2, pos3);
-                                                   if (d <= settings.SEPARATION_DISTANCE) {
+                                                   if (d <= 0.7*settings.SEPARATION_DISTANCE) {
                                                        //auto theta = DGGML::compute_theta(u2, dat2.position, u3);
                                                        //if(theta < 45.0)
                                                        //{
@@ -1347,21 +1347,45 @@ namespace CMA {
 
         gamma.addRule(destruction_case1);
 
-        //destruction rule case 2: depolymerization on one end polymerization on the other
+        //destruction rule case 2: destroy if the MT is small and too close to another MT
         GT destruction_lhs_graph2;
         destruction_lhs_graph2.addNode({1, {Plant::Negative{}}});
         destruction_lhs_graph2.addNode({2, {Plant::Intermediate{}}});
         destruction_lhs_graph2.addNode({3, {Plant::Positive{}}});
         destruction_lhs_graph2.addEdge(1, 2);
         destruction_lhs_graph2.addEdge(2, 3);
+        destruction_lhs_graph2.addNode({4, {Plant::Intermediate{}}});
 
         GT destruction_rhs_graph2;
-
+        destruction_rhs_graph2.addNode({4, {Plant::Intermediate{}}});
         DGGML::WithRule<GT> destruction_case2("destruction_case2", destruction_lhs_graph2, destruction_rhs_graph2,
-                                              [](auto &lhs, auto &m) { return 1; },
+                                              [&](auto &lhs, auto &m) {
+                                                  auto &dat1_lhs = lhs.findNode(m[1])->second.getData();
+                                                  auto &dat2_lhs = lhs.findNode(m[2])->second.getData();
+                                                  auto &dat3_lhs = lhs.findNode(m[3])->second.getData();
+                                                  auto &dat4_lhs = lhs.findNode(m[4])->second.getData();
+
+                                                  //get references to position vector
+                                                  auto &pos1_lhs = dat1_lhs.position;
+                                                  auto &pos2_lhs = dat2_lhs.position;
+                                                  auto &pos3_lhs = dat3_lhs.position;
+                                                  auto &pos4_lhs = dat4_lhs.position;
+
+                                                  auto d1 = DGGML::calculate_distance(pos1_lhs, pos2_lhs);
+                                                  auto d2 = DGGML::calculate_distance(pos3_lhs, pos2_lhs);
+                                                  auto d3 = DGGML::calculate_distance(pos4_lhs, pos2_lhs);
+                                                  //if its small enough
+                                                  if(d1 < 1.2*settings.MT_MAX_SEGMENT_INIT && d2 < 1.2*settings.MT_MAX_SEGMENT_INIT)
+                                                  {
+                                                      if(d3 < settings.COLLISION_DISTANCE)
+                                                      {
+                                                          return 500000.0; // a high priority destruction
+                                                      }
+                                                  }
+                                              },
                                               [](auto &lhs, auto &rhs, auto &m1, auto &m2) {});
 
-        //gamma.addRule(destruction_case2);
+        gamma.addRule(destruction_case2);
     }
 
     void create_with_creation_rule(DGGML::Grammar<Plant::graph_type> &gamma, Plant::graph_type &system_graph,

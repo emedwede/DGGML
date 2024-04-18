@@ -121,7 +121,7 @@ struct Parameters
         //take one MT to grow a single unit of MT
         //e.g. something like: 0.25*settings.MAXIMAL_REACTION_RADIUS / std::max(settings.V_PLUS, settings.V_MINUS);
         DELTA = 0.4;//0.4;//0.0625;
-        MIN_DELTA_STEPS = 5;
+        MIN_DELTA_STEPS = 10;
         //The internal step of the solver should be at least smaller than delta
         DELTA_DELTA_T = DELTA / MIN_DELTA_STEPS;
         DELTA_T_MIN = DELTA_DELTA_T;
@@ -179,18 +179,18 @@ struct Parameters
 
         // Catastrophe rule settings
         ENABLE_INTERMEDIATE_CIC = true;
-        INTERMEDIATE_CIC_RATE = 4000.0;
+        INTERMEDIATE_CIC_RATE = 12000.0;
         ENABLE_POSITIVE_CIC = true;
-        POSITIVE_CIC_RATE = 1000.0;
+        POSITIVE_CIC_RATE = 12000.0;
         ENABLE_NEGATIVE_CIC = true;
-        NEGATIVE_CIC_RATE = 4000.0;
-        CATASTROPHE_ANGLE = 50.0;
+        NEGATIVE_CIC_RATE = 12000.0;
+        CATASTROPHE_ANGLE = 89.0;
         //std::cout << "Catastrophe rule settings parsed...\n";
 
         // Zippering rule settings
         ENABLE_ZIPPERING = true;
         ZIPPERING_HIT_RATE = 4000.0;
-        ZIPPERING_GUARD_RATE = 4000.0;
+        ZIPPERING_GUARD_RATE = 12000.0;
         ZIPPERING_RETRACTION_RATE = 10.0;
         CRITICAL_ANGLE = 50.0;
         SEPARATION_DISTANCE = 0.025;
@@ -198,8 +198,8 @@ struct Parameters
 
         // Crossover rule settings
         ENABLE_CROSSOVER = true;
-        CROSSOVER_RATE = 40.0;
-        CROSSOVER_ANGLE = 50.0;
+        CROSSOVER_RATE = 400.0;
+        CROSSOVER_ANGLE = 45.0;
         ENABLE_UNCROSSOVER = true;
         UNCROSSOVER_RATE = 0.01; // a rate of one => occurs once per unit of time
         //in this case, 1 => onces per second on average
@@ -207,7 +207,7 @@ struct Parameters
 
         // Clasp rule settings
         CLASP_ENABLE_ENTRY = false;
-        CLASP_ENTRY_RATE = 0.0005;
+        CLASP_ENTRY_RATE = 0.001;
         CLASP_ENTRY_ANGLE = 15.0;
         CLASP_ENABLE_EXIT = false;
         CLASP_EXIT_RATE = 40000.0;
@@ -215,7 +215,7 @@ struct Parameters
         CLASP_ENABLE_CAT = true;
         CLASP_CAT_RATE = 1000.0;
         CLASP_ENABLE_DETACHMENT = false;
-        CLASP_DETACHMENT_RATE = 0.01;
+        CLASP_DETACHMENT_RATE = 0.0016;
         //std::cout << "Clasp rule settings parsed...\n";
 
         // Destruction rule settings
@@ -477,35 +477,48 @@ int main() {
     std::filesystem::remove_all(root_dir);
     std::filesystem::create_directory(root_dir);
 
+    //default experiment
     std::size_t n = 16; //number of runs for the ensemble
     create_experiment(settings, root_dir, "square_no_clasp",n);
     all_filenames.push_back("square_no_clasp");
 
-    settings.CREATION_FACTOR = 0.2;
+    //lowering the creation rate to see what happens
+    settings.CREATION_RATE = 0.00026;
     create_experiment(settings, root_dir, "square_no_clasp_low_creation",n);
     all_filenames.push_back("square_no_clasp_low_creation");
 
-    settings.CREATION_FACTOR = 1.0;
+    //jack up the crossover rate and reset the creation rate
+    settings.CREATION_RATE = 0.0026;
     settings.ENABLE_CROSSOVER = true;
-    settings.CROSSOVER_RATE = 4000.0;
+    settings.CROSSOVER_RATE = 8000.0;
+    settings.ZIPPERING_HIT_RATE = 1000.0;
     create_experiment(settings, root_dir, "square_no_clasp_high_cross",n);
     all_filenames.push_back("square_no_clasp_high_cross");
 
     settings.set_default();
     settings.CLASP_ENABLE_ENTRY = true;
-    settings.CLASP_ENTRY_RATE = 0.0005;
     settings.CLASP_ENABLE_EXIT = true;
+    settings.ZIPPERING_HIT_RATE = 4000.0;
     for(int i = 1; i <= 4; i ++)
     {
         settings.CLASP_EXIT_ANGLE = (double)(i)*15.0;
+        settings.CLASP_ENTRY_ANGLE = (double)(i)*15.0;
         std::string name = "square_with_clasp_angle_"+std::to_string((int)settings.CLASP_EXIT_ANGLE);
         create_experiment(settings, root_dir, name,n);
         all_filenames.push_back(name);
     }
     settings.CLASP_EXIT_ANGLE = 15.0;
-    settings.CLASP_ENTRY_RATE = 0.005;
-    create_experiment(settings, root_dir, "square_with_clasp_angle_"+std::to_string((int)settings.CLASP_EXIT_ANGLE)+"_influx",n);
+    settings.CLASP_ENTRY_RATE = 0.008;
+    create_experiment(settings, root_dir, "square_with_clasp_angle_"+std::to_string((int)settings.CLASP_EXIT_ANGLE)+"_influx",2*n);
     all_filenames.push_back("square_with_clasp_angle_"+std::to_string((int)settings.CLASP_EXIT_ANGLE)+"_influx");
+
+    settings.CLASP_EXIT_ANGLE = 45.0;
+    settings.CLASP_ENTRY_ANGLE = 45.0;
+    settings.CLASP_ENTRY_RATE = 0.001;
+    settings.CROSSOVER_RATE = 8000.0;
+    settings.ZIPPERING_HIT_RATE = 1000.0;
+    create_experiment(settings, root_dir, "square_clasp_high_cross_45",n);
+    all_filenames.push_back("square_clasp_high_cross_45");
 
     //resets to default
     settings.set_default();
@@ -515,26 +528,45 @@ int main() {
     settings.CELL_DY = 3.0;
     create_experiment(settings, root_dir, "rectangle_no_clasp", n);
     all_filenames.push_back("rectangle_no_clasp");
+
+    //lowering the creation rate to see what happens
+    settings.CREATION_RATE = 0.00026;
+    create_experiment(settings, root_dir, "rectangle_no_clasp_low_creation",n);
+    all_filenames.push_back("rectangle_no_clasp_low_creation");
+
+    settings.CREATION_RATE = 0.0026;
     settings.ENABLE_CROSSOVER = true;
-    settings.CROSSOVER_RATE = 4000.0;
+    settings.CROSSOVER_RATE = 8000.0;
+    settings.ZIPPERING_HIT_RATE = 1000.0;
     create_experiment(settings, root_dir, "rectangle_no_clasp_high_cross",n);
     all_filenames.push_back("rectangle_no_clasp_high_cross");
 
-    settings.CROSSOVER_RATE = 40.0;
+    settings.ZIPPERING_HIT_RATE = 4000.0;
+    settings.CROSSOVER_RATE = 400.0;
     settings.CLASP_ENABLE_ENTRY = true;
-    settings.CLASP_ENTRY_RATE = 0.0005;
+    settings.CLASP_ENTRY_RATE = 0.001;
     settings.CLASP_ENABLE_EXIT = true;
     for(int i = 1; i <= 4; i ++)
     {
         settings.CLASP_EXIT_ANGLE = (double)(i)*15.0;
+        settings.CLASP_ENTRY_ANGLE = (double)(i)*15.0;
         std::string name = "rectangle_with_clasp_angle_"+std::to_string((int)settings.CLASP_EXIT_ANGLE);
         create_experiment(settings, root_dir, name,n);
         all_filenames.push_back(name);
     }
     settings.CLASP_EXIT_ANGLE = 15.0;
-    settings.CLASP_ENTRY_RATE = 0.005;
+    settings.CLASP_ENTRY_ANGLE = 15.0;
+    settings.CLASP_ENTRY_RATE = 0.008;
     create_experiment(settings, root_dir, "rectangle_with_clasp_angle_"+std::to_string((int)settings.CLASP_EXIT_ANGLE)+"_influx",n);
     all_filenames.push_back("rectangle_with_clasp_angle_"+std::to_string((int)settings.CLASP_EXIT_ANGLE)+"_influx");
+
+    settings.CLASP_EXIT_ANGLE = 45.0;
+    settings.CLASP_ENTRY_ANGLE = 45.0;
+    settings.CLASP_ENTRY_RATE = 0.001;
+    settings.CROSSOVER_RATE = 8000.0;
+    settings.ZIPPERING_HIT_RATE = 1000.0;
+    create_experiment(settings, root_dir, "rectangle_clasp_high_cross_45",n);
+    all_filenames.push_back("rectangle_clasp_high_cross_45");
 
     create_main_bash(root_dir, all_filenames);
     return 0;

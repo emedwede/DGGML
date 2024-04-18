@@ -98,6 +98,7 @@ namespace CMA {
             std::vector<double> time_count;
             std::vector<double> correlation_avg_global;
             std::vector<double> correlation_avg_local;
+            std::vector<double> correlation_avg_short;
             std::vector<double> correlation_dist;
             std::vector<std::size_t> angular_histogram;
 
@@ -156,6 +157,11 @@ namespace CMA {
                     std::accumulate(metrics.correlation_dist.begin(), metrics.correlation_dist.begin()+local_size, 0.0)
                     /((double)local_size);
             metrics.correlation_avg_local.push_back(local_avg);
+            std::size_t short_size = settings.CELL_DY/settings.MAXIMAL_REACTION_RADIUS;
+            auto short_avg =
+                    std::accumulate(metrics.correlation_dist.begin(), metrics.correlation_dist.begin()+short_size, 0.0)
+                    /((double)short_size);
+            metrics.correlation_avg_short.push_back(short_avg);
             metrics.angular_histogram = compute_orientation_histogram(system_graph, settings);
         }
 
@@ -182,6 +188,8 @@ namespace CMA {
             print_json_array_stats(outputFile, metrics.correlation_avg_global, "correlation_avg_global");
             outputFile << ",\n";
             print_json_array_stats(outputFile, metrics.correlation_avg_local, "correlation_avg_local");
+            outputFile << ",\n";
+            print_json_array_stats(outputFile, metrics.correlation_avg_short, "correlation_avg_short");
             outputFile << ",\n";
             print_json_array_stats(outputFile, metrics.correlation_dist, "correlation_dist");
             outputFile << ",\n";
