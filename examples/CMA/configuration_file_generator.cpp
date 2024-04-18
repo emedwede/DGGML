@@ -116,7 +116,7 @@ struct Parameters
         EXPERIMENT_NAME = "my_test";
         auto name = EXPERIMENT_NAME;
         RESULTS_DIR = "my_test_results";
-        TOTAL_TIME = 3600;
+        TOTAL_TIME = 7200;//3600;
         //Delta should be big, but not to big. In this case, the maximum amount of time it would
         //take one MT to grow a single unit of MT
         //e.g. something like: 0.25*settings.MAXIMAL_REACTION_RADIUS / std::max(settings.V_PLUS, settings.V_MINUS);
@@ -127,15 +127,15 @@ struct Parameters
         DELTA_T_MIN = DELTA_DELTA_T;
         NUM_STEPS = TOTAL_TIME / DELTA;
         MAXIMAL_REACTION_RADIUS = 0.1;
-        CHECKPOINT_FREQUENCY = 30;
+        CHECKPOINT_FREQUENCY = 60;
 
         //std::cout << "Core parameter settings parsed...\n";
 
         // ------------------------------
         // Expanded cell complex settings
         // ------------------------------
-        CELL_NX = 3;
-        CELL_NY = 3;
+        CELL_NX = 6;
+        CELL_NY = 6;
         CELL_DX = 1.66;//5.5;//1.666;
         CELL_DY = 1.66;//2.0;//1.666;
         GHOSTED = false;
@@ -464,7 +464,8 @@ void create_main_bash(std::string root_dir, std::vector<std::string>& filenames)
     outfile.close();
 }
 
-int main() {
+void create_big_mode()
+{
     //TODO: make it so the output directory can be specified
     std::cout << "Generating all the configuration files for the experiment" << std::endl;
 
@@ -473,17 +474,21 @@ int main() {
     settings.set_default();
 
     std::cout << "Creating the main experiment directory and removing if it exists...\n";
-    std::string root_dir = "exp";
+    std::string root_dir = "big_mode_exp";
     std::filesystem::remove_all(root_dir);
     std::filesystem::create_directory(root_dir);
 
     //default experiment
+    settings.CELL_NX = 6;
+    settings.CELL_NY = 6;
+    settings.CELL_DX = 1.66;//5.5;//1.666;
+    settings.CELL_DY = 1.66;//2.0;//1.666;
     std::size_t n = 16; //number of runs for the ensemble
     create_experiment(settings, root_dir, "square_no_clasp",n);
     all_filenames.push_back("square_no_clasp");
 
     //lowering the creation rate to see what happens
-    settings.CREATION_RATE = 0.00026;
+    settings.CREATION_RATE = 0.000026;
     create_experiment(settings, root_dir, "square_no_clasp_low_creation",n);
     all_filenames.push_back("square_no_clasp_low_creation");
 
@@ -496,6 +501,10 @@ int main() {
     all_filenames.push_back("square_no_clasp_high_cross");
 
     settings.set_default();
+    settings.CELL_NX = 6;
+    settings.CELL_NY = 6;
+    settings.CELL_DX = 1.66;//5.5;//1.666;
+    settings.CELL_DY = 1.66;//2.0;//1.666;
     settings.CLASP_ENABLE_ENTRY = true;
     settings.CLASP_ENABLE_EXIT = true;
     settings.ZIPPERING_HIT_RATE = 4000.0;
@@ -509,7 +518,123 @@ int main() {
     }
     settings.CLASP_EXIT_ANGLE = 15.0;
     settings.CLASP_ENTRY_RATE = 0.008;
-    create_experiment(settings, root_dir, "square_with_clasp_angle_"+std::to_string((int)settings.CLASP_EXIT_ANGLE)+"_influx",2*n);
+    create_experiment(settings, root_dir, "square_with_clasp_angle_"+std::to_string((int)settings.CLASP_EXIT_ANGLE)+"_influx",n);
+    all_filenames.push_back("square_with_clasp_angle_"+std::to_string((int)settings.CLASP_EXIT_ANGLE)+"_influx");
+
+    settings.CLASP_EXIT_ANGLE = 45.0;
+    settings.CLASP_ENTRY_ANGLE = 45.0;
+    settings.CLASP_ENTRY_RATE = 0.001;
+    settings.CROSSOVER_RATE = 8000.0;
+    settings.ZIPPERING_HIT_RATE = 1000.0;
+    create_experiment(settings, root_dir, "square_clasp_high_cross_45",n);
+    all_filenames.push_back("square_clasp_high_cross_45");
+
+//    //resets to default
+//    settings.set_default();
+//    settings.CELL_NX = 1;
+//    settings.CELL_NY = 1;
+//    settings.CELL_DX = 16.0;//8.3;
+//    settings.CELL_DY = 6.25;//3.0;
+//    create_experiment(settings, root_dir, "rectangle_no_clasp", n);
+//    all_filenames.push_back("rectangle_no_clasp");
+//
+//    //lowering the creation rate to see what happens
+//    settings.CREATION_RATE = 0.000026;
+//    create_experiment(settings, root_dir, "rectangle_no_clasp_low_creation",n);
+//    all_filenames.push_back("rectangle_no_clasp_low_creation");
+//
+//    settings.CREATION_RATE = 0.0026;
+//    settings.ENABLE_CROSSOVER = true;
+//    settings.CROSSOVER_RATE = 8000.0;
+//    settings.ZIPPERING_HIT_RATE = 1000.0;
+//    create_experiment(settings, root_dir, "rectangle_no_clasp_high_cross",n);
+//    all_filenames.push_back("rectangle_no_clasp_high_cross");
+//
+//    settings.ZIPPERING_HIT_RATE = 4000.0;
+//    settings.CROSSOVER_RATE = 400.0;
+//    settings.CLASP_ENABLE_ENTRY = true;
+//    settings.CLASP_ENTRY_RATE = 0.001;
+//    settings.CLASP_ENABLE_EXIT = true;
+//    for(int i = 1; i <= 4; i ++)
+//    {
+//        settings.CLASP_EXIT_ANGLE = (double)(i)*15.0;
+//        settings.CLASP_ENTRY_ANGLE = (double)(i)*15.0;
+//        std::string name = "rectangle_with_clasp_angle_"+std::to_string((int)settings.CLASP_EXIT_ANGLE);
+//        create_experiment(settings, root_dir, name,n);
+//        all_filenames.push_back(name);
+//    }
+//    settings.CLASP_EXIT_ANGLE = 15.0;
+//    settings.CLASP_ENTRY_ANGLE = 15.0;
+//    settings.CLASP_ENTRY_RATE = 0.008;
+//    create_experiment(settings, root_dir, "rectangle_with_clasp_angle_"+std::to_string((int)settings.CLASP_EXIT_ANGLE)+"_influx",n);
+//    all_filenames.push_back("rectangle_with_clasp_angle_"+std::to_string((int)settings.CLASP_EXIT_ANGLE)+"_influx");
+//
+//    settings.CLASP_EXIT_ANGLE = 45.0;
+//    settings.CLASP_ENTRY_ANGLE = 45.0;
+//    settings.CLASP_ENTRY_RATE = 0.001;
+//    settings.CROSSOVER_RATE = 8000.0;
+//    settings.ZIPPERING_HIT_RATE = 1000.0;
+//    create_experiment(settings, root_dir, "rectangle_clasp_high_cross_45",n);
+//    all_filenames.push_back("rectangle_clasp_high_cross_45");
+//
+//    create_main_bash(root_dir, all_filenames);
+}
+
+void create_small_mode()
+{
+    //TODO: make it so the output directory can be specified
+    std::cout << "Generating all the configuration files for the experiment" << std::endl;
+
+    std::vector<std::string> all_filenames;
+    Parameters settings;
+    settings.set_default();
+
+    std::cout << "Creating the main experiment directory and removing if it exists...\n";
+    std::string root_dir = "small_mode_exp";
+    std::filesystem::remove_all(root_dir);
+    std::filesystem::create_directory(root_dir);
+
+    //default experiment
+    std::size_t n = 16; //number of runs for the ensemble
+    settings.CELL_NX = 3;
+    settings.CELL_NY = 3;
+    settings.CELL_DX = 1.66;//5.5;//1.666;
+    settings.CELL_DY = 1.66;//2.0;//1.666;
+    create_experiment(settings, root_dir, "square_no_clasp",n);
+    all_filenames.push_back("square_no_clasp");
+
+    //lowering the creation rate to see what happens
+    settings.CREATION_RATE = 0.000026;
+    create_experiment(settings, root_dir, "square_no_clasp_low_creation",n);
+    all_filenames.push_back("square_no_clasp_low_creation");
+
+    //jack up the crossover rate and reset the creation rate
+    settings.CREATION_RATE = 0.0026;
+    settings.ENABLE_CROSSOVER = true;
+    settings.CROSSOVER_RATE = 8000.0;
+    settings.ZIPPERING_HIT_RATE = 1000.0;
+    create_experiment(settings, root_dir, "square_no_clasp_high_cross",n);
+    all_filenames.push_back("square_no_clasp_high_cross");
+
+    settings.set_default();
+    settings.CELL_NX = 3;
+    settings.CELL_NY = 3;
+    settings.CELL_DX = 1.66;//5.5;//1.666;
+    settings.CELL_DY = 1.66;//2.0;//1.666;
+    settings.CLASP_ENABLE_ENTRY = true;
+    settings.CLASP_ENABLE_EXIT = true;
+    settings.ZIPPERING_HIT_RATE = 4000.0;
+    for(int i = 1; i <= 4; i ++)
+    {
+        settings.CLASP_EXIT_ANGLE = (double)(i)*15.0;
+        settings.CLASP_ENTRY_ANGLE = (double)(i)*15.0;
+        std::string name = "square_with_clasp_angle_"+std::to_string((int)settings.CLASP_EXIT_ANGLE);
+        create_experiment(settings, root_dir, name,n);
+        all_filenames.push_back(name);
+    }
+    settings.CLASP_EXIT_ANGLE = 15.0;
+    settings.CLASP_ENTRY_RATE = 0.008;
+    create_experiment(settings, root_dir, "square_with_clasp_angle_"+std::to_string((int)settings.CLASP_EXIT_ANGLE)+"_influx",n);
     all_filenames.push_back("square_with_clasp_angle_"+std::to_string((int)settings.CLASP_EXIT_ANGLE)+"_influx");
 
     settings.CLASP_EXIT_ANGLE = 45.0;
@@ -530,7 +655,7 @@ int main() {
     all_filenames.push_back("rectangle_no_clasp");
 
     //lowering the creation rate to see what happens
-    settings.CREATION_RATE = 0.00026;
+    settings.CREATION_RATE = 0.000026;
     create_experiment(settings, root_dir, "rectangle_no_clasp_low_creation",n);
     all_filenames.push_back("rectangle_no_clasp_low_creation");
 
@@ -569,5 +694,10 @@ int main() {
     all_filenames.push_back("rectangle_clasp_high_cross_45");
 
     create_main_bash(root_dir, all_filenames);
+}
+
+int main() {
+    create_small_mode();
+    create_big_mode();
     return 0;
 }
