@@ -198,7 +198,7 @@ struct Parameters
 
         // Crossover rule settings
         ENABLE_CROSSOVER = true;
-        CROSSOVER_RATE = 400.0;
+        CROSSOVER_RATE = 200.0;
         CROSSOVER_ANGLE = 45.0;
         ENABLE_UNCROSSOVER = true;
         UNCROSSOVER_RATE = 0.01; // a rate of one => occurs once per unit of time
@@ -584,13 +584,17 @@ void create_small_mode()
 {
     //TODO: make it so the output directory can be specified
     std::cout << "Generating all the configuration files for the experiment" << std::endl;
-
+    
     std::vector<std::string> all_filenames;
     Parameters settings;
     settings.set_default();
+    double angle = 0.0;
+    bool active = false;
+    settings.ENABLE_WOBBLE = active;
+    settings.WOBBLE_ANGLE = angle;
 
     std::cout << "Creating the main experiment directory and removing if it exists...\n";
-    std::string root_dir = "small_mode_exp";
+    std::string root_dir = "std_small_mode_exp";
     std::filesystem::remove_all(root_dir);
     std::filesystem::create_directory(root_dir);
 
@@ -612,11 +616,13 @@ void create_small_mode()
     settings.CREATION_RATE = 0.0026;
     settings.ENABLE_CROSSOVER = true;
     settings.CROSSOVER_RATE = 8000.0;
-    settings.ZIPPERING_HIT_RATE = 1000.0;
+    settings.ENABLE_ZIPPERING = false;
     create_experiment(settings, root_dir, "square_no_clasp_high_cross",n);
     all_filenames.push_back("square_no_clasp_high_cross");
 
     settings.set_default();
+    settings.ENABLE_WOBBLE = active;
+    settings.WOBBLE_ANGLE = angle;
     settings.CELL_NX = 3;
     settings.CELL_NY = 3;
     settings.CELL_DX = 1.66;//5.5;//1.666;
@@ -641,12 +647,14 @@ void create_small_mode()
     settings.CLASP_ENTRY_ANGLE = 45.0;
     settings.CLASP_ENTRY_RATE = 0.001;
     settings.CROSSOVER_RATE = 8000.0;
-    settings.ZIPPERING_HIT_RATE = 1000.0;
+    settings.ENABLE_ZIPPERING = false;
     create_experiment(settings, root_dir, "square_clasp_high_cross_45",n);
     all_filenames.push_back("square_clasp_high_cross_45");
 
     //resets to default
     settings.set_default();
+    settings.ENABLE_WOBBLE = active;
+    settings.WOBBLE_ANGLE = angle;
     settings.CELL_NX = 1;
     settings.CELL_NY = 1;
     settings.CELL_DX = 8.3;
@@ -662,12 +670,13 @@ void create_small_mode()
     settings.CREATION_RATE = 0.0026;
     settings.ENABLE_CROSSOVER = true;
     settings.CROSSOVER_RATE = 8000.0;
-    settings.ZIPPERING_HIT_RATE = 1000.0;
+    settings.ENABLE_ZIPPERING = false;
     create_experiment(settings, root_dir, "rectangle_no_clasp_high_cross",n);
     all_filenames.push_back("rectangle_no_clasp_high_cross");
-
+	
+    settings.ENABLE_ZIPPERING = true;
     settings.ZIPPERING_HIT_RATE = 4000.0;
-    settings.CROSSOVER_RATE = 400.0;
+    settings.CROSSOVER_RATE = 200.0;
     settings.CLASP_ENABLE_ENTRY = true;
     settings.CLASP_ENTRY_RATE = 0.001;
     settings.CLASP_ENABLE_EXIT = true;
@@ -689,7 +698,132 @@ void create_small_mode()
     settings.CLASP_ENTRY_ANGLE = 45.0;
     settings.CLASP_ENTRY_RATE = 0.001;
     settings.CROSSOVER_RATE = 8000.0;
-    settings.ZIPPERING_HIT_RATE = 1000.0;
+    settings.ENABLE_ZIPPERING = false;
+    create_experiment(settings, root_dir, "rectangle_clasp_high_cross_45",n);
+    all_filenames.push_back("rectangle_clasp_high_cross_45");
+
+    create_main_bash(root_dir, all_filenames);
+}
+
+void create_small_mode2()
+{
+    //TODO: make it so the output directory can be specified
+    std::cout << "Generating all the configuration files for the experiment" << std::endl;
+    
+    std::vector<std::string> all_filenames;
+    Parameters settings;
+    settings.set_default();
+    double angle = 4.0;
+    bool active = true;
+    settings.ENABLE_WOBBLE = active;
+    settings.WOBBLE_ANGLE = angle;
+
+    std::cout << "Creating the main experiment directory and removing if it exists...\n";
+    std::string root_dir = "wobble_small_mode_exp";
+    std::filesystem::remove_all(root_dir);
+    std::filesystem::create_directory(root_dir);
+
+    //default experiment
+    std::size_t n = 16; //number of runs for the ensemble
+    settings.CELL_NX = 3;
+    settings.CELL_NY = 3;
+    settings.CELL_DX = 1.66;//5.5;//1.666;
+    settings.CELL_DY = 1.66;//2.0;//1.666;
+    create_experiment(settings, root_dir, "square_no_clasp",n);
+    all_filenames.push_back("square_no_clasp");
+
+    //lowering the creation rate to see what happens
+    settings.CREATION_RATE = 0.000026;
+    create_experiment(settings, root_dir, "square_no_clasp_low_creation",n);
+    all_filenames.push_back("square_no_clasp_low_creation");
+
+    //jack up the crossover rate and reset the creation rate
+    settings.CREATION_RATE = 0.0026;
+    settings.ENABLE_CROSSOVER = true;
+    settings.CROSSOVER_RATE = 8000.0;
+    settings.ENABLE_ZIPPERING = false;
+    create_experiment(settings, root_dir, "square_no_clasp_high_cross",n);
+    all_filenames.push_back("square_no_clasp_high_cross");
+
+    settings.set_default();
+    settings.ENABLE_WOBBLE = active;
+    settings.WOBBLE_ANGLE = angle;
+    settings.CELL_NX = 3;
+    settings.CELL_NY = 3;
+    settings.CELL_DX = 1.66;//5.5;//1.666;
+    settings.CELL_DY = 1.66;//2.0;//1.666;
+    settings.CLASP_ENABLE_ENTRY = true;
+    settings.CLASP_ENABLE_EXIT = true;
+    settings.ZIPPERING_HIT_RATE = 4000.0;
+    for(int i = 1; i <= 4; i ++)
+    {
+        settings.CLASP_EXIT_ANGLE = (double)(i)*15.0;
+        settings.CLASP_ENTRY_ANGLE = (double)(i)*15.0;
+        std::string name = "square_with_clasp_angle_"+std::to_string((int)settings.CLASP_EXIT_ANGLE);
+        create_experiment(settings, root_dir, name,n);
+        all_filenames.push_back(name);
+    }
+    settings.CLASP_EXIT_ANGLE = 15.0;
+    settings.CLASP_ENTRY_RATE = 0.008;
+    create_experiment(settings, root_dir, "square_with_clasp_angle_"+std::to_string((int)settings.CLASP_EXIT_ANGLE)+"_influx",n);
+    all_filenames.push_back("square_with_clasp_angle_"+std::to_string((int)settings.CLASP_EXIT_ANGLE)+"_influx");
+
+    settings.CLASP_EXIT_ANGLE = 45.0;
+    settings.CLASP_ENTRY_ANGLE = 45.0;
+    settings.CLASP_ENTRY_RATE = 0.001;
+    settings.CROSSOVER_RATE = 8000.0;
+    settings.ENABLE_ZIPPERING = false;
+    create_experiment(settings, root_dir, "square_clasp_high_cross_45",n);
+    all_filenames.push_back("square_clasp_high_cross_45");
+
+    //resets to default
+    settings.set_default();
+    settings.ENABLE_WOBBLE = active;
+    settings.WOBBLE_ANGLE = angle;
+    settings.CELL_NX = 1;
+    settings.CELL_NY = 1;
+    settings.CELL_DX = 8.3;
+    settings.CELL_DY = 3.0;
+    create_experiment(settings, root_dir, "rectangle_no_clasp", n);
+    all_filenames.push_back("rectangle_no_clasp");
+
+    //lowering the creation rate to see what happens
+    settings.CREATION_RATE = 0.000026;
+    create_experiment(settings, root_dir, "rectangle_no_clasp_low_creation",n);
+    all_filenames.push_back("rectangle_no_clasp_low_creation");
+
+    settings.CREATION_RATE = 0.0026;
+    settings.ENABLE_CROSSOVER = true;
+    settings.CROSSOVER_RATE = 8000.0;
+    settings.ENABLE_ZIPPERING = false;
+    create_experiment(settings, root_dir, "rectangle_no_clasp_high_cross",n);
+    all_filenames.push_back("rectangle_no_clasp_high_cross");
+	
+    settings.ENABLE_ZIPPERING = true;
+    settings.ZIPPERING_HIT_RATE = 4000.0;
+    settings.CROSSOVER_RATE = 200.0;
+    settings.CLASP_ENABLE_ENTRY = true;
+    settings.CLASP_ENTRY_RATE = 0.001;
+    settings.CLASP_ENABLE_EXIT = true;
+    for(int i = 1; i <= 4; i ++)
+    {
+        settings.CLASP_EXIT_ANGLE = (double)(i)*15.0;
+        settings.CLASP_ENTRY_ANGLE = (double)(i)*15.0;
+        std::string name = "rectangle_with_clasp_angle_"+std::to_string((int)settings.CLASP_EXIT_ANGLE);
+        create_experiment(settings, root_dir, name,n);
+        all_filenames.push_back(name);
+    }
+    settings.CLASP_EXIT_ANGLE = 15.0;
+    settings.CLASP_ENTRY_ANGLE = 15.0;
+    settings.CLASP_ENTRY_RATE = 0.008;
+    create_experiment(settings, root_dir, "rectangle_with_clasp_angle_"+std::to_string((int)settings.CLASP_EXIT_ANGLE)+"_influx",n);
+    all_filenames.push_back("rectangle_with_clasp_angle_"+std::to_string((int)settings.CLASP_EXIT_ANGLE)+"_influx");
+
+    settings.CLASP_EXIT_ANGLE = 45.0;
+    settings.CLASP_ENTRY_ANGLE = 45.0;
+    settings.CLASP_ENTRY_RATE = 0.001;
+    settings.CROSSOVER_RATE = 8000.0;
+    settings.ENABLE_ZIPPERING = false;
     create_experiment(settings, root_dir, "rectangle_clasp_high_cross_45",n);
     all_filenames.push_back("rectangle_clasp_high_cross_45");
 
@@ -698,6 +832,7 @@ void create_small_mode()
 
 int main() {
     create_small_mode();
-    create_big_mode();
+    create_small_mode2();
+    //create_big_mode();
     return 0;
 }
