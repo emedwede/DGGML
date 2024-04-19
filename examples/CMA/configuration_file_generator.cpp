@@ -594,7 +594,7 @@ void create_small_mode()
     settings.WOBBLE_ANGLE = angle;
 
     std::cout << "Creating the main experiment directory and removing if it exists...\n";
-    std::string root_dir = "std_small_mode_exp";
+    std::string root_dir = "angle_small_mode_exp";
     std::filesystem::remove_all(root_dir);
     std::filesystem::create_directory(root_dir);
 

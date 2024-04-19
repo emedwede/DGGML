@@ -360,7 +360,7 @@ namespace Plant {
     }
 
     template<typename GraphType, typename ParamType>
-    std::vector<std::size_t> compute_orientation_histogram(GraphType &system_graph, ParamType &settings) {
+    std::vector<std::size_t> compute_orientation_histogram(GraphType &system_graph, ParamType &settings, std::vector<double>& angle_vec) {
         std::vector<Point> points;
         for(auto& node : system_graph.getNodeSetRef())
         {
@@ -406,8 +406,10 @@ namespace Plant {
             angle = angle > 180.0 ? 180.0 : angle; //ensures precision errors don't break the code
             angle = angle < 0.0 ? 0.0 : angle; //ensures precision errors don't break the code
             int bid = angle == 0.0 ? 0 : int(std::ceil(angle/10.0))-1;
-            if(bid >= 0 && bid < num_bins)
+            if(bid >= 0 && bid < num_bins) {
                 orientation_histogram[bid]++;
+                angle_vec.push_back(angle);
+            }
         }
         //std::cout << "\n";
         auto total = std::accumulate(orientation_histogram.begin(), orientation_histogram.end(), 0);

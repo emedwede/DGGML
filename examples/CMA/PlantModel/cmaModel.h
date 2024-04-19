@@ -101,6 +101,7 @@ namespace CMA {
             std::vector<double> correlation_avg_short;
             std::vector<double> correlation_dist;
             std::vector<std::size_t> angular_histogram;
+            std::vector<double> angles;
 
             std::size_t junction_count;
             std::size_t positive_count;
@@ -117,6 +118,7 @@ namespace CMA {
                 intermediate_count = 0;
                 correlation_dist.clear();
                 angular_histogram.clear();
+                angles.clear();
 
             }
         } metrics;
@@ -162,7 +164,7 @@ namespace CMA {
                     std::accumulate(metrics.correlation_dist.begin(), metrics.correlation_dist.begin()+short_size, 0.0)
                     /((double)short_size);
             metrics.correlation_avg_short.push_back(short_avg);
-            metrics.angular_histogram = compute_orientation_histogram(system_graph, settings);
+            metrics.angular_histogram = compute_orientation_histogram(system_graph, settings, metrics.angles);
         }
 
         void print_metrics(std::size_t step) override
@@ -194,6 +196,8 @@ namespace CMA {
             print_json_array_stats(outputFile, metrics.correlation_dist, "correlation_dist");
             outputFile << ",\n";
             print_json_array_stats(outputFile, metrics.angular_histogram, "angular_hist");
+            outputFile << "\n}";
+            print_json_array_stats(outputFile, metrics.angles, "angles");
             outputFile << "\n}";
             //print_numpy_array_stats_csv(outputFile, metrics.time_count, "time_count");
             outputFile.close();
