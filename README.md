@@ -1,3 +1,6 @@
+# Update: Please Read
+The build instructions are out of data and will be updated soon! Thanks for your patience. 
+
 # DGGML: The Dynamical Graph Grammar Modeling Library
 
 DGGML is a modeling library for developing simulations of spatially embedded dynamical graph grammars. It's a follow up to [CajeteCMA](https://github.com/emedwede/CajeteCMA) - a Graph Grammar Simulator for the Cortical Microtubule Array (CMA), which has a serial implementation for a graph grammar simulator featured in the paper titled, ["Approximate Simulation of Cortical Microtubule Models using Dynamical Graph Grammars"](https://dx.doi.org/10.1088/1478-3975/acdbfb). The graph library used is YAGL: Yet another Graph Library.
