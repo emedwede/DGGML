@@ -110,16 +110,18 @@ namespace Plant {
         //complete the loop with the first
         graph.addEdge(prev_key, first_key);
 
-        //create the nucleators
-        for (auto i = 1; i < reaction_grid._nx - 1; i++) {
-            for (auto j = 1; j < reaction_grid._ny - 1; j++) {
-                ///if(i % 3 == 0 && j % 3 == 0) {
-                auto cardinal = reaction_grid.cardinalCellIndex(i, j);
-                double px, py;
-                reaction_grid.cardinalCellToPoint(px, py, cardinal);
-                node_type node_n = {gen.get_key(), {Plant::Nucleator{}, px, py, 0.0}};
-                graph.addNode(node_n);
-                //}
+        if(settings.ENABLE_CREATION) {
+            //create the nucleators
+            for (auto i = 1; i < reaction_grid._nx - 1; i++) {
+                for (auto j = 1; j < reaction_grid._ny - 1; j++) {
+                    ///if(i % 3 == 0 && j % 3 == 0) {
+                    auto cardinal = reaction_grid.cardinalCellIndex(i, j);
+                    double px, py;
+                    reaction_grid.cardinalCellToPoint(px, py, cardinal);
+                    node_type node_n = {gen.get_key(), {Plant::Nucleator{}, px, py, 0.0}};
+                    graph.addNode(node_n);
+                    //}
+                }
             }
         }
         //first create a grid that needs to fit MTs of two segments without initial overlap
