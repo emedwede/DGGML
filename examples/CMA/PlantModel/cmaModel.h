@@ -150,21 +150,21 @@ namespace CMA {
 
             metrics.total_nodes.push_back(metrics.negative_count + metrics.positive_count +
             metrics.intermediate_count + metrics.junction_count + metrics.zipper_count);
-            metrics.correlation_dist = compute_two_point_correlation_alpha(system_graph, settings);
-            auto size = (double)metrics.correlation_dist.size();
-            auto avg = std::accumulate(metrics.correlation_dist.begin(), metrics.correlation_dist.end(), 0.0)/size;
-            metrics.correlation_avg_global.push_back(avg);
-            auto local_size = metrics.correlation_dist.size()/3;
-            auto local_avg =
-                    std::accumulate(metrics.correlation_dist.begin(), metrics.correlation_dist.begin()+local_size, 0.0)
-                    /((double)local_size);
-            metrics.correlation_avg_local.push_back(local_avg);
-            std::size_t short_size = settings.CELL_DY/settings.MAXIMAL_REACTION_RADIUS;
-            auto short_avg =
-                    std::accumulate(metrics.correlation_dist.begin(), metrics.correlation_dist.begin()+short_size, 0.0)
-                    /((double)short_size);
-            metrics.correlation_avg_short.push_back(short_avg);
-            metrics.angular_histogram = compute_orientation_histogram(system_graph, settings, metrics.angles);
+//            metrics.correlation_dist = compute_two_point_correlation_alpha(system_graph, settings);
+//            auto size = (double)metrics.correlation_dist.size();
+//            auto avg = std::accumulate(metrics.correlation_dist.begin(), metrics.correlation_dist.end(), 0.0)/size;
+//            metrics.correlation_avg_global.push_back(avg);
+//            auto local_size = metrics.correlation_dist.size()/3;
+//            auto local_avg =
+//                    std::accumulate(metrics.correlation_dist.begin(), metrics.correlation_dist.begin()+local_size, 0.0)
+//                    /((double)local_size);
+//            metrics.correlation_avg_local.push_back(local_avg);
+//            std::size_t short_size = settings.CELL_DY/settings.MAXIMAL_REACTION_RADIUS;
+//            auto short_avg =
+//                    std::accumulate(metrics.correlation_dist.begin(), metrics.correlation_dist.begin()+short_size, 0.0)
+//                    /((double)short_size);
+//            metrics.correlation_avg_short.push_back(short_avg);
+//            metrics.angular_histogram = compute_orientation_histogram(system_graph, settings, metrics.angles);
         }
 
         void print_metrics(std::size_t step) override
