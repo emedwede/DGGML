@@ -31,8 +31,27 @@ endif()
 # When using the cmake CLI command, this can be done like so:
 #   cmake -D SUNDIALS_DIR=/path/to/sundials/installation
 
-#find the sundials package for ODE solving 
-find_package(SUNDIALS REQUIRED)
+#try to find the sundials package for ODE solving
+find_package(SUNDIALS 6.7.0 QUIET)
+
+if(NOT SUNDIALS_FOUND)
+	message(STATUS "SUNDIALS 6.7.0 not found, fetching with FetchContent...")
+	set(FETCHCONTENT_QUIET FALSE)
+	# Include FetchContent module
+	include(FetchContent)
+
+	message("Downloading SUNDIALS, this may take a few minutes...")
+	# Specify Sundials version and URL
+	FetchContent_Declare(
+			sundials
+			GIT_REPOSITORY https://github.com/LLNL/sundials.git
+			GIT_TAG v6.7.0
+			GIT_PROGRESS TRUE
+	)
+
+	# Fetch and make available
+	FetchContent_MakeAvailable(sundials)
+endif()
 
 # TODO: see if there is a better way than include_directories command
 include_directories(dependencies/YAGL/include)
